@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kabankalan City Coordinates Verification</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <style>
+        #map { height: 500px; width: 100%; }
+        .info { 
+            margin: 20px; 
+            padding: 20px; 
+            background: #f8f9fa; 
+            border-radius: 8px; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .coords {
+            background: #e3f2fd;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="info">
+        <h2>🗺️ Kabankalan City Map Center Verification</h2>
+        <p><strong>Location:</strong> Kabankalan City, Negros Occidental, Philippines</p>
+        <div class="coords">
+            <strong>Coordinates:</strong> 10.2397° N, 122.8203° E<br>
+            <strong>Zoom Level:</strong> 14
+        </div>
+        <p>This map should be centered on Kabankalan City proper, showing the city center and surrounding barangays.</p>
+    </div>
+    
+    <div id="map"></div>
+
+    <script>
+        // Initialize the map with Kabankalan City coordinates
+        var map = L.map('map').setView([10.2397, 122.8203], 14);
+
+        // Add OpenStreetMap tiles
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        // Add a marker for Kabankalan City Center
+        L.marker([10.2397, 122.8203]).addTo(map)
+            .bindPopup('<b>Kabankalan City Center</b><br>Negros Occidental, Philippines')
+            .openPopup();
+
+        // Add some test markers around Kabankalan City
+        L.marker([10.2400, 122.8210]).addTo(map)
+            .bindPopup('North Area');
+        
+        L.marker([10.2390, 122.8190]).addTo(map)
+            .bindPopup('South Area');
+            
+        L.marker([10.2410, 122.8200]).addTo(map)
+            .bindPopup('East Area');
+            
+        L.marker([10.2380, 122.8200]).addTo(map)
+            .bindPopup('West Area');
+            
+        console.log('Map centered on Kabankalan City:', [10.2397, 122.8203]);
+        console.log('Zoom level:', 14);
+    </script>
+</body>
+</html>

@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Loading Test - RoadAlert Fix</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #eee;
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            background: #fafafa;
+        }
+        .test-image {
+            max-width: 400px;
+            max-height: 300px;
+            border: 3px solid #ddd;
+            margin: 15px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+        }
+        .test-image:hover {
+            transform: scale(1.05);
+            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+        }
+        .success {
+            color: #27ae60;
+            font-weight: bold;
+        }
+        .error {
+            color: #e74c3c;
+            font-weight: bold;
+        }
+        .info {
+            background: linear-gradient(135deg, #e3f2fd, #bbdefb);
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            border-left: 5px solid #2196f3;
+        }
+        .warning {
+            background: linear-gradient(135deg, #fff3e0, #ffcc80);
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            border-left: 5px solid #ff9800;
+        }
+        .url-test {
+            font-family: 'Courier New', monospace;
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            word-break: break-all;
+        }
+        .button {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+        .button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            margin: 5px;
+        }
+        .badge-success {
+            background: #27ae60;
+            color: white;
+        }
+        .badge-error {
+            background: #e74c3c;
+            color: white;
+        }
+        .badge-loading {
+            background: #f39c12;
+            color: white;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔧 RoadAlert Image Loading Fix Test</h1>
+            <p>Testing image serving functionality after fixes</p>
+        </div>
+
+        <div class="info">
+            <h3>🎯 What This Test Does:</h3>
+            <ul>
+                <li>Tests if backend servers are running (ports 3001 & 3002)</li>
+                <li>Verifies CORS headers are working correctly</li>
+                <li>Checks if images load without errors</li>
+                <li>Provides detailed debugging information</li>
+            </ul>
+        </div>
+
+        <div class="test-section">
+            <h2>🚀 Server Status Check</h2>
+            <div class="grid">
+                <div>
+                    <h3>Main Backend (Port 3001)</h3>
+                    <button class="button" onclick="testMainBackend()">Test Main Server</button>
+                    <div id="main-server-status"></div>
+                </div>
+                <div>
+                    <h3>Simple Test Server (Port 3002)</h3>
+                    <button class="button" onclick="testSimpleBackend()">Test Simple Server</button>
+                    <div id="simple-server-status"></div>
+                    <br>
+                    <button class="button" onclick="startSimpleServer()" style="background: #27ae60;">Start Simple Server</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>📸 Image Loading Test - Main Server (Port 3001)</h2>
+            <div id="main-images-container">
+                <!-- Images will be loaded here -->
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>📸 Image Loading Test - Simple Server (Port 3002)</h2>
+            <div id="simple-images-container">
+                <!-- Images will be loaded here -->
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>📊 Test Results Summary</h2>
+            <div id="results-summary">
+                <div class="status-badge badge-loading">Tests Not Started</div>
+            </div>
+        </div>
+
+        <div class="warning">
+            <h3>⚠️ Troubleshooting Steps:</h3>
+            <ol>
+                <li><strong>Start Backend Server:</strong> Open terminal in <code>d:\finalcapstone\backend</code> and run <code>node server.js</code></li>
+                <li><strong>Start Simple Server:</strong> Run <code>node simple-image-server.js</code> in the same directory</li>
+                <li><strong>Check Network Tab:</strong> Press F12 → Network tab to see failed requests</li>
+                <li><strong>Check Console:</strong> Press F12 → Console tab for detailed error messages</li>
+                <li><strong>CORS Issues:</strong> Ensure both servers have proper CORS configuration</li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        const knownImages = [
+            'report-1751702494750-370496652.png',
+            'report-1751811725209-783028297.jpg', 
+            'report-1751813583156-938423338.jpg'
+        ];
+
+        let testResults = {
+            mainServer: { status: 'pending', images: 0, success: 0, failed: 0 },
+            simpleServer: { status: 'pending', images: 0, success: 0, failed: 0 }
+        };
+
+        async function testMainBackend() {
+            const statusDiv = document.getElementById('main-server-status');
+            statusDiv.innerHTML = '<div class="status-badge badge-loading">Testing...</div>';
+            
+            try {
+                const response = await fetch('http://localhost:3001/api/health');
+                const data = await response.json();
+                
+                statusDiv.innerHTML = `
+                    <div class="status-badge badge-success">✅ Server Online</div>
+                    <div>Status: ${data.status}</div>
+                    <div>Uptime: ${Math.round(data.uptime)} seconds</div>
+                `;
+                testResults.mainServer.status = 'online';
+                loadImagesForServer('main', 3001);
+            } catch (error) {
+                statusDiv.innerHTML = `
+                    <div class="status-badge badge-error">❌ Server Offline</div>
+                    <div>Error: ${error.message}</div>
+                `;
+                testResults.mainServer.status = 'offline';
+            }
+            updateResultsSummary();
+        }
+
+        async function testSimpleBackend() {
+            const statusDiv = document.getElementById('simple-server-status');
+            statusDiv.innerHTML = '<div class="status-badge badge-loading">Testing...</div>';
+            
+            try {
+                const response = await fetch('http://localhost:3002/health');
+                const data = await response.json();
+                
+                statusDiv.innerHTML = `
+                    <div class="status-badge badge-success">✅ Server Online</div>
+                    <div>Port: ${data.port}</div>
+                    <div>Message: ${data.message}</div>
+                `;
+                testResults.simpleServer.status = 'online';
+                loadImagesForServer('simple', 3002);
+            } catch (error) {
+                statusDiv.innerHTML = `
+                    <div class="status-badge badge-error">❌ Server Offline</div>
+                    <div>Error: ${error.message}</div>
+                    <div class="warning">Try starting with: <code>node simple-image-server.js</code></div>
+                `;
+                testResults.simpleServer.status = 'offline';
+            }
+            updateResultsSummary();
+        }
+
+        function loadImagesForServer(serverType, port) {
+            const container = document.getElementById(`${serverType}-images-container`);
+            container.innerHTML = '';
+
+            // Map image filenames to coordinates (add real coordinates as needed)
+            const imageCoordinates = {
+                'report-1751702494750-370496652.png': { lat: 10.0123, lng: 122.8123 },
+                'report-1751811725209-783028297.jpg': { lat: 10.0222, lng: 122.8222 },
+                'report-1751813583156-938423338.jpg': { lat: 10.0321, lng: 122.8321 }
+            };
+
+            knownImages.forEach((filename, index) => {
+                const imageUrl = `http://localhost:${port}/uploads/${filename}`;
+                const coords = imageCoordinates[filename];
+                const imageDiv = document.createElement('div');
+                imageDiv.style.marginBottom = '20px';
+                
+                let mapHtml = '';
+                if (coords) {
+                    const mapUrl = `https://maps.google.com/maps?q=${coords.lat},${coords.lng}&z=15&output=embed`;
+                    mapHtml = `
+                        <div style="margin-top:10px;">
+                            <strong>Location Map:</strong>
+                            <div style="width:100%;max-width:400px;height:220px;border-radius:10px;overflow:hidden;border:1px solid #bbb;box-shadow:0 2px 8px rgba(0,0,0,0.08);margin-top:5px;">
+                                <iframe src="${mapUrl}" width="100%" height="220" style="border:0;" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+                            </div>
+                            <div style="font-size:12px;color:#555;margin-top:2px;">Lat: ${coords.lat}, Lng: ${coords.lng}</div>
+                        </div>
+                    `;
+                } else {
+                    mapHtml = `<div style='color:#888;font-size:13px;margin-top:10px;'>No coordinates available for this image.</div>`;
+                }
+
+                imageDiv.innerHTML = `
+                    <h4>Image ${index + 1}: ${filename}</h4>
+                    <div class="url-test">${imageUrl}</div>
+                    <img 
+                        class="test-image" 
+                        src="${imageUrl}"
+                        alt="Test Image ${index + 1}"
+                        onload="handleImageSuccess('${serverType}', ${index})"
+                        onerror="handleImageError('${serverType}', ${index})"
+                    />
+                    ${mapHtml}
+                    <div id="${serverType}-status-${index}">
+                        <div class="status-badge badge-loading">Loading...</div>
+                    </div>
+                `;
+                
+                container.appendChild(imageDiv);
+            });
+            
+            testResults[serverType].images = knownImages.length;
+        }
+
+        function handleImageSuccess(serverType, index) {
+            const statusDiv = document.getElementById(`${serverType}-status-${index}`);
+            statusDiv.innerHTML = '<div class="status-badge badge-success">✅ Loaded Successfully</div>';
+            testResults[serverType].success++;
+            updateResultsSummary();
+            console.log(`✅ ${serverType} server - Image ${index + 1} loaded successfully`);
+        }
+
+        function handleImageError(serverType, index) {
+            const statusDiv = document.getElementById(`${serverType}-status-${index}`);
+            statusDiv.innerHTML = '<div class="status-badge badge-error">❌ Failed to Load</div>';
+            testResults[serverType].failed++;
+            updateResultsSummary();
+            console.error(`❌ ${serverType} server - Image ${index + 1} failed to load`);
+        }
+
+        function updateResultsSummary() {
+            const summaryDiv = document.getElementById('results-summary');
+            const totalImages = testResults.mainServer.images + testResults.simpleServer.images;
+            const totalSuccess = testResults.mainServer.success + testResults.simpleServer.success;
+            const totalFailed = testResults.mainServer.failed + testResults.simpleServer.failed;
+            
+            if (totalImages === 0) {
+                summaryDiv.innerHTML = '<div class="status-badge badge-loading">No Tests Started</div>';
+                return;
+            }
+
+            const successRate = totalImages > 0 ? Math.round((totalSuccess / totalImages) * 100) : 0;
+            
+            summaryDiv.innerHTML = `
+                <h3>Overall Results:</h3>
+                <div class="status-badge badge-success">✅ Success: ${totalSuccess}</div>
+                <div class="status-badge badge-error">❌ Failed: ${totalFailed}</div>
+                <div class="status-badge ${successRate === 100 ? 'badge-success' : 'badge-error'}">
+                    Success Rate: ${successRate}%
+                </div>
+                <br><br>
+                <div><strong>Main Server (3001):</strong> ${testResults.mainServer.success}/${testResults.mainServer.images} images loaded</div>
+                <div><strong>Simple Server (3002):</strong> ${testResults.simpleServer.success}/${testResults.simpleServer.images} images loaded</div>
+            `;
+        }
+
+        function startSimpleServer() {
+            alert('To start the simple server:\n\n1. Open terminal/PowerShell\n2. Navigate to: d:\\finalcapstone\\backend\n3. Run: node simple-image-server.js\n4. Then click "Test Simple Server" button');
+        }
+
+        // Auto-test on page load
+        window.onload = function() {
+            setTimeout(() => {
+                testMainBackend();
+                setTimeout(() => {
+                    testSimpleBackend();
+                }, 2000);
+            }, 1000);
+        };
+    </script>
+</body>
+</html>

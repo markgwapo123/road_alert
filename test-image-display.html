@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Display Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .test-section { margin: 20px 0; padding: 20px; border: 1px solid #ccc; border-radius: 8px; }
+        img { max-width: 300px; border: 2px solid #333; margin: 10px; }
+        .error { color: red; }
+        .success { color: green; }
+    </style>
+</head>
+<body>
+    <h1>RoadAlert - Image Display Test</h1>
+    
+    <div class="test-section">
+        <h2>Test 1: Direct Image Access</h2>
+        <p>Testing direct access to uploaded images from backend:</p>
+        <img id="test-img-1" src="http://localhost:3001/uploads/report-1751702494750-370496652.png" alt="Test Image 1" 
+             onload="console.log('Image 1 loaded successfully')" 
+             onerror="console.log('Image 1 failed to load'); document.getElementById('error-1').style.display='block'">
+        <div id="error-1" class="error" style="display:none">❌ Failed to load: report-1751702494750-370496652.png</div>
+        
+        <img id="test-img-2" src="http://localhost:3001/uploads/report-1751811725209-783028297.jpg" alt="Test Image 2"
+             onload="console.log('Image 2 loaded successfully')" 
+             onerror="console.log('Image 2 failed to load'); document.getElementById('error-2').style.display='block'">
+        <div id="error-2" class="error" style="display:none">❌ Failed to load: report-1751811725209-783028297.jpg</div>
+    </div>
+
+    <div class="test-section">
+        <h2>Test 2: Backend Server Status</h2>
+        <button onclick="testBackendConnection()">Test Backend Connection</button>
+        <div id="backend-status"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Test 3: Reports API</h2>
+        <button onclick="testReportsAPI()">Fetch Reports with Images</button>
+        <div id="reports-data"></div>
+    </div>
+
+    <script>
+        async function testBackendConnection() {
+            const statusDiv = document.getElementById('backend-status');
+            try {
+                const response = await fetch('http://localhost:3001/api/health');
+                if (response.ok) {
+                    const data = await response.json();
+                    statusDiv.innerHTML = '<div class="success">✅ Backend is running: ' + JSON.stringify(data) + '</div>';
+                } else {
+                    statusDiv.innerHTML = '<div class="error">❌ Backend responded with error: ' + response.status + '</div>';
+                }
+            } catch (error) {
+                statusDiv.innerHTML = '<div class="error">❌ Cannot connect to backend: ' + error.message + '</div>';
+            }
+        }
+
+        async function testReportsAPI() {
+            const reportsDiv = document.getElementById('reports-data');
+            try {
+                const response = await fetch('http://localhost:3001/api/reports');
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('Reports data:', data);
+                    
+                    let html = '<div class="success">✅ Reports API working</div>';
+                    html += '<h4>Reports with images:</h4>';
+                    
+                    if (data.data && data.data.length > 0) {
+                        data.data.forEach((report, index) => {
+                            if (report.images && report.images.length > 0) {
+                                html += `<div><strong>Report ${index + 1}:</strong> ${report.type}<br>`;
+                                report.images.forEach(img => {
+                                    html += `<img src="http://localhost:3001/uploads/${img.filename}" 
+                                             alt="${img.originalName}" style="max-width: 200px; margin: 5px;"
+                                             onload="console.log('Report image loaded: ${img.filename}')"
+                                             onerror="console.log('Report image failed: ${img.filename}')"><br>`;
+                                });
+                                html += '</div>';
+                            }
+                        });
+                    } else {
+                        html += '<div>No reports found</div>';
+                    }
+                    
+                    reportsDiv.innerHTML = html;
+                } else {
+                    reportsDiv.innerHTML = '<div class="error">❌ Reports API error: ' + response.status + '</div>';
+                }
+            } catch (error) {
+                reportsDiv.innerHTML = '<div class="error">❌ Cannot fetch reports: ' + error.message + '</div>';
+            }
+        }
+
+        // Auto-test on load
+        window.onload = function() {
+            console.log('Testing image display...');
+            setTimeout(testBackendConnection, 1000);
+        };
+    </script>
+</body>
+</html>
