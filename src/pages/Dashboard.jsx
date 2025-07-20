@@ -3,7 +3,7 @@ import { ExclamationTriangleIcon, ClockIcon, CheckCircleIcon, XMarkIcon } from '
 import { reportsAPI } from '../services/api'
 import SystemStatus from '../components/SystemStatus'
 
-const Dashboard = () => {
+const Dashboard = ({ serverStatus = true, lastServerCheck = null }) => {
   const [stats, setStats] = useState({
     totalReports: 0,
     pendingReports: 0,
@@ -248,7 +248,7 @@ const Dashboard = () => {
           </button>
         </div>
       </div>      {/* System Status */}
-      <SystemStatus />{/* Report Details Modal */}
+      <SystemStatus serverStatus={serverStatus} lastServerCheck={lastServerCheck} />{/* Report Details Modal */}
       {isModalOpen && selectedReport && (
         <div className="fixed inset-0 bg-black bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4">
           <div className="relative w-full max-w-6xl max-h-[90vh] overflow-y-auto shadow-2xl rounded-lg bg-white">

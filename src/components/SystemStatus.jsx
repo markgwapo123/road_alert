@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import systemStatusChecker from '../services/systemStatus'
 
-const SystemStatus = () => {  const [systemStatus, setSystemStatus] = useState({
+const SystemStatus = ({ serverStatus = true, lastServerCheck = null }) => {  const [systemStatus, setSystemStatus] = useState({
     frontend: { status: 'online', message: 'Online' },
     backend: { status: 'connecting', message: 'Connecting...' },
     database: { status: 'error', message: 'Setup Required', totalUsers: 0, activeUsers: 0 },
@@ -67,6 +67,13 @@ const SystemStatus = () => {  const [systemStatus, setSystemStatus] = useState({
       </div>
       
       <div className="grid grid-cols-1 gap-3">
+        <StatusIndicator
+          label="Server Connection"
+          status={serverStatus ? 'online' : 'error'}
+          message={serverStatus ? 'Connected' : 'Disconnected'}
+          additionalInfo={lastServerCheck ? `Last check: ${lastServerCheck.toLocaleTimeString()}` : null}
+        />
+        
         <StatusIndicator
           label="Frontend Application"
           status={systemStatus.frontend.status}

@@ -30,8 +30,16 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    // Handle network errors (server down)
+    if (!error.response && (error.code === 'ECONNREFUSED' || error.code === 'ERR_NETWORK')) {
+      console.warn('🚨 Admin API: Network error detected, server may be down');
+      // Don't auto-logout here, let the useServerConnection hook handle it
+      return Promise.reject(error);
+    }
+    
     if (error.response?.status === 401) {
       // Handle unauthorized access
+      console.warn('🚨 Admin API: Unauthorized access, logging out');
       localStorage.removeItem('adminToken')
       window.location.href = '/login'
     }

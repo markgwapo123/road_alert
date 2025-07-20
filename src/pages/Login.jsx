@@ -20,7 +20,7 @@ const Login = () => {
         // Store token as adminToken for axios interceptor
         localStorage.setItem('adminToken', response.data.token)
         alert('Login successful!')
-        window.location.href = '/reports' // or your admin dashboard route
+        window.location.href = '/dashboard' // Redirect to admin dashboard
       } else {
         alert('Login failed: No token received')
       }

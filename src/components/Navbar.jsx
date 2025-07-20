@@ -2,7 +2,7 @@ import { Link, useLocation } from 'react-router-dom'
 import { MapPinIcon, ChartBarIcon, DocumentTextIcon, UserIcon, ChevronDownIcon, CogIcon, KeyIcon, UserPlusIcon, ArrowRightOnRectangleIcon } from '@heroicons/react/24/outline'
 import { useState } from 'react'
 
-const Navbar = () => {
+const Navbar = ({ serverStatus = true }) => {
   const location = useLocation()
   const [showAdminDropdown, setShowAdminDropdown] = useState(false)
   
@@ -49,24 +49,28 @@ const Navbar = () => {
                 </Link>
               )
             })}
-          </div>          {/* Admin Dropdown Menu */}
-          <div className="relative">
-            <button
-              onClick={() => setShowAdminDropdown(!showAdminDropdown)}
-              className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                location.pathname.startsWith('/admin')
-                  ? 'bg-red-100 text-red-700'
-                  : 'text-red-600 hover:text-red-700 hover:bg-red-50'
-              }`}
-            >
-              <UserIcon className="h-5 w-5 text-red-600" />
-              <span className="text-red-600">Admin</span>
-              <ChevronDownIcon className="h-4 w-4 text-red-600" />
-            </button>
+          </div>
 
-            {showAdminDropdown && (
+          {/* Admin Dropdown Menu */}
+          <div className="flex items-center space-x-4">
+            <div className="relative">
+              <button
+                onClick={() => setShowAdminDropdown(!showAdminDropdown)}
+                className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                  location.pathname.startsWith('/admin')
+                    ? 'bg-red-100 text-red-700'
+                    : 'text-red-600 hover:text-red-700 hover:bg-red-50'
+                }`}
+              >
+                <UserIcon className="h-5 w-5 text-red-600" />
+                <span className="text-red-600">Admin</span>
+                <ChevronDownIcon className="h-4 w-4 text-red-600" />
+              </button>
+
+              {showAdminDropdown && (
               <div className="absolute right-0 mt-2 w-56 bg-white rounded-md shadow-lg border border-gray-200 z-50">
-                <div className="py-1">                  <Link
+                <div className="py-1">
+                  <Link
                     to="/admin/profile"
                     className={`flex items-center px-4 py-2 text-sm transition-colors ${
                       location.pathname === '/admin/profile'
@@ -125,6 +129,7 @@ const Navbar = () => {
                 </div>
               </div>
             )}
+            </div>
           </div>
         </div>
       </div>
