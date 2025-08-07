@@ -24,6 +24,8 @@ app.use(helmet({
 app.use(cors({
   origin: process.env.NODE_ENV === 'production' 
     ? [
+        'https://road-alert-users.onrender.com',
+        'https://road-alert-admin.onrender.com',
         'https://users-7tsrm8kq7-markstephens-projects.vercel.app',
         'https://road-alert-admin.vercel.app',
         'https://your-admin-app.vercel.app',

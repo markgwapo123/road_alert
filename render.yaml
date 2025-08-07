@@ -1,0 +1,45 @@
+services:
+  # Backend API Service
+  - type: web
+    name: road-alert-backend
+    env: node
+    plan: free
+    buildCommand: cd backend && npm install
+    startCommand: cd backend && node server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MONGODB_URI
+        fromDatabase:
+          name: road-alert-db
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: PORT
+        value: 10000
+
+  # User Frontend Service
+  - type: web
+    name: road-alert-users
+    env: static
+    plan: free
+    buildCommand: cd users && npm install && npm run build
+    staticPublishPath: users/dist
+    envVars:
+      - key: VITE_API_BASE_URL
+        value: https://road-alert-backend.onrender.com
+
+  # Admin Frontend Service  
+  - type: web
+    name: road-alert-admin
+    env: static
+    plan: free
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    envVars:
+      - key: VITE_API_BASE_URL
+        value: https://road-alert-backend.onrender.com
+
+databases:
+  - name: road-alert-db
+    plan: free
