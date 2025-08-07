@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import config from '../config/index.js';
+import ReportDetailModal from './ReportDetailModal.jsx';
 
 // Color configurations based on professional road & safety alert standards
 const ALERT_COLORS = {
@@ -35,6 +36,9 @@ const NewsFeed = () => {
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [selectedReport, setSelectedReport] = useState(null);
+  const [selectedReportUser, setSelectedReportUser] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
     const fetchReports = async () => {
@@ -67,6 +71,35 @@ const NewsFeed = () => {
       hour: '2-digit',
       minute: '2-digit'
     });
+  };
+
+  const fetchReportUser = async (userId) => {
+    try {
+      const response = await axios.get(`${config.API_BASE_URL}/users/profile/${userId}`);
+      return response.data.data;
+    } catch (err) {
+      console.error('Error fetching user details:', err);
+      return null;
+    }
+  };
+
+  const handleReportClick = async (report) => {
+    setSelectedReport(report);
+    setIsModalOpen(true);
+    
+    // Fetch user details
+    if (report.userId) {
+      const user = await fetchReportUser(report.userId);
+      setSelectedReportUser(user);
+    } else {
+      setSelectedReportUser(null);
+    }
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setSelectedReport(null);
+    setSelectedReportUser(null);
   };
 
   if (loading) {
@@ -109,6 +142,7 @@ const NewsFeed = () => {
             return (
               <div
                 key={report._id}
+                onClick={() => handleReportClick(report)}
                 style={{
                   background: alertStyle.background,
                   color: alertStyle.text,
@@ -117,7 +151,18 @@ const NewsFeed = () => {
                   boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
                   display: 'flex',
                   alignItems: 'flex-start',
-                  gap: '12px'
+                  gap: '12px',
+                  cursor: 'pointer',
+                  transition: 'all 0.3s ease',
+                  position: 'relative'
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 4px 15px rgba(0, 0, 0, 0.2)';
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.1)';
                 }}
               >
                 <div style={{ fontSize: '24px', marginTop: '2px' }}>
@@ -125,6 +170,22 @@ const NewsFeed = () => {
                 </div>
                 
                 <div style={{ flex: 1 }}>
+                  {/* Click indicator */}
+                  <div style={{
+                    position: 'absolute',
+                    top: '16px',
+                    right: '16px',
+                    background: 'rgba(255, 255, 255, 0.2)',
+                    padding: '4px 8px',
+                    borderRadius: '12px',
+                    fontSize: '10px',
+                    fontWeight: '600',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px'
+                  }}>
+                    Click for details
+                  </div>
+                  
                   <div style={{ 
                     display: 'flex', 
                     justifyContent: 'space-between', 
@@ -201,6 +262,14 @@ const NewsFeed = () => {
           })}
         </div>
       )}
+      
+      {/* Report Detail Modal */}
+      <ReportDetailModal
+        report={selectedReport}
+        reportUser={selectedReportUser}
+        isOpen={isModalOpen}
+        onClose={closeModal}
+      />
     </div>
   );
 };
