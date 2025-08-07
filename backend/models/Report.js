@@ -4,7 +4,7 @@ const reportSchema = new mongoose.Schema({
   type: {
     type: String,
     required: true,
-    enum: ['pothole', 'debris', 'flooding', 'construction', 'accident', 'other']
+    enum: ['emergency', 'caution', 'construction', 'info', 'safe', 'pothole', 'debris', 'flooding', 'accident', 'other']
   },
   description: {
     type: String,
@@ -56,6 +56,10 @@ const reportSchema = new mongoose.Schema({
     username: String,  // Add username field for better identification
     email: String,
     phone: String
+  },
+  submittedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
   },
   adminNotes: {
     type: String,

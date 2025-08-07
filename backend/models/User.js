@@ -25,6 +25,10 @@ const userSchema = new mongoose.Schema({
         type: Boolean,
         default: true
     },
+    isVerified: {
+        type: Boolean,
+        default: false
+    },
     lastLogin: {
         type: Date,
         default: null
@@ -33,6 +37,28 @@ const userSchema = new mongoose.Schema({
         firstName: String,
         lastName: String,
         phone: String
+    },
+    verification: {
+        status: {
+            type: String,
+            enum: ['pending', 'submitted', 'approved', 'rejected'],
+            default: 'pending'
+        },
+        submittedAt: Date,
+        reviewedAt: Date,
+        reviewedBy: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Admin'
+        },
+        documents: {
+            firstName: String,
+            lastName: String,
+            phone: String,
+            address: String,
+            idNumber: String,
+            idType: String
+        },
+        notes: String
     }
 }, {
     timestamps: true

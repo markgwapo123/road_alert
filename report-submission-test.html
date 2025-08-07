@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Report Submission Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input, select, textarea { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
+        button { background: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; margin: 5px 0; }
+        button:disabled { background: #ccc; cursor: not-allowed; }
+        .status { padding: 10px; margin: 10px 0; border-radius: 4px; }
+        .error { background: #fee; color: #d63384; border: 1px solid #f5c2c7; }
+        .success { background: #d1f2eb; color: #0f5132; border: 1px solid #a3cfbb; }
+        .debug { background: #f8f9fa; padding: 10px; margin: 10px 0; border: 1px solid #dee2e6; border-radius: 4px; font-family: monospace; white-space: pre-wrap; max-height: 300px; overflow-y: auto; }
+        .step { background: #e7f3ff; padding: 15px; margin: 15px 0; border-left: 4px solid #007bff; }
+        h3 { margin-top: 0; }
+    </style>
+</head>
+<body>
+    <h1>🔧 Report Submission Debug Tool</h1>
+    
+    <div class="step">
+        <h3>Step 1: Check Backend Server</h3>
+        <button onclick="checkBackend()">Test Backend Connection</button>
+        <div id="backendStatus"></div>
+    </div>
+    
+    <div class="step">
+        <h3>Step 2: Test Authentication</h3>
+        <button onclick="testAuth()">Test Login</button>
+        <div id="authStatus"></div>
+    </div>
+    
+    <div class="step">
+        <h3>Step 3: Submit Test Report</h3>
+        <form id="reportForm">
+            <div class="form-group">
+                <label>Type:</label>
+                <select id="type" required>
+                    <option value="">Select Type</option>
+                    <option value="emergency">Emergency</option>
+                    <option value="pothole">Pothole</option>
+                    <option value="construction">Construction</option>
+                    <option value="flooding">Flooding</option>
+                    <option value="other">Other</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label>Severity:</label>
+                <select id="severity" required>
+                    <option value="">Select Severity</option>
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label>Description (min 10 characters):</label>
+                <textarea id="description" required minlength="10" placeholder="Describe the issue in detail...">Test report submission - This is a detailed description of a road issue that needs attention from the authorities.</textarea>
+            </div>
+            
+            <div class="form-group">
+                <label>Image (optional):</label>
+                <input type="file" id="image" accept="image/*">
+                <div id="imageInfo"></div>
+            </div>
+            
+            <button type="button" onclick="getLocation()">📍 Get Location</button>
+            <button type="submit" id="submitBtn" disabled>🚀 Submit Report</button>
+        </form>
+        <div id="submitStatus"></div>
+    </div>
+    
+    <div class="debug" id="debugLog">Debug information will appear here...\n</div>
+
+    <script>
+        const API_BASE = 'http://192.168.1.150:3001';
+        let token = null;
+        let currentLocation = null;
+        
+        function log(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            const debugLog = document.getElementById('debugLog');
+            debugLog.textContent += `[${timestamp}] ${message}\n`;
+            debugLog.scrollTop = debugLog.scrollHeight;
+            console.log(message);
+        }
+        
+        function showStatus(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            element.innerHTML = `<div class="status ${type}">${message}</div>`;
+        }
+        
+        async function checkBackend() {
+            log('🔍 Checking backend server...');
+            showStatus('backendStatus', '🔄 Checking...', 'info');
+            
+            try {
+                // Try to fetch any endpoint to check if server is running
+                const response = await fetch(`${API_BASE}/api/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: 'test', password: 'test' })
+                });
+                
+                // Even if login fails, if we get a response, server is running
+                log(`✅ Backend server is responding (Status: ${response.status})`);
+                showStatus('backendStatus', '✅ Backend server is running!', 'success');
+                return true;
+            } catch (error) {
+                log(`❌ Backend server error: ${error.message}`);
+                showStatus('backendStatus', '❌ Backend server not accessible. Please start the backend server.', 'error');
+                return false;
+            }
+        }
+        
+        async function testAuth() {
+            log('🔐 Testing authentication...');
+            showStatus('authStatus', '🔄 Logging in...', 'info');
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        email: 'test@example.com', 
+                        password: 'password123' 
+                    })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    token = data.token;
+                    log(`✅ Login successful! Token: ${token.substring(0, 20)}...`);
+                    showStatus('authStatus', '✅ Authentication successful!', 'success');
+                    document.getElementById('submitBtn').disabled = false;
+                    return true;
+                } else {
+                    const errorData = await response.text();
+                    log(`❌ Login failed: ${response.status} - ${errorData}`);
+                    showStatus('authStatus', `❌ Login failed: ${response.status}. Check if test user exists.`, 'error');
+                    return false;
+                }
+            } catch (error) {
+                log(`❌ Authentication error: ${error.message}`);
+                showStatus('authStatus', '❌ Authentication error. Check backend server.', 'error');
+                return false;
+            }
+        }
+        
+        function getLocation() {
+            log('📍 Getting location...');
+            
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        currentLocation = {
+                            lat: position.coords.latitude,
+                            lng: position.coords.longitude
+                        };
+                        log(`✅ Location obtained: ${currentLocation.lat}, ${currentLocation.lng}`);
+                    },
+                    (error) => {
+                        log(`⚠️ Location error: ${error.message}`);
+                        // Use default Kabankalan coordinates
+                        currentLocation = { lat: 10.1869, lng: 122.8081 };
+                        log(`📍 Using default location: ${currentLocation.lat}, ${currentLocation.lng}`);
+                    }
+                );
+            } else {
+                currentLocation = { lat: 10.1869, lng: 122.8081 };
+                log(`📍 Geolocation not supported, using default: ${currentLocation.lat}, ${currentLocation.lng}`);
+            }
+        }
+        
+        // Handle file selection
+        document.getElementById('image').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            const infoDiv = document.getElementById('imageInfo');
+            
+            if (file) {
+                const info = `📁 File: ${file.name} (${(file.size / 1024).toFixed(1)} KB, ${file.type})`;
+                infoDiv.textContent = info;
+                log(info);
+                
+                // Validate file
+                if (file.size > 5 * 1024 * 1024) {
+                    infoDiv.textContent += '\n⚠️ File is too large (max 5MB)';
+                    log('⚠️ File size validation failed');
+                }
+                
+                if (!file.type.startsWith('image/')) {
+                    infoDiv.textContent += '\n⚠️ File is not an image';
+                    log('⚠️ File type validation failed');
+                }
+            } else {
+                infoDiv.textContent = '';
+            }
+        });
+        
+        // Handle form submission
+        document.getElementById('reportForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            if (!token) {
+                alert('Please test authentication first');
+                return;
+            }
+            
+            if (!currentLocation) {
+                alert('Please get location first');
+                return;
+            }
+            
+            const type = document.getElementById('type').value;
+            const severity = document.getElementById('severity').value;
+            const description = document.getElementById('description').value;
+            const imageFile = document.getElementById('image').files[0];
+            
+            // Validate required fields
+            if (!type || !severity || !description) {
+                alert('Please fill in all required fields');
+                return;
+            }
+            
+            if (description.length < 10) {
+                alert('Description must be at least 10 characters');
+                return;
+            }
+            
+            log('🚀 Preparing report submission...');
+            showStatus('submitStatus', '🔄 Submitting report...', 'info');
+            
+            try {
+                // Create FormData
+                const formData = new FormData();
+                formData.append('type', type);
+                formData.append('severity', severity);
+                formData.append('description', description);
+                formData.append('location[address]', `${currentLocation.lat}, ${currentLocation.lng}`);
+                formData.append('location[coordinates][latitude]', currentLocation.lat);
+                formData.append('location[coordinates][longitude]', currentLocation.lng);
+                
+                if (imageFile) {
+                    formData.append('images', imageFile);
+                    log(`📷 Including image: ${imageFile.name} (${imageFile.size} bytes)`);
+                }
+                
+                // Log FormData contents
+                log('📋 Form data prepared:');
+                for (let [key, value] of formData.entries()) {
+                    if (value instanceof File) {
+                        log(`  ${key}: File(${value.name}, ${value.size} bytes, ${value.type})`);
+                    } else {
+                        log(`  ${key}: ${value}`);
+                    }
+                }
+                
+                // Submit to backend
+                const response = await fetch(`${API_BASE}/api/reports/user`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                        // Don't set Content-Type for FormData
+                    },
+                    body: formData
+                });
+                
+                const responseText = await response.text();
+                log(`📥 Response (${response.status}): ${responseText.substring(0, 200)}${responseText.length > 200 ? '...' : ''}`);
+                
+                if (response.ok) {
+                    const data = JSON.parse(responseText);
+                    log('✅ Report submitted successfully!');
+                    showStatus('submitStatus', '✅ Report submitted successfully!', 'success');
+                    
+                    if (data.data && data.data._id) {
+                        log(`📊 Report ID: ${data.data._id}`);
+                        log(`📋 Report Status: ${data.data.status}`);
+                        
+                        if (data.data.images && data.data.images.length > 0) {
+                            const imageUrl = `${API_BASE}/uploads/${data.data.images[0].filename}`;
+                            log(`🖼️ Image URL: ${imageUrl}`);
+                        }
+                    }
+                    
+                    // Reset form
+                    document.getElementById('reportForm').reset();
+                    document.getElementById('imageInfo').textContent = '';
+                    
+                } else {
+                    log(`❌ Submission failed: ${response.status} - ${responseText}`);
+                    showStatus('submitStatus', `❌ Submission failed: ${response.status}`, 'error');
+                }
+                
+            } catch (error) {
+                log(`❌ Submission error: ${error.message}`);
+                showStatus('submitStatus', `❌ Error: ${error.message}`, 'error');
+            }
+        });
+        
+        // Auto-start checks when page loads
+        window.onload = function() {
+            log('🔧 Debug tool loaded');
+            checkBackend().then(serverOk => {
+                if (serverOk) {
+                    testAuth();
+                }
+            });
+            getLocation();
+        };
+    </script>
+</body>
+</html>

@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Authentication</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .result { margin: 10px 0; padding: 10px; border: 1px solid #ccc; border-radius: 5px; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>Authentication Debug Tool</h1>
+    
+    <div>
+        <h3>Current Authentication State:</h3>
+        <div id="authState"></div>
+    </div>
+    
+    <div>
+        <h3>Test Authentication:</h3>
+        <button onclick="testAuth()">Test Auth Endpoint</button>
+        <button onclick="clearAuth()">Clear Auth Token</button>
+        <button onclick="loginTest()">Quick Login Test</button>
+    </div>
+    
+    <div id="results"></div>
+
+    <script>
+        function displayAuthState() {
+            const token = localStorage.getItem('token');
+            const authStateDiv = document.getElementById('authState');
+            
+            if (token) {
+                authStateDiv.innerHTML = `
+                    <div class="result success">
+                        <strong>Token found:</strong><br>
+                        <code>${token.substring(0, 50)}${token.length > 50 ? '...' : ''}</code><br>
+                        <small>Length: ${token.length} characters</small>
+                    </div>
+                `;
+            } else {
+                authStateDiv.innerHTML = `
+                    <div class="result error">
+                        <strong>No authentication token found in localStorage</strong>
+                    </div>
+                `;
+            }
+        }
+        
+        async function testAuth() {
+            const resultsDiv = document.getElementById('results');
+            const token = localStorage.getItem('token');
+            
+            if (!token) {
+                resultsDiv.innerHTML = '<div class="result error">No token to test</div>';
+                return;
+            }
+            
+            try {
+                const response = await fetch('http://192.168.1.150:3001/api/auth/me', {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultsDiv.innerHTML = `
+                        <div class="result success">
+                            <strong>Authentication successful!</strong><br>
+                            User: ${data.user ? data.user.username : 'Unknown'}<br>
+                            <pre>${JSON.stringify(data, null, 2)}</pre>
+                        </div>
+                    `;
+                } else {
+                    resultsDiv.innerHTML = `
+                        <div class="result error">
+                            <strong>Authentication failed!</strong><br>
+                            Status: ${response.status}<br>
+                            Error: ${data.error || 'Unknown error'}<br>
+                            <pre>${JSON.stringify(data, null, 2)}</pre>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultsDiv.innerHTML = `
+                    <div class="result error">
+                        <strong>Network error:</strong><br>
+                        ${error.message}
+                    </div>
+                `;
+            }
+        }
+        
+        function clearAuth() {
+            localStorage.removeItem('token');
+            displayAuthState();
+            document.getElementById('results').innerHTML = '<div class="result">Authentication token cleared</div>';
+        }
+        
+        async function loginTest() {
+            const resultsDiv = document.getElementById('results');
+            
+            try {
+                // Try to login with test credentials
+                const response = await fetch('http://192.168.1.150:3001/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        email: 'test@example.com',
+                        password: 'password123'
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.token) {
+                    localStorage.setItem('token', data.token);
+                    resultsDiv.innerHTML = `
+                        <div class="result success">
+                            <strong>Login successful!</strong><br>
+                            Token saved to localStorage<br>
+                            <pre>${JSON.stringify(data, null, 2)}</pre>
+                        </div>
+                    `;
+                    displayAuthState();
+                } else {
+                    resultsDiv.innerHTML = `
+                        <div class="result error">
+                            <strong>Login failed!</strong><br>
+                            Status: ${response.status}<br>
+                            Error: ${data.error || 'Unknown error'}<br>
+                            <pre>${JSON.stringify(data, null, 2)}</pre>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultsDiv.innerHTML = `
+                    <div class="result error">
+                        <strong>Login network error:</strong><br>
+                        ${error.message}
+                    </div>
+                `;
+            }
+        }
+        
+        // Display auth state on page load
+        displayAuthState();
+    </script>
+</body>
+</html>

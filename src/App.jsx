@@ -7,6 +7,7 @@ import AdminProfile from './pages/AdminProfile'
 import ChangePassword from './pages/ChangePassword'
 import CreateAdmin from './pages/CreateAdmin'
 import ReportsPDF from './pages/ReportsPDF'
+import UserVerifications from './pages/UserVerifications'
 import Navbar from './components/Navbar'
 import './App.css'
 
@@ -53,6 +54,11 @@ function App() {
             <Route path="/admin/reports-pdf" element={
               <PrivateRoute>
                 <ReportsPDF />
+              </PrivateRoute>
+            } />
+            <Route path="/admin/verifications" element={
+              <PrivateRoute>
+                <UserVerifications />
               </PrivateRoute>
             } />
             <Route path="/" element={<Navigate to="/dashboard" replace />} />

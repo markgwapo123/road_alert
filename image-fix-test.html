@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Fix Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; max-width: 800px; margin: 0 auto; }
+        .test-image { max-width: 300px; border: 2px solid #ddd; margin: 10px; border-radius: 5px; }
+        .success { color: green; font-weight: bold; }
+        .error { color: red; font-weight: bold; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .filename { font-family: monospace; background: #f5f5f5; padding: 5px; border-radius: 3px; }
+    </style>
+</head>
+<body>
+    <h1>🔧 Image Fix Test</h1>
+    
+    <div class="test-section">
+        <h3>Backend Server Status</h3>
+        <button onclick="testBackend()">Test Backend Connection</button>
+        <div id="backend-status"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>Available Images Test</h3>
+        <button onclick="testImages()">Test Images</button>
+        <div id="images-container"></div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:3001';
+        
+        // Known image files from uploads directory
+        const testImages = [
+            'report-1751702494750-370496652.png',
+            'report-1754490952892-989447507.png',
+            'report-1754490957300-47686100.png',
+            'report-1754490990625-580073881.png',
+            'report-1754491519331-729671733.png',
+            'report-1754492130038-528378644.png',
+            'report-1754492137109-569429038.png',
+            'report-1754530683320-493354998.png'
+        ];
+
+        async function testBackend() {
+            const statusDiv = document.getElementById('backend-status');
+            statusDiv.innerHTML = '🔄 Testing backend...';
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/health`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    statusDiv.innerHTML = `
+                        <div class="success">✅ Backend is running!</div>
+                        <div>Status: ${data.status}</div>
+                        <div>Uptime: ${Math.round(data.uptime)} seconds</div>
+                    `;
+                } else {
+                    statusDiv.innerHTML = `<div class="error">❌ Backend error: ${response.status}</div>`;
+                }
+            } catch (error) {
+                statusDiv.innerHTML = `
+                    <div class="error">❌ Cannot connect to backend</div>
+                    <div>Error: ${error.message}</div>
+                    <div>Make sure backend server is running on port 3001</div>
+                `;
+            }
+        }
+
+        function testImages() {
+            const container = document.getElementById('images-container');
+            container.innerHTML = '<h4>Testing Image Loading...</h4>';
+            
+            testImages.forEach((filename, index) => {
+                const imageUrl = `${API_BASE}/uploads/${filename}`;
+                
+                const imageDiv = document.createElement('div');
+                imageDiv.style.marginBottom = '20px';
+                imageDiv.innerHTML = `
+                    <h5>Image ${index + 1}: <span class="filename">${filename}</span></h5>
+                    <div>URL: <code>${imageUrl}</code></div>
+                    <img 
+                        class="test-image" 
+                        src="${imageUrl}"
+                        alt="Test Image ${index + 1}"
+                        onload="showImageSuccess(this, '${filename}')"
+                        onerror="showImageError(this, '${filename}')"
+                    />
+                    <div id="status-${index}">Loading...</div>
+                `;
+                
+                container.appendChild(imageDiv);
+            });
+        }
+
+        function showImageSuccess(img, filename) {
+            const index = testImages.indexOf(filename);
+            const statusDiv = document.getElementById(`status-${index}`);
+            statusDiv.innerHTML = `
+                <div class="success">✅ Image loaded successfully!</div>
+                <div>Size: ${img.naturalWidth}x${img.naturalHeight}px</div>
+            `;
+            console.log(`✅ Image loaded: ${filename}`);
+        }
+
+        function showImageError(img, filename) {
+            const index = testImages.indexOf(filename);
+            const statusDiv = document.getElementById(`status-${index}`);
+            statusDiv.innerHTML = `
+                <div class="error">❌ Failed to load image</div>
+                <div>Check browser Network tab for details</div>
+            `;
+            console.error(`❌ Image failed: ${filename}`);
+            
+            // Replace with fallback
+            img.style.display = 'none';
+            const fallback = document.createElement('div');
+            fallback.style.cssText = 'width: 300px; height: 200px; background: #f0f0f0; border: 2px dashed #ccc; display: flex; align-items: center; justify-content: center; color: #666; margin: 10px;';
+            fallback.innerHTML = `
+                <div style="text-align: center;">
+                    <div style="font-size: 24px;">📷</div>
+                    <div>Image not found</div>
+                    <div style="font-size: 12px; margin-top: 5px;">${filename}</div>
+                </div>
+            `;
+            img.parentNode.insertBefore(fallback, img);
+        }
+
+        // Auto-test on page load
+        window.onload = function() {
+            setTimeout(() => {
+                testBackend();
+                setTimeout(() => {
+                    testImages();
+                }, 1000);
+            }, 500);
+        };
+    </script>
+</body>
+</html>

@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html la            <input type="text" id="adminUsername" placeholder="Admin Username" value="admin">
+            <input type="password" id="adminPassword" placeholder="Admin Password" value="">="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Admin Accept/Reject</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .section { margin-bottom: 30px; padding: 20px; border: 1px solid #ddd; border-radius: 5px; }
+        .button { padding: 10px 20px; margin: 5px; cursor: pointer; border: none; border-radius: 3px; }
+        .accept { background-color: #4CAF50; color: white; }
+        .reject { background-color: #f44336; color: white; }
+        .info { background-color: #2196F3; color: white; }
+        .error { color: red; }
+        .success { color: green; }
+        #results { background-color: #f9f9f9; padding: 10px; border-radius: 3px; margin-top: 10px; white-space: pre-wrap; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Admin Accept/Reject Test</h1>
+        
+        <div class="section">
+            <h3>Admin Login</h3>
+            <input type="text" id="adminUsername" placeholder="Admin Username" value="admin">
+            <input type="password" id="adminPassword" placeholder="Admin Password" value="admin123">
+            <button class="button info" onclick="loginAdmin()">Login Admin</button>
+            <div id="loginResult"></div>
+        </div>
+
+        <div class="section">
+            <h3>Get Pending Reports</h3>
+            <button class="button info" onclick="getPendingReports()">Get Pending Reports</button>
+            <div id="reportsResult"></div>
+        </div>
+
+        <div class="section">
+            <h3>Test Accept/Reject</h3>
+            <input type="text" id="reportId" placeholder="Report ID">
+            <button class="button accept" onclick="acceptReport()">Accept Report</button>
+            <button class="button reject" onclick="rejectReport()">Reject Report</button>
+            <div id="actionResult"></div>
+        </div>
+
+        <div class="section">
+            <h3>Results</h3>
+            <div id="results"></div>
+        </div>
+    </div>
+
+    <script>
+        let adminToken = '';
+        const API_BASE = 'http://localhost:3001/api';
+
+        function log(message) {
+            const results = document.getElementById('results');
+            results.textContent += new Date().toLocaleTimeString() + ': ' + message + '\n';
+        }
+
+        async function loginAdmin() {
+            const username = document.getElementById('adminUsername').value;
+            const password = document.getElementById('adminPassword').value;
+            
+            try {
+                const response = await fetch(`${API_BASE}/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const result = await response.json();
+                
+                if (response.ok) {
+                    adminToken = result.token;
+                    document.getElementById('loginResult').innerHTML = '<span class="success">Admin login successful!</span>';
+                    log('Admin login successful, User: ' + (result.admin ? result.admin.username : 'User') + ', Role: ' + (result.admin ? result.admin.role : 'User'));
+                } else {
+                    document.getElementById('loginResult').innerHTML = '<span class="error">Login failed: ' + result.error + '</span>';
+                    log('Admin login failed: ' + result.error);
+                }
+            } catch (error) {
+                document.getElementById('loginResult').innerHTML = '<span class="error">Error: ' + error.message + '</span>';
+                log('Admin login error: ' + error.message);
+            }
+        }
+
+        async function getPendingReports() {
+            if (!adminToken) {
+                alert('Please login as admin first');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/reports`, {
+                    headers: {
+                        'Authorization': `Bearer ${adminToken}`
+                    }
+                });
+
+                const result = await response.json();
+                
+                if (response.ok) {
+                    const pendingReports = result.data.filter(report => report.status === 'pending');
+                    document.getElementById('reportsResult').innerHTML = 
+                        '<strong>Pending Reports:</strong><br>' + 
+                        JSON.stringify(pendingReports, null, 2);
+                    log('Found ' + pendingReports.length + ' pending reports');
+                    
+                    if (pendingReports.length > 0) {
+                        document.getElementById('reportId').value = pendingReports[0]._id;
+                    }
+                } else {
+                    document.getElementById('reportsResult').innerHTML = '<span class="error">Failed to get reports: ' + result.error + '</span>';
+                    log('Failed to get reports: ' + result.error);
+                }
+            } catch (error) {
+                document.getElementById('reportsResult').innerHTML = '<span class="error">Error: ' + error.message + '</span>';
+                log('Get reports error: ' + error.message);
+            }
+        }
+
+        async function acceptReport() {
+            const reportId = document.getElementById('reportId').value;
+            if (!reportId) {
+                alert('Please enter a report ID');
+                return;
+            }
+            
+            await updateReportStatus(reportId, 'approved');
+        }
+
+        async function rejectReport() {
+            const reportId = document.getElementById('reportId').value;
+            if (!reportId) {
+                alert('Please enter a report ID');
+                return;
+            }
+            
+            await updateReportStatus(reportId, 'rejected');
+        }
+
+        async function updateReportStatus(reportId, status) {
+            if (!adminToken) {
+                alert('Please login as admin first');
+                return;
+            }
+
+            try {
+                log(`Attempting to ${status} report ${reportId}...`);
+                
+                const response = await fetch(`${API_BASE}/reports/${reportId}/status`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${adminToken}`
+                    },
+                    body: JSON.stringify({ status })
+                });
+
+                const result = await response.json();
+                
+                if (response.ok) {
+                    document.getElementById('actionResult').innerHTML = 
+                        '<span class="success">Report ' + status + ' successfully!</span>';
+                    log(`Report ${status} successfully: ` + JSON.stringify(result));
+                } else {
+                    document.getElementById('actionResult').innerHTML = 
+                        '<span class="error">Failed to ' + status + ' report: ' + result.message + '</span>';
+                    log(`Failed to ${status} report: ` + result.message);
+                }
+            } catch (error) {
+                document.getElementById('actionResult').innerHTML = 
+                    '<span class="error">Error: ' + error.message + '</span>';
+                log(`Error ${status} report: ` + error.message);
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MyReports Debug Test</title>
+</head>
+<body>
+    <h1>MyReports Debug Test</h1>
+    <button onclick="testMyReports()">Test My Reports API</button>
+    <div id="result"></div>
+
+    <script>
+        async function testMyReports() {
+            const token = localStorage.getItem('token');
+            console.log('Token:', token);
+            
+            if (!token) {
+                document.getElementById('result').innerHTML = '<p style="color: red;">No token found in localStorage</p>';
+                return;
+            }
+
+            try {
+                const response = await fetch('http://192.168.1.150:3001/api/reports/my-reports', {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                console.log('Response status:', response.status);
+                const data = await response.json();
+                console.log('Response data:', data);
+
+                document.getElementById('result').innerHTML = `
+                    <h3>Response Status: ${response.status}</h3>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                `;
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('result').innerHTML = `
+                    <p style="color: red;">Error: ${error.message}</p>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>

@@ -189,6 +189,78 @@ router.get('/verify', auth, async (req, res) => {
   }
 });
 
+// @route   GET /api/auth/me
+// @desc    Get current user/admin profile
+// @access  Private
+router.get('/me', auth, async (req, res) => {
+  try {
+    // Check if it's an admin first
+    if (req.admin && req.admin.id) {
+      const admin = await Admin.findById(req.admin.id).select('-password');
+      if (admin) {
+        return res.json({
+          success: true,
+          type: 'admin',
+          id: admin._id,
+          username: admin.username,
+          email: admin.email,
+          role: admin.role,
+          isActive: admin.isActive,
+          lastLogin: admin.lastLogin,
+          permissions: admin.permissions,
+          profile: admin.profile,
+          createdAt: admin.createdAt
+        });
+      }
+    }
+    
+    // Check if it's a regular user
+    if (req.user && req.user.id) {
+      const user = await User.findById(req.user.id).select('-password');
+      if (user) {
+        const response = {
+          success: true,
+          type: 'user',
+          id: user._id,
+          username: user.username,
+          email: user.email,
+          lastLogin: user.lastLogin,
+          createdAt: user.createdAt,
+          isVerified: user.isVerified || false,
+          verification: {
+            status: user.verification?.status || 'pending'
+          }
+        };
+
+        // Include verification details if user is verified
+        if (user.isVerified && user.verification?.status === 'approved' && user.verification?.documents) {
+          response.verificationData = {
+            firstName: user.verification.documents.firstName,
+            lastName: user.verification.documents.lastName,
+            phone: user.verification.documents.phone,
+            address: user.verification.documents.address,
+            idType: user.verification.documents.idType,
+            verifiedAt: user.verification.reviewedAt,
+            submittedAt: user.verification.submittedAt
+          };
+        }
+
+        return res.json(response);
+      }
+    }
+    
+    return res.status(404).json({
+      error: 'User not found'
+    });
+
+  } catch (error) {
+    console.error('Get profile error:', error);
+    res.status(500).json({
+      error: 'Server error while fetching profile'
+    });
+  }
+});
+
 // @route   POST /api/auth/logout
 // @desc    Logout admin (client-side token removal)
 // @access  Private
@@ -290,6 +362,173 @@ router.put('/profile', auth, async (req, res) => {
     console.error('Update profile error:', error);
     res.status(500).json({
       error: 'Server error during profile update'
+    });
+  }
+});
+
+// @route   POST /api/auth/forgot-password
+// @desc    Send password reset email
+// @access  Public
+router.post('/forgot-password', async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    // Validate input
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+
+    // Check if user exists
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ error: 'User with this email does not exist' });
+    }
+
+    // Generate a password reset token (valid for 1 hour)
+    const resetToken = jwt.sign(
+      { userId: user._id, email: user.email, type: 'password-reset' },
+      process.env.JWT_SECRET || 'your_jwt_secret',
+      { expiresIn: '1h' }
+    );
+
+    // In a real application, you would send an email here
+    // For now, we'll just log the reset token and return a success message
+    console.log(`🔑 Password reset token for ${email}: ${resetToken}`);
+    console.log(`🔗 Reset link: http://localhost:5176/reset-password?token=${resetToken}`);
+
+    // TODO: Implement email sending service (nodemailer, SendGrid, etc.)
+    // await sendPasswordResetEmail(email, resetToken);
+
+    res.json({
+      success: true,
+      message: 'Password reset instructions have been sent to your email',
+      // In development, include the token for testing
+      ...(process.env.NODE_ENV === 'development' && { resetToken })
+    });
+
+  } catch (error) {
+    console.error('Forgot password error:', error);
+    res.status(500).json({
+      error: 'Server error during password reset request'
+    });
+  }
+});
+
+// @route   POST /api/auth/reset-password
+// @desc    Reset password using token
+// @access  Public
+router.post('/reset-password', async (req, res) => {
+  try {
+    const { token, newPassword } = req.body;
+
+    // Validate input
+    if (!token || !newPassword) {
+      return res.status(400).json({ error: 'Token and new password are required' });
+    }
+
+    // Verify the reset token
+    let decoded;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET || 'your_jwt_secret');
+      if (decoded.type !== 'password-reset') {
+        throw new Error('Invalid token type');
+      }
+    } catch (err) {
+      return res.status(400).json({ error: 'Invalid or expired reset token' });
+    }
+
+    // Find the user
+    const user = await User.findById(decoded.userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Update the password (it will be hashed automatically by the pre-save hook)
+    user.password = newPassword;
+    await user.save();
+
+    res.json({
+      success: true,
+      message: 'Password has been reset successfully'
+    });
+
+  } catch (error) {
+    console.error('Reset password error:', error);
+    res.status(500).json({
+      error: 'Server error during password reset'
+    });
+  }
+});
+
+// @route   POST /api/auth/submit-verification
+// @desc    Submit user verification documents
+// @access  Private (User)
+router.post('/submit-verification', auth, async (req, res) => {
+  try {
+    const { firstName, lastName, phone, address, idNumber, idType } = req.body;
+    
+    // Find user (not admin)
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({
+        error: 'User not found'
+      });
+    }
+
+    // Update user verification information
+    user.verification = {
+      status: 'submitted',
+      submittedAt: new Date(),
+      documents: {
+        firstName,
+        lastName,
+        phone,
+        address,
+        idNumber,
+        idType
+      }
+    };
+
+    await user.save();
+
+    res.json({
+      success: true,
+      message: 'Verification documents submitted successfully',
+      verification: {
+        status: user.verification.status,
+        submittedAt: user.verification.submittedAt
+      }
+    });
+
+  } catch (error) {
+    console.error('Verification submission error:', error);
+    res.status(500).json({
+      error: 'Server error during verification submission'
+    });
+  }
+});
+
+// @route   GET /api/auth/verification-status
+// @desc    Get user verification status
+// @access  Private (User)
+router.get('/verification-status', auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({
+        error: 'User not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      verification: user.verification || { status: 'pending' }
+    });
+
+  } catch (error) {
+    console.error('Verification status error:', error);
+    res.status(500).json({
+      error: 'Server error getting verification status'
     });
   }
 });

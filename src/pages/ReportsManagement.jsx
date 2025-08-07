@@ -2,6 +2,17 @@ import { useState, useEffect } from 'react'
 import { MagnifyingGlassIcon, FunnelIcon } from '@heroicons/react/24/outline'
 import { reportsAPI } from '../services/api'
 
+// Image troubleshooting utility
+const testImageAccess = async (imageUrl) => {
+  try {
+    const response = await fetch(imageUrl, { method: 'HEAD' });
+    return response.ok;
+  } catch (error) {
+    console.error('Image access test failed:', error);
+    return false;
+  }
+};
+
 const ReportsManagement = () => {  const [searchTerm, setSearchTerm] = useState('')
   const [filterStatus, setFilterStatus] = useState('all')
   const [reports, setReports] = useState([])
@@ -305,7 +316,8 @@ const ReportsManagement = () => {  const [searchTerm, setSearchTerm] = useState(
                       <div>
                         <h4 className="text-sm font-medium text-gray-500 mb-3">
                           Uploaded Images ({report.images.length})
-                        </h4>                        <div className="grid grid-cols-1 gap-3">
+                        </h4>
+                        <div className="grid grid-cols-1 gap-3">
                           {report.images.map((image, index) => {
                             const imageUrl = `http://localhost:3001/uploads/${image.filename}`;
                             return (
@@ -317,8 +329,22 @@ const ReportsManagement = () => {  const [searchTerm, setSearchTerm] = useState(
                                   onError={(e) => {
                                     console.error('❌ Image load failed:', imageUrl);
                                     console.error('Image object:', image);
-                                    e.target.src = 'https://via.placeholder.com/400x200/e5e7eb/6b7280?text=Image+Load+Failed';
-                                    e.target.style.backgroundColor = '#f3f4f6';
+                                    // Hide the broken image and show fallback
+                                    e.target.style.display = 'none';
+                                    const container = e.target.parentNode;
+                                    if (!container.querySelector('.image-fallback')) {
+                                      const fallback = document.createElement('div');
+                                      fallback.className = 'image-fallback w-full h-48 bg-gray-100 rounded-lg shadow-sm border border-gray-200 flex items-center justify-center text-gray-500';
+                                      fallback.innerHTML = `
+                                        <div class="text-center p-4">
+                                          <div class="text-3xl mb-2">📷</div>
+                                          <div class="text-sm font-medium">Image not available</div>
+                                          <div class="text-xs text-gray-400 mt-1 break-all">${image.filename}</div>
+                                          <div class="text-xs text-gray-400 mt-1">Check backend server</div>
+                                        </div>
+                                      `;
+                                      container.appendChild(fallback);
+                                    }
                                   }}
                                   onLoad={() => {
                                     console.log('✅ Image loaded successfully:', imageUrl);
@@ -336,13 +362,18 @@ const ReportsManagement = () => {  const [searchTerm, setSearchTerm] = useState(
                           })}
                         </div>
                         
-                        {/* Debug information panel */}
+                        {/* Enhanced debug information panel */}
                         <div className="mt-3 p-3 bg-gray-50 rounded text-xs text-gray-600">
                           <strong>🔍 Debug Info:</strong> Images served from: <code>localhost:3001/uploads/</code>
                           <br />
                           <strong>📊 Image count:</strong> {report.images.length}
                           <br />
-                          <strong>🌐 Troubleshooting:</strong> If images don't load, check Network tab in DevTools
+                          <strong>🌐 Troubleshooting:</strong> 
+                          <div className="mt-1">
+                            • Check Network tab in DevTools for failed requests<br />
+                            • Verify backend server is running on port 3001<br />
+                            • Test direct URL: <code>http://localhost:3001/uploads/[filename]</code>
+                          </div>
                         </div>
                       </div>
                     )}

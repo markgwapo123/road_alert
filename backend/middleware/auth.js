@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const Admin = require('../models/Admin');
+const User = require('../models/User');
 
 const auth = async (req, res, next) => {
   try {
@@ -15,29 +16,42 @@ const auth = async (req, res, next) => {
     // Verify token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    // Check if admin still exists and is active
+    // First try to find admin
     const admin = await Admin.findById(decoded.id).select('-password');
     
-    if (!admin) {
-      return res.status(401).json({
-        error: 'Token is no longer valid'
-      });
+    if (admin) {
+      if (!admin.isActive) {
+        return res.status(401).json({
+          error: 'Admin account is deactivated'
+        });
+      }
+      
+      // Add admin to request object
+      req.admin = {
+        id: admin._id,
+        username: admin.username,
+        role: admin.role
+      };
+      return next();
     }
 
-    if (!admin.isActive) {
-      return res.status(401).json({
-        error: 'Account is deactivated'
-      });
+    // If not admin, try to find user
+    const user = await User.findById(decoded.id).select('-password');
+    
+    if (user) {
+      // Add user to request object
+      req.user = {
+        id: user._id,
+        username: user.username,
+        email: user.email
+      };
+      return next();
     }
 
-    // Add admin to request object
-    req.admin = {
-      id: admin._id,
-      username: admin.username,
-      role: admin.role
-    };
-
-    next();
+    // If neither admin nor user found
+    return res.status(401).json({
+      error: 'Token is no longer valid'
+    });
 
   } catch (error) {
     if (error.name === 'JsonWebTokenError') {

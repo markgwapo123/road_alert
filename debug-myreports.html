@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MyReports Debug</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; max-width: 1000px; margin: 0 auto; }
+        .section { margin: 20px 0; padding: 20px; border: 1px solid #ddd; border-radius: 8px; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .info { background-color: #d1ecf1; border-color: #bee5eb; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 4px; overflow-x: auto; }
+        .token { word-break: break-all; font-family: monospace; font-size: 12px; }
+        .report-card { border: 1px solid #ccc; margin: 10px 0; padding: 15px; border-radius: 8px; }
+    </style>
+</head>
+<body>
+    <h1>🔍 MyReports Debug Tool</h1>
+    
+    <div class="section">
+        <h3>1. Authentication Status</h3>
+        <div id="authStatus"></div>
+        <button onclick="checkAuth()">Check Authentication</button>
+        <button onclick="clearToken()">Clear Token</button>
+    </div>
+    
+    <div class="section">
+        <h3>2. Test MyReports API</h3>
+        <div id="apiStatus"></div>
+        <button onclick="testMyReportsAPI()">Test API Directly</button>
+    </div>
+    
+    <div class="section">
+        <h3>3. Submit Test Report</h3>
+        <div id="submitStatus"></div>
+        <button onclick="submitTestReport()">Submit Test Report</button>
+    </div>
+    
+    <div class="section">
+        <h3>4. Debug Results</h3>
+        <div id="debugResults"></div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://192.168.1.150:3001/api';
+        
+        function displayResult(elementId, content, type = 'info') {
+            const element = document.getElementById(elementId);
+            element.innerHTML = `<div class="${type}">${content}</div>`;
+        }
+        
+        function getToken() {
+            return localStorage.getItem('token');
+        }
+        
+        async function checkAuth() {
+            const token = getToken();
+            
+            if (!token) {
+                displayResult('authStatus', '❌ No authentication token found in localStorage', 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE}/auth/me`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    displayResult('authStatus', `
+                        ✅ Authentication valid<br>
+                        <strong>User:</strong> ${data.user.username}<br>
+                        <strong>Email:</strong> ${data.user.email}<br>
+                        <strong>User ID:</strong> ${data.user.id}<br>
+                        <div class="token"><strong>Token:</strong> ${token.substring(0, 60)}...</div>
+                    `, 'success');
+                } else {
+                    displayResult('authStatus', `❌ Authentication failed: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                displayResult('authStatus', `❌ Network error: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testMyReportsAPI() {
+            const token = getToken();
+            
+            if (!token) {
+                displayResult('apiStatus', '❌ No token available. Please login first.', 'error');
+                return;
+            }
+            
+            try {
+                console.log('Making request to:', `${API_BASE}/reports/my-reports`);
+                console.log('With token:', token.substring(0, 50) + '...');
+                
+                const response = await fetch(`${API_BASE}/reports/my-reports`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                console.log('Response status:', response.status);
+                const data = await response.json();
+                console.log('Response data:', data);
+                
+                if (response.ok) {
+                    let content = `✅ API call successful<br>`;
+                    content += `<strong>Status:</strong> ${response.status}<br>`;
+                    content += `<strong>Success:</strong> ${data.success}<br>`;
+                    content += `<strong>Reports Count:</strong> ${data.reports ? data.reports.length : 0}<br>`;
+                    
+                    if (data.reports && data.reports.length > 0) {
+                        content += `<br><strong>Your Reports:</strong><br>`;
+                        data.reports.forEach((report, index) => {
+                            content += `
+                                <div class="report-card">
+                                    <strong>${index + 1}. ${report.type}</strong> - <span style="color: ${getStatusColor(report.status)}">${report.status.toUpperCase()}</span><br>
+                                    <strong>Description:</strong> ${report.description}<br>
+                                    <strong>Date:</strong> ${new Date(report.createdAt).toLocaleDateString()}<br>
+                                    <strong>Location:</strong> ${report.location?.address || 'Unknown'}<br>
+                                </div>
+                            `;
+                        });
+                    } else {
+                        content += `<br>📭 No reports found. Submit a report first!`;
+                    }
+                    
+                    displayResult('apiStatus', content, 'success');
+                } else {
+                    displayResult('apiStatus', `❌ API call failed<br>Status: ${response.status}<br>Error: ${data.error || 'Unknown error'}<br><pre>${JSON.stringify(data, null, 2)}</pre>`, 'error');
+                }
+            } catch (error) {
+                displayResult('apiStatus', `❌ Network error: ${error.message}`, 'error');
+            }
+        }
+        
+        async function submitTestReport() {
+            const token = getToken();
+            
+            if (!token) {
+                displayResult('submitStatus', '❌ No token available. Please login first.', 'error');
+                return;
+            }
+            
+            try {
+                const formData = new FormData();
+                formData.append('type', 'pothole');
+                formData.append('description', 'Test report from debug tool - large pothole on main road');
+                formData.append('severity', 'medium');
+                formData.append('location[address]', 'Test Street, Test City');
+                formData.append('location[coordinates][latitude]', '10.7577');
+                formData.append('location[coordinates][longitude]', '122.9545');
+                
+                const response = await fetch(`${API_BASE}/reports/user`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    displayResult('submitStatus', `
+                        ✅ Test report submitted successfully!<br>
+                        <strong>Report ID:</strong> ${data.data._id}<br>
+                        <strong>Status:</strong> ${data.data.status}<br>
+                        <strong>Type:</strong> ${data.data.type}<br>
+                        <strong>Message:</strong> ${data.message}
+                    `, 'success');
+                } else {
+                    displayResult('submitStatus', `❌ Report submission failed<br>Status: ${response.status}<br>Error: ${data.error}<br><pre>${JSON.stringify(data, null, 2)}</pre>`, 'error');
+                }
+            } catch (error) {
+                displayResult('submitStatus', `❌ Network error: ${error.message}`, 'error');
+            }
+        }
+        
+        function clearToken() {
+            localStorage.removeItem('token');
+            displayResult('authStatus', '🗑️ Authentication token cleared', 'info');
+        }
+        
+        function getStatusColor(status) {
+            switch (status) {
+                case 'pending': return '#fbbf24';
+                case 'verified': return '#16a34a';
+                case 'rejected': return '#dc2626';
+                case 'resolved': return '#2563eb';
+                default: return '#6b7280';
+            }
+        }
+        
+        // Auto-check auth on page load
+        window.addEventListener('load', () => {
+            checkAuth();
+        });
+    </script>
+</body>
+</html>

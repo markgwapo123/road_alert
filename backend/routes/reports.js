@@ -4,7 +4,9 @@ const path = require('path');
 const fs = require('fs');
 const { body, validationResult } = require('express-validator');
 const Report = require('../models/Report');
+const Notification = require('../models/Notification');
 const auth = require('../middleware/auth');
+const adminAuth = require('../middleware/adminAuth');
 
 const router = express.Router();
 
@@ -39,11 +41,8 @@ const upload = multer({
 
 // Validation rules
 const reportValidation = [
-  body('type').isIn(['pothole', 'debris', 'flooding', 'construction', 'accident', 'other']),
+  body('type').isIn(['emergency', 'caution', 'construction', 'info', 'safe', 'pothole', 'debris', 'flooding', 'accident', 'other']),
   body('description').isLength({ min: 10, max: 500 }),
-  body('location.address').notEmpty(),
-  body('location.coordinates.latitude').isFloat({ min: -90, max: 90 }),
-  body('location.coordinates.longitude').isFloat({ min: -180, max: 180 }),
   body('severity').isIn(['low', 'medium', 'high'])
 ];
 
@@ -179,6 +178,58 @@ router.get('/stats', async (req, res) => {
   }
 });
 
+// @route   GET /api/reports/my-reports
+// @desc    Get reports submitted by the authenticated user
+// @access  Private
+router.get('/my-reports', auth, async (req, res) => {
+  try {
+    const { page = 1, limit = 10, status, type } = req.query;
+    
+    // Build filter for user's reports
+    const filter = { 
+      submittedBy: req.user.id // Filter by the authenticated user
+    };
+    
+    // Add optional filters
+    if (status && status !== 'all') {
+      filter.status = status;
+    }
+    if (type && type !== 'all') {
+      filter.type = type;
+    }
+    
+    // Get user's reports with pagination
+    const reports = await Report.find(filter)
+      .sort({ createdAt: -1 }) // Most recent first
+      .limit(limit * 1)
+      .skip((page - 1) * limit)
+      .populate('verifiedBy', 'username')
+      .exec();
+      
+    // Get total count for pagination
+    const totalReports = await Report.countDocuments(filter);
+    
+    res.json({
+      success: true,
+      reports,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages: Math.ceil(totalReports / limit),
+        totalReports,
+        hasNextPage: page < Math.ceil(totalReports / limit),
+        hasPrevPage: page > 1
+      }
+    });
+    
+  } catch (error) {
+    console.error('Error fetching user reports:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Server error while fetching your reports'
+    });
+  }
+});
+
 // @route   GET /api/reports/map
 // @desc    Get reports for map display
 // @access  Public
@@ -229,7 +280,9 @@ router.post('/', upload.array('images', 5), reportValidation, async (req, res) =
       originalName: file.originalname,
       mimetype: file.mimetype,
       size: file.size
-    })) : [];    // Create report
+    })) : [];
+
+    // Create report
     const reportData = {
       ...req.body,
       // Always set status to 'pending' for user-submitted reports
@@ -248,6 +301,14 @@ router.post('/', upload.array('images', 5), reportValidation, async (req, res) =
     const report = new Report(reportData);
     await report.save();
 
+    // Create notifications for all users about the new report
+    try {
+      await Notification.notifyNewReport(report);
+    } catch (notifError) {
+      console.error('Error creating notifications:', notifError);
+      // Don't fail the report creation if notifications fail
+    }
+
     res.status(201).json({
       success: true,
       message: 'Report created successfully',
@@ -258,6 +319,108 @@ router.post('/', upload.array('images', 5), reportValidation, async (req, res) =
     console.error('Create report error:', error);
     res.status(500).json({
       error: 'Server error while creating report'
+    });
+  }
+});
+
+// @route   POST /api/reports/user
+// @desc    Create new report (for authenticated users)
+// @access  Private
+router.post('/user', auth, upload.array('images', 5), reportValidation, async (req, res) => {
+  try {
+    console.log('📝 New report submission attempt');
+    console.log('User:', req.user);
+    console.log('Body:', req.body);
+    console.log('Files:', req.files?.map(f => ({ filename: f.filename, size: f.size, mimetype: f.mimetype })));
+    
+    // Check validation errors
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      console.error('❌ Validation errors:', errors.array());
+      return res.status(400).json({
+        error: 'Validation failed',
+        details: errors.array()
+      });
+    }
+
+    // Check if user exists
+    if (!req.user || !req.user.id) {
+      console.error('❌ User not found in request');
+      return res.status(401).json({
+        error: 'User authentication failed'
+      });
+    }
+
+    // Process uploaded images
+    const images = req.files ? req.files.map(file => ({
+      filename: file.filename,
+      originalName: file.originalname,
+      mimetype: file.mimetype,
+      size: file.size
+    })) : [];
+
+    console.log('📷 Processed images:', images.length);
+
+    // Validate location data
+    if (!req.body.location || !req.body.location.coordinates) {
+      console.error('❌ Missing location data');
+      return res.status(400).json({
+        error: 'Location data is required'
+      });
+    }
+
+    // Create report
+    const reportData = {
+      ...req.body,
+      // Always set status to 'pending' for user-submitted reports
+      // Admin can verify/reject later through the admin dashboard
+      status: 'pending',
+      images,
+      submittedBy: req.user.id, // Associate with authenticated user
+      location: {
+        address: req.body.location.address,
+        coordinates: {
+          latitude: parseFloat(req.body.location.coordinates.latitude),
+          longitude: parseFloat(req.body.location.coordinates.longitude)
+        }
+      }
+    };
+
+    console.log('💾 Creating report with data:', {
+      type: reportData.type,
+      severity: reportData.severity,
+      description: reportData.description?.substring(0, 50),
+      imageCount: reportData.images.length,
+      submittedBy: reportData.submittedBy,
+      location: reportData.location
+    });
+
+    const report = new Report(reportData);
+    await report.save();
+
+    console.log('✅ Report created successfully:', report._id);
+
+    // Create notifications for all users about the new report
+    try {
+      await Notification.notifyNewReport(report);
+      console.log('📢 Notifications sent');
+    } catch (notifError) {
+      console.error('⚠️ Error creating notifications:', notifError);
+      // Don't fail the report creation if notifications fail
+    }
+
+    res.status(201).json({
+      success: true,
+      message: 'Report created successfully',
+      data: report
+    });
+
+  } catch (error) {
+    console.error('❌ Create report error:', error);
+    console.error('Error stack:', error.stack);
+    res.status(500).json({
+      error: 'Server error while creating report',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 });
@@ -292,7 +455,7 @@ router.get('/:id', async (req, res) => {
 // @route   PATCH /api/reports/:id/status
 // @desc    Update report status
 // @access  Public (for admin dashboard)
-router.patch('/:id/status', async (req, res) => {
+router.patch('/:id/status', adminAuth, async (req, res) => {
   try {
     const { status, adminNotes } = req.body;
 
@@ -300,9 +463,12 @@ router.patch('/:id/status', async (req, res) => {
       return res.status(400).json({
         error: 'Invalid status value'
       });
-    }    const updateData = { 
+    }
+
+    const updateData = { 
       status, 
-      verifiedAt: new Date()
+      verifiedAt: new Date(),
+      verifiedBy: req.admin.id
     };
 
     if (adminNotes) {
@@ -317,7 +483,23 @@ router.patch('/:id/status', async (req, res) => {
       req.params.id,
       updateData,
       { new: true }
-    ).populate('verifiedBy', 'username');
+    ).populate('verifiedBy', 'username').populate('submittedBy', 'username email');
+
+    if (!report) {
+      return res.status(404).json({
+        error: 'Report not found'
+      });
+    }
+
+    // Create notification for the user who submitted the report
+    if (report.submittedBy) {
+      try {
+        await Notification.notifyReportStatusChange(report, status, req.admin?.username || 'Admin');
+      } catch (notifError) {
+        console.error('Error creating status change notification:', notifError);
+        // Don't fail the status update if notification fails
+      }
+    }
 
     if (!report) {
       return res.status(404).json({

@@ -29,10 +29,10 @@ app.use(cors({
         'http://localhost:5174', 
         'http://localhost:5175', 
         'http://localhost:3000',
-        'http://192.168.1.9:5173',
-        'http://192.168.1.9:5174',
-        'http://192.168.1.9:5175',
-        'http://192.168.1.9:3000'
+        'http://192.168.1.150:5173',
+        'http://192.168.1.150:5174',
+        'http://192.168.1.150:5175',
+        'http://192.168.1.150:3000'
       ],
   credentials: true
 }));
@@ -97,6 +97,7 @@ app.use('/uploads', (req, res, next) => {
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/reports', require('./routes/reports'));
 app.use('/api/admin', require('./routes/admin'));
+app.use('/api/notifications', require('./routes/notifications'));
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

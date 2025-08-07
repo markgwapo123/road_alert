@@ -7,8 +7,8 @@ echo This will temporarily disable Windows Firewall to test mobile access.
 echo You can re-enable it after testing.
 echo.
 echo Current servers running:
-echo - Backend API: http://192.168.1.9:3001
-echo - Mobile App: http://192.168.1.9:5176
+echo - Backend API: http://192.168.1.150:3001
+echo - Mobile App: http://192.168.1.150:5176
 echo.
 set /p choice="Disable Windows Firewall for testing? (y/n): "
 if /i "%choice%"=="y" (
@@ -19,7 +19,7 @@ if /i "%choice%"=="y" (
     echo ✅ Windows Firewall disabled!
     echo.
     echo 📱 NOW TRY ACCESSING FROM YOUR PHONE:
-    echo    http://192.168.1.9:5176
+    echo    http://192.168.1.150:5176
     echo.
     echo ⚠️ IMPORTANT: Re-enable firewall when done testing:
     echo    Run this script again and choose 'r' to re-enable
