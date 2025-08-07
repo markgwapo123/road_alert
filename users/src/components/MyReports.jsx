@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import config from '../config/index.js';
 
 const MyReports = ({ token }) => {
   const [reports, setReports] = useState([]);
@@ -25,9 +26,9 @@ const MyReports = ({ token }) => {
       setError(null);
       
       console.log('Fetching reports with token:', token ? 'Token present' : 'No token');
-      console.log('Making request to: http://192.168.1.150:3001/api/reports/my-reports');
+      console.log('Making request to:', `${config.API_BASE_URL}/reports/my-reports`);
       
-      const res = await axios.get('http://192.168.1.150:3001/api/reports/my-reports', {
+      const res = await axios.get(`${config.API_BASE_URL}/reports/my-reports`, {
         headers: { 
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -197,7 +198,7 @@ const MyReports = ({ token }) => {
                 {report.images && report.images.length > 0 && (
                   <div className="report-image">
                     <img 
-                      src={`http://192.168.1.150:3001/uploads/${report.images[0].filename}`} 
+                      src={`${config.BACKEND_URL}/uploads/${report.images[0].filename}`} 
                       alt="Report"
                       onError={(e) => {
                         e.target.style.display = 'none';

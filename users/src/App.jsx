@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import config from './config/index.js';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import ProfileVerification from './pages/ProfileVerification';
@@ -56,7 +57,7 @@ function App() {
 
   const fetchNotifications = async () => {
     try {
-      const res = await axios.get('http://192.168.1.150:3001/api/notifications', {
+      const res = await axios.get(`${config.API_BASE_URL}/notifications`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       setNotifications(res.data.notifications || []);
@@ -68,7 +69,7 @@ function App() {
 
   const markNotificationAsRead = async (notificationId) => {
     try {
-      await axios.put(`http://192.168.1.150:3001/api/notifications/${notificationId}/read`, {}, {
+      await axios.put(`${config.API_BASE_URL}/notifications/${notificationId}/read`, {}, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       
@@ -87,7 +88,7 @@ function App() {
 
   const markAllNotificationsAsRead = async () => {
     try {
-      await axios.post('http://192.168.1.150:3001/api/notifications/mark-all-read', {}, {
+      await axios.post(`${config.API_BASE_URL}/notifications/mark-all-read`, {}, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       
@@ -100,7 +101,7 @@ function App() {
 
   const checkVerificationStatus = async () => {
     try {
-      const res = await axios.get('http://192.168.1.150:3001/api/auth/me', {
+      const res = await axios.get(`${config.API_BASE_URL}/auth/me`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       setIsVerified(res.data.isVerified || false);

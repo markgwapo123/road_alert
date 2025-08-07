@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import axios from 'axios';
+import config from '../config/index.js';
 
 const ALERT_TYPES = [
   { value: 'emergency', label: 'Emergency Alert', example: 'ROAD CLOSED - Accident Ahead' },
@@ -138,7 +139,7 @@ const ReportForm = ({ onReport, onClose }) => {
     });
     
     try {
-      const response = await axios.post('http://localhost:3001/api/reports/user', data, {
+      const response = await axios.post(`${config.API_BASE_URL}/reports/user`, data, {
         headers: { 
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
           // Don't set Content-Type for FormData, let browser set it with boundary

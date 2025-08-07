@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
+import config from '../config/index.js';
 
 const ProfilePage = ({ onBack, onLogout, isVerified, onVerify }) => {
   const [user, setUser] = useState(null);
@@ -17,7 +18,7 @@ const ProfilePage = ({ onBack, onLogout, isVerified, onVerify }) => {
       setLoading(true);
       setError('');
       try {
-        const res = await axios.get('http://192.168.1.150:3001/api/auth/me', {
+        const res = await axios.get(`${config.API_BASE_URL}/auth/me`, {
           headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
         });
         setUser(res.data);
@@ -27,7 +28,7 @@ const ProfilePage = ({ onBack, onLogout, isVerified, onVerify }) => {
         });
 
         // Fetch verification status
-        const verificationRes = await axios.get('http://192.168.1.150:3001/api/auth/verification-status', {
+        const verificationRes = await axios.get(`${config.API_BASE_URL}/auth/verification-status`, {
           headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
         });
         setVerificationStatus(verificationRes.data.verification);
@@ -49,7 +50,7 @@ const ProfilePage = ({ onBack, onLogout, isVerified, onVerify }) => {
 
   const handleSaveProfile = async () => {
     try {
-      const res = await axios.put('http://192.168.1.150:3001/api/auth/profile', formData, {
+      const res = await axios.put(`${config.API_BASE_URL}/auth/profile`, formData, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
       setUser(res.data);

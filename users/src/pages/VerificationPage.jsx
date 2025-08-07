@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import axios from 'axios';
+import config from '../config/index.js';
 
 const VerificationPage = ({ onVerificationComplete, onBack }) => {
   const [formData, setFormData] = useState({
@@ -28,7 +29,7 @@ const VerificationPage = ({ onVerificationComplete, onBack }) => {
     setSuccess('');
 
     try {
-      const response = await axios.post('http://192.168.1.150:3001/api/auth/submit-verification', formData, {
+      const response = await axios.post(`${config.API_BASE_URL}/auth/submit-verification`, formData, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
 

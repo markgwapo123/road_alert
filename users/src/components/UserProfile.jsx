@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
+import config from '../config/index.js';
 
 const UserProfile = ({ onLogout, isVerified, onVerify }) => {
   const [user, setUser] = useState(null);
@@ -11,7 +12,7 @@ const UserProfile = ({ onLogout, isVerified, onVerify }) => {
       setLoading(true);
       setError('');
       try {
-        const res = await axios.get('http://192.168.1.150:3001/api/auth/me', {
+        const res = await axios.get(`${config.API_BASE_URL}/auth/me`, {
           headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
         });
         setUser(res.data);

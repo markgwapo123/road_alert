@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import axios from 'axios';
+import config from '../config/index.js';
 
 const ProfileVerification = ({ user, onVerified }) => {
   const [form, setForm] = useState({
@@ -53,7 +54,7 @@ const ProfileVerification = ({ user, onVerified }) => {
       data.append('lng', location.lng);
     }
     try {
-      await axios.post('http://localhost:3001/api/users/verify', data, {
+      await axios.post(`${config.API_BASE_URL}/users/verify`, data, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
       setSuccess('Verification submitted!');

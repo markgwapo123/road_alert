@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import config from '../config/index.js';
 
 const getInitialTheme = () => {
   if (typeof window !== 'undefined') {
@@ -68,7 +69,7 @@ const Register = ({ onRegister, switchToLogin }) => {
     }
 
     try {
-      const res = await axios.post('http://localhost:3001/api/auth/register', {
+      const res = await axios.post(`${config.API_BASE_URL}/auth/register`, {
         username: username.trim(),
         email: email.trim(),
         password

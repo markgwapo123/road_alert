@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
+import config from '../config/index.js';
 
 // Color configurations based on professional road & safety alert standards
 const ALERT_COLORS = {
@@ -39,7 +40,7 @@ const NewsFeed = () => {
     const fetchReports = async () => {
       try {
         // Only fetch verified reports for the public home feed
-        const response = await axios.get('http://192.168.1.150:3001/api/reports', {
+        const response = await axios.get(`${config.API_BASE_URL}/reports`, {
           params: {
             status: 'verified',
             limit: 20,
@@ -180,7 +181,7 @@ const NewsFeed = () => {
                   {report.images && report.images.length > 0 && (
                     <div style={{ marginTop: '12px' }}>
                       <img 
-                        src={`http://192.168.1.150:3001/uploads/${report.images[0].filename}`}
+                        src={`${config.BACKEND_URL}/uploads/${report.images[0].filename}`}
                         alt="Report"
                         style={{
                           maxWidth: '100%',

@@ -23,7 +23,12 @@ app.use(helmet({
 }));
 app.use(cors({
   origin: process.env.NODE_ENV === 'production' 
-    ? ['https://your-domain.com'] 
+    ? [
+        'https://users-7tsrm8kq7-markstephens-projects.vercel.app',
+        'https://road-alert-admin.vercel.app',
+        'https://your-admin-app.vercel.app',
+        '*' // Temporarily allow all origins for testing
+      ] 
     : [
         'http://localhost:5173', 
         'http://localhost:5174', 

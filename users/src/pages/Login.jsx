@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import config from '../config/index.js';
 
 const getInitialTheme = () => {
   if (typeof window !== 'undefined') {
@@ -43,7 +44,7 @@ const Login = ({ onLogin, switchToRegister }) => {
     }
 
     try {
-      const res = await axios.post('http://localhost:3001/api/auth/forgot-password', {
+      const res = await axios.post(`${config.API_BASE_URL}/auth/forgot-password`, {
         email: loginId.trim()
       }, {
         timeout: 5000
@@ -74,7 +75,7 @@ const Login = ({ onLogin, switchToRegister }) => {
       return;
     }
     try {
-      const res = await axios.post('http://localhost:3001/api/auth/login', {
+      const res = await axios.post(`${config.API_BASE_URL}/auth/login`, {
         email: loginId.trim(),
         password
       }, {
