@@ -4,8 +4,9 @@ services:
     name: road-alert-backend
     env: node
     plan: starter
-    buildCommand: cd backend && npm install
-    startCommand: cd backend && node server.js
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: node server.js
     envVars:
       - key: NODE_ENV
         value: production
@@ -17,8 +18,9 @@ services:
   # User Frontend Service
   - type: static
     name: road-alert-users
-    buildCommand: cd users && npm install && npm run build
-    staticPublishPath: users/dist
+    rootDir: users
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
     envVars:
       - key: VITE_API_BASE_URL
         value: https://road-alert-backend.onrender.com/api
