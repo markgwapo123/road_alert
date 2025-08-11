@@ -85,6 +85,7 @@ router.get('/', async (req, res) => {
       .limit(limit * 1)
       .skip((page - 1) * limit)
       .populate('verifiedBy', 'username')
+      .populate('submittedBy', 'username email profile.firstName profile.lastName isVerified')
       .exec();
 
     // Get total count for pagination
@@ -459,14 +460,17 @@ router.patch('/:id/status', adminAuth, async (req, res) => {
   try {
     const { status, adminNotes } = req.body;
 
-    if (!['pending', 'verified', 'rejected', 'resolved'].includes(status)) {
+    // Accept both 'approved' and 'verified' for compatibility
+    const normalizedStatus = status === 'approved' ? 'verified' : status;
+
+    if (!['pending', 'verified', 'rejected', 'resolved'].includes(normalizedStatus)) {
       return res.status(400).json({
         error: 'Invalid status value'
       });
     }
 
     const updateData = { 
-      status, 
+      status: normalizedStatus, 
       verifiedAt: new Date(),
       verifiedBy: req.admin.id
     };
@@ -475,7 +479,7 @@ router.patch('/:id/status', adminAuth, async (req, res) => {
       updateData.adminNotes = adminNotes;
     }
 
-    if (status === 'resolved') {
+    if (normalizedStatus === 'resolved') {
       updateData.resolvedAt = new Date();
     }
 
@@ -494,22 +498,16 @@ router.patch('/:id/status', adminAuth, async (req, res) => {
     // Create notification for the user who submitted the report
     if (report.submittedBy) {
       try {
-        await Notification.notifyReportStatusChange(report, status, req.admin?.username || 'Admin');
+        await Notification.notifyReportStatusChange(report, normalizedStatus, req.admin?.username || 'Admin');
       } catch (notifError) {
         console.error('Error creating status change notification:', notifError);
         // Don't fail the status update if notification fails
       }
     }
 
-    if (!report) {
-      return res.status(404).json({
-        error: 'Report not found'
-      });
-    }
-
     res.json({
       success: true,
-      message: `Report ${status} successfully`,
+      message: `Report ${normalizedStatus} successfully`,
       data: report
     });
 

@@ -10,38 +10,16 @@ const PORT = process.env.PORT || 3001;
 
 // Security middleware with proper CSP for images
 app.use(helmet({
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
-      scriptSrc: ["'self'"],
-      imgSrc: ["'self'", "data:", "blob:", "*"], // Allow images from any source
-      connectSrc: ["'self'"]
-    }
-  },
-  crossOriginEmbedderPolicy: false // Disable COEP which can block images
+  contentSecurityPolicy: false, // Disable CSP temporarily for testing
+  crossOriginEmbedderPolicy: false, // Disable COEP which can block images
+  crossOriginResourcePolicy: false // Disable CORP which can block images
 }));
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production' 
-    ? [
-        'https://road-alert-users.onrender.com',
-        'https://road-alert-admin.onrender.com',
-        'https://users-7tsrm8kq7-markstephens-projects.vercel.app',
-        'https://road-alert-admin.vercel.app',
-        'https://your-admin-app.vercel.app',
-        '*' // Temporarily allow all origins for testing
-      ] 
-    : [
-        'http://localhost:5173', 
-        'http://localhost:5174', 
-        'http://localhost:5175', 
-        'http://localhost:3000',
-        'http://192.168.1.150:5173',
-        'http://192.168.1.150:5174',
-        'http://192.168.1.150:5175',
-        'http://192.168.1.150:3000'
-      ],
-  credentials: true
+  origin: '*', // Allow all origins for now
+  credentials: false, // Disable credentials for image requests
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  optionsSuccessStatus: 200
 }));
 
 // Rate limiting - temporarily disabled for testing
@@ -68,10 +46,13 @@ app.use('/uploads', (req, res, next) => {
   } else {
     console.log(`❌ File NOT found: ${filePath}`);
   }
-  // Set CORS headers
+  // Set CORS headers for images
   res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+  res.header('Cross-Origin-Resource-Policy', 'cross-origin');
+  res.header('Cross-Origin-Embedder-Policy', 'unsafe-none');
+  
   // Handle preflight requests
   if (req.method === 'OPTIONS') {
     return res.sendStatus(200);
@@ -80,6 +61,10 @@ app.use('/uploads', (req, res, next) => {
 }, express.static(path.join(__dirname, 'uploads'), {
   setHeaders: (res, filePath) => {
     console.log(`📷 Serving image: ${path.basename(filePath)}`);
+    // Set CORS headers
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+    
     // Set proper content type for images
     const ext = path.extname(filePath).toLowerCase();
     if (ext === '.jpg' || ext === '.jpeg') {

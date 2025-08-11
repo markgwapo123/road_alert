@@ -87,10 +87,9 @@ const NewsFeed = () => {
     setSelectedReport(report);
     setIsModalOpen(true);
     
-    // Fetch user details
-    if (report.userId) {
-      const user = await fetchReportUser(report.userId);
-      setSelectedReportUser(user);
+    // Use the populated user data directly from the report
+    if (report.submittedBy) {
+      setSelectedReportUser(report.submittedBy);
     } else {
       setSelectedReportUser(null);
     }
@@ -120,7 +119,14 @@ const NewsFeed = () => {
 
   return (
     <div className="news-feed">
-      <h2 style={{ textAlign: 'center', marginBottom: '20px', color: '#333' }}>
+      <h2 style={{ 
+        textAlign: 'center', 
+        marginBottom: '20px', 
+        color: '#1f2937',
+        fontSize: '24px',
+        fontWeight: '600',
+        letterSpacing: '0.5px'
+      }}>
         Recent Road Alerts
       </h2>
       
@@ -130,12 +136,22 @@ const NewsFeed = () => {
           padding: '40px',
           background: '#f8f9fa',
           borderRadius: '12px',
-          color: '#6c757d'
+          color: '#6c757d',
+          maxWidth: '600px',
+          margin: '0 auto'
         }}>
           No reports available yet
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <div style={{ 
+          display: 'grid', 
+          gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))',
+          gap: '16px',
+          padding: '0 16px',
+          maxWidth: '1400px',
+          margin: '0 auto',
+          width: '100%'
+        }}>
           {reports.map((report) => {
             const alertStyle = ALERT_COLORS[report.type] || ALERT_COLORS.info;
             
@@ -144,119 +160,190 @@ const NewsFeed = () => {
                 key={report._id}
                 onClick={() => handleReportClick(report)}
                 style={{
-                  background: alertStyle.background,
-                  color: alertStyle.text,
-                  padding: '16px 20px',
+                  background: '#ffffff',
+                  color: '#1f2937',
+                  padding: '16px',
                   borderRadius: '12px',
                   boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
                   display: 'flex',
-                  alignItems: 'flex-start',
+                  flexDirection: 'column',
                   gap: '12px',
                   cursor: 'pointer',
-                  transition: 'all 0.3s ease',
-                  position: 'relative'
+                  transition: 'all 0.2s ease',
+                  position: 'relative',
+                  border: '1px solid #e5e7eb'
                 }}
                 onMouseOver={(e) => {
                   e.currentTarget.style.transform = 'translateY(-2px)';
-                  e.currentTarget.style.boxShadow = '0 4px 15px rgba(0, 0, 0, 0.2)';
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
                 }}
                 onMouseOut={(e) => {
                   e.currentTarget.style.transform = 'translateY(0)';
                   e.currentTarget.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.1)';
                 }}
               >
-                <div style={{ fontSize: '24px', marginTop: '2px' }}>
-                  {alertStyle.icon}
+                {/* Header with Alert Type and Date */}
+                <div style={{ 
+                  display: 'flex', 
+                  justifyContent: 'space-between',
+                  alignItems: 'flex-start',
+                  marginBottom: '8px'
+                }}>
+                  <h3 style={{ 
+                    margin: 0, 
+                    fontSize: '16px', 
+                    fontWeight: '600',
+                    color: '#1f2937',
+                    textTransform: 'capitalize'
+                  }}>
+                    {report.type.replace('_', ' ')} alert
+                  </h3>
+                  <div style={{ 
+                    fontSize: '11px', 
+                    color: '#6b7280',
+                    fontWeight: '500'
+                  }}>
+                    {formatDate(report.createdAt)}
+                  </div>
                 </div>
                 
-                <div style={{ flex: 1 }}>
-                  {/* Click indicator */}
-                  <div style={{
-                    position: 'absolute',
-                    top: '16px',
-                    right: '16px',
-                    background: 'rgba(255, 255, 255, 0.2)',
-                    padding: '4px 8px',
-                    borderRadius: '12px',
-                    fontSize: '10px',
-                    fontWeight: '600',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.5px'
-                  }}>
-                    Click for details
-                  </div>
+                {/* Description */}
+                <p style={{ 
+                  margin: 0, 
+                  fontSize: '14px', 
+                  lineHeight: '1.4',
+                  marginBottom: '12px',
+                  color: '#4b5563',
+                  display: '-webkit-box',
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: 'vertical',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis'
+                }}>
+                  {report.description}
+                </p>
                   
+                  {/* Image and Map Section */}
                   <div style={{ 
                     display: 'flex', 
-                    justifyContent: 'space-between', 
-                    alignItems: 'flex-start',
-                    marginBottom: '8px'
+                    gap: '8px', 
+                    marginBottom: '12px',
+                    height: '120px'
                   }}>
-                    <h3 style={{ 
-                      margin: 0, 
-                      fontSize: '18px', 
-                      fontWeight: '600',
-                      textTransform: 'capitalize'
-                    }}>
-                      {report.type.replace('_', ' ')} Alert
-                    </h3>
-                    <span style={{ 
-                      fontSize: '12px', 
-                      opacity: 0.8,
-                      whiteSpace: 'nowrap',
-                      marginLeft: '12px'
-                    }}>
-                      {formatDate(report.createdAt)}
-                    </span>
+                    {/* Report Image */}
+                    {report.images && report.images.length > 0 ? (
+                      <div style={{ flex: '1' }}>
+                        <img 
+                          src={`${config.BACKEND_URL}/uploads/${report.images[0].filename || report.images[0]}`}
+                          alt="Report preview"
+                          style={{
+                            width: '100%',
+                            height: '120px',
+                            objectFit: 'contain',
+                            backgroundColor: '#f9fafb',
+                            borderRadius: '6px',
+                            border: '1px solid #e5e7eb'
+                          }}
+                          onMouseOver={(e) => {
+                            e.target.style.transform = 'scale(1.01)';
+                          }}
+                          onMouseOut={(e) => {
+                            e.target.style.transform = 'scale(1)';
+                          }}
+                          onError={(e) => {
+                            e.target.style.display = 'none';
+                          }}
+                        />
+                      </div>
+                    ) : (
+                      <div style={{ 
+                        flex: '1',
+                        height: '120px',
+                        backgroundColor: '#f9fafb',
+                        borderRadius: '6px',
+                        border: '1px solid #e5e7eb',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: '#6b7280',
+                        fontSize: '12px'
+                      }}>
+                        No Image
+                      </div>
+                    )}
+                    
+                    {/* Map Section */}
+                    <div style={{ flex: '1' }}>
+                      {report.location && report.location.coordinates ? (
+                        <div style={{
+                          width: '100%',
+                          height: '120px',
+                          borderRadius: '6px',
+                          border: '1px solid #e5e7eb',
+                          overflow: 'hidden',
+                          position: 'relative',
+                          backgroundColor: '#f9fafb'
+                        }}>
+                          <iframe
+                            src={`https://www.google.com/maps/embed?pb=!1m14!1m12!1m3!1d3921.4!2d${report.location.coordinates[0]}!3d${report.location.coordinates[1]}!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!5e0!3m2!1sen!2sph!4v1635820000000!5m2!1sen!2sph`}
+                            width="100%"
+                            height="100%"
+                            style={{ border: 0 }}
+                            allowFullScreen=""
+                            loading="lazy"
+                            referrerPolicy="no-referrer-when-downgrade"
+                          ></iframe>
+                        </div>
+                      ) : (
+                        <div style={{
+                          width: '100%',
+                          height: '120px',
+                          backgroundColor: '#f9fafb',
+                          borderRadius: '6px',
+                          border: '1px solid #e5e7eb',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: '#6b7280',
+                          fontSize: '12px',
+                          flexDirection: 'column',
+                          gap: '4px'
+                        }}>
+                          <span>📍</span>
+                          <span>Location not available</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
                   
-                  <p style={{ 
-                    margin: 0, 
-                    fontSize: '14px', 
-                    lineHeight: '1.4',
-                    marginBottom: '8px'
-                  }}>
-                    {report.description}
-                  </p>
-                  
+                  {/* Footer Information */}
                   <div style={{ 
                     display: 'flex', 
                     justifyContent: 'space-between', 
                     alignItems: 'center',
                     fontSize: '12px',
-                    opacity: 0.9
+                    color: '#6b7280',
+                    paddingTop: '8px',
+                    borderTop: '1px solid #f3f4f6'
                   }}>
-                    <span>📍 Location: {report.location?.lat?.toFixed(4)}, {report.location?.lng?.toFixed(4)}</span>
-                    <span style={{
-                      background: 'rgba(255, 255, 255, 0.2)',
-                      padding: '2px 8px',
+                    <div>
+                      <div style={{ marginBottom: '2px' }}>
+                        Reported by: <span style={{ fontWeight: '500', color: '#374151' }}>{report.submittedBy?.username || 'Anonymous'}</span>
+                      </div>
+                    </div>
+                    
+                    <div style={{
+                      background: alertStyle.background,
+                      color: 'white',
+                      padding: '4px 8px',
                       borderRadius: '12px',
-                      textTransform: 'uppercase',
                       fontSize: '10px',
-                      fontWeight: '600'
+                      fontWeight: '600',
+                      textTransform: 'uppercase'
                     }}>
                       {report.severity}
-                    </span>
-                  </div>
-                  
-                  {report.images && report.images.length > 0 && (
-                    <div style={{ marginTop: '12px' }}>
-                      <img 
-                        src={`${config.BACKEND_URL}/uploads/${report.images[0].filename}`}
-                        alt="Report"
-                        style={{
-                          maxWidth: '100%',
-                          height: 'auto',
-                          borderRadius: '8px',
-                          border: '2px solid rgba(255, 255, 255, 0.3)'
-                        }}
-                        onError={(e) => {
-                          e.target.style.display = 'none';
-                        }}
-                      />
                     </div>
-                  )}
-                </div>
+                  </div>
               </div>
             );
           })}

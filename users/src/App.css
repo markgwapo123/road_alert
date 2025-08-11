@@ -796,10 +796,10 @@ body {
 /* Main Content - Social Media Style */
 main {
   flex: 1;
-  padding: 20px;
+  padding: 0;
   width: 100%;
-  max-width: 600px;
-  margin: 0 auto;
+  max-width: none;
+  margin: 0;
   box-sizing: border-box;
   background: #ffffff;
   overflow: hidden;
@@ -826,18 +826,56 @@ main h1 {
   font-weight: 700;
 }
 
-/* News Feed - Color-coded Alert System */
+/* News Feed - Full Screen Layout with Sidebar */
 .news-feed {
   display: flex;
   flex-direction: column;
   gap: 16px;
   width: 100%;
-  max-width: 600px;
-  margin: 0 auto;
+  max-width: none;
+  margin: 0;
   padding: 20px;
   overflow: hidden;
-  max-height: calc(100vh - 180px);
+  height: calc(100vh - 80px);
   overflow-y: auto;
+}
+
+/* Responsive Grid for News Feed Cards */
+@media (max-width: 1024px) {
+  /* Hide sidebar on tablets and mobile */
+  .sidebar {
+    display: none !important;
+  }
+  
+  .main-content-with-sidebar {
+    margin-left: 0 !important;
+    width: 100% !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .news-feed {
+    padding: 10px;
+  }
+  
+  .news-feed h2 {
+    font-size: 20px;
+    margin-bottom: 15px;
+  }
+}
+
+@media (max-width: 480px) {
+  .news-feed {
+    padding: 5px;
+  }
+  
+  main {
+    height: calc(100vh - 70px);
+  }
+  
+  .news-feed {
+    height: calc(100vh - 70px);
+  }
 }
 
 .news-feed h2 {
