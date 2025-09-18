@@ -1,14 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-
-const getInitialTheme = () => {
-  if (typeof window !== 'undefined') {
-    const stored = localStorage.getItem('theme');
-    if (stored) return stored;
-    if (window.matchMedia('(prefers-color-scheme: dark)').matches) return 'dark';
-  }
-  return 'light';
-};
+import config from '../config/index.js';
 
 const Login = ({ onLogin, switchToRegister }) => {
   const [loginId, setLoginId] = useState(''); // can be email or username
@@ -16,15 +8,51 @@ const Login = ({ onLogin, switchToRegister }) => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [theme, setTheme] = useState(getInitialTheme());
+  const [forgotPasswordMode, setForgotPasswordMode] = useState(false);
+  const [resetMessage, setResetMessage] = useState('');
+  const [formKey, setFormKey] = useState(Date.now()); // Force form refresh
 
+  // Clear form when component mounts or switches
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem('theme', theme);
-  }, [theme]);
+    setLoginId('');
+    setPassword('');
+    setError('');
+    setResetMessage('');
+    setFormKey(Date.now());
+  }, [forgotPasswordMode]);
 
-  const handleThemeToggle = () => {
-    setTheme(theme === 'dark' ? 'light' : 'dark');
+  const handleForgotPassword = async (e) => {
+    e.preventDefault();
+    setError('');
+    setResetMessage('');
+    setLoading(true);
+
+    // Validate email format
+    if (!loginId || !loginId.includes('@gmail.com')) {
+      setError('Please enter a valid Gmail address.');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const res = await axios.post(`${config.API_BASE_URL}/auth/forgot-password`, {
+        email: loginId.trim()
+      }, {
+        timeout: 5000
+      });
+      
+      setResetMessage('Password reset instructions have been sent to your email.');
+      setForgotPasswordMode(false);
+    } catch (err) {
+      if (err.code === 'ECONNREFUSED' || (err.message && err.message.includes('Network Error'))) {
+        setError('Cannot connect to server. Please ensure the backend is running.');
+      } else if (err.response?.status === 404) {
+        setError('Email not found. Please check your email address or register first.');
+      } else {
+        setError(err.response?.data?.error || 'Failed to send reset email. Please try again.');
+      }
+    }
+    setLoading(false);
   };
 
   const handleSubmit = async (e) => {
@@ -38,7 +66,7 @@ const Login = ({ onLogin, switchToRegister }) => {
       return;
     }
     try {
-      const res = await axios.post('http://localhost:3001/api/auth/login', {
+      const res = await axios.post(`${config.API_BASE_URL}/auth/login`, {
         email: loginId.trim(),
         password
       }, {
@@ -61,10 +89,6 @@ const Login = ({ onLogin, switchToRegister }) => {
 
   return (
     <div className="auth-container">
-      <button className="theme-toggle" onClick={handleThemeToggle} title="Toggle theme">
-        {theme === 'dark' ? '🌞' : '🌙'}
-      </button>
-      
       <div className="auth-left">
         <div className="auth-logo">
           <div className="auth-logo-icon">🚨</div>
@@ -73,7 +97,7 @@ const Login = ({ onLogin, switchToRegister }) => {
           </h1>
         </div>
         
-        <form onSubmit={handleSubmit} className="auth-form">
+        <form onSubmit={forgotPasswordMode ? handleForgotPassword : handleSubmit} className="auth-form" key={formKey}>
           <div className="input-group">
             <div className="input-wrapper">
               <input
@@ -82,37 +106,50 @@ const Login = ({ onLogin, switchToRegister }) => {
                 placeholder="Email address"
                 value={loginId}
                 onChange={e => setLoginId(e.target.value)}
+                autocomplete="off"
                 required
               />
             </div>
           </div>
 
-          <div className="input-group">
-            <div className="input-wrapper">
-              <input
-                id="password"
-                type={showPassword ? "text" : "password"}
-                placeholder="Password"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                required
-              />
-              <button
-                type="button"
-                className="password-toggle"
-                onClick={() => setShowPassword(!showPassword)}
-                aria-label={showPassword ? "Hide password" : "Show password"}
-              >
-                {showPassword ? "👁️" : "👁️‍🗨️"}
-              </button>
+          {!forgotPasswordMode && (
+            <div className="input-group">
+              <div className="input-wrapper">
+                <input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Password"
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  autocomplete="new-password"
+                  required
+                />
+                <button
+                  type="button"
+                  className="password-toggle"
+                  onClick={() => setShowPassword(!showPassword)}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? "👁️" : "👁️‍🗨️"}
+                </button>
+              </div>
             </div>
-          </div>
+          )}
 
           <div className="form-options">
-            <button type="button" className="forgot-password">
-              Forgot Password
-            </button>
-            <span className="public-computer">Public Computer?</span>
+            {!forgotPasswordMode ? (
+              <button type="button" className="forgot-password" onClick={() => setForgotPasswordMode(true)}>
+                Forgot Password
+              </button>
+            ) : (
+              <button type="button" className="forgot-password" onClick={() => {
+                setForgotPasswordMode(false);
+                setError('');
+                setResetMessage('');
+              }}>
+                Back to Login
+              </button>
+            )}
           </div>
 
           {error && (
@@ -122,8 +159,18 @@ const Login = ({ onLogin, switchToRegister }) => {
             </div>
           )}
 
+          {resetMessage && (
+            <div className="success-message">
+              <span className="success-icon">✅</span>
+              {resetMessage}
+            </div>
+          )}
+
           <button type="submit" disabled={loading} className="auth-button">
-            {loading ? "SIGNING IN..." : "SIGN IN"}
+            {loading ? 
+              (forgotPasswordMode ? "SENDING..." : "SIGNING IN...") : 
+              (forgotPasswordMode ? "SEND RESET EMAIL" : "SIGN IN")
+            }
           </button>
         </form>
 

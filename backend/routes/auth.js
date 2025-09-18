@@ -294,4 +294,40 @@ router.put('/profile', auth, async (req, res) => {
   }
 });
 
+// @route   GET /api/auth/verification-status
+// @desc    Get user verification status
+// @access  Private
+router.get('/verification-status', require('../middleware/userAuth'), async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).select('-password');
+    
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: 'User not found'
+      });
+    }
+
+    // For now, return a basic verification status
+    // You can extend this based on your verification logic
+    const verification = {
+      isVerified: user.isActive, // Using isActive as verification status for now
+      verificationDate: user.createdAt,
+      status: user.isActive ? 'verified' : 'pending'
+    };
+
+    res.json({
+      success: true,
+      verification
+    });
+
+  } catch (error) {
+    console.error('Verification status error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Server error while fetching verification status'
+    });
+  }
+});
+
 module.exports = router;

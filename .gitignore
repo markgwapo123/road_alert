@@ -8,8 +8,15 @@ pnpm-debug.log*
 lerna-debug.log*
 
 node_modules
+**/node_modules/
+
 dist
+**/dist/
 dist-ssr
+build
+**/build/
+/.cache/
+**/.cache/
 *.local
 
 # Editor directories and files
@@ -22,3 +29,27 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Env files
+.env
+.env.*
+!.env.example
+
+# App specific
+backend/uploads/
+**/uploads/
+ngrok.exe
+
+# Tool caches
+.eslintcache
+.parcel-cache/
+.turbo/
+.next/
+
+# Hosting
+.vercel/
+.netlify/
+
+# Coverage
+coverage/
+**/coverage/

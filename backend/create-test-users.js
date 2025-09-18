@@ -12,7 +12,7 @@ async function createTestUsers() {
     const testUsers = [
       {
         username: 'john_doe',
-        email: 'john@example.com',
+      email: 'john.doe@gmail.com',
         password: 'password123',
         profile: {
           firstName: 'John',
@@ -23,7 +23,7 @@ async function createTestUsers() {
       },
       {
         username: 'jane_smith',
-        email: 'jane@example.com',
+      email: 'jane.smith@gmail.com',
         password: 'password123',
         profile: {
           firstName: 'Jane',
@@ -34,7 +34,7 @@ async function createTestUsers() {
       },
       {
         username: 'mike_johnson',
-        email: 'mike@example.com',
+      email: 'mike.johnson@gmail.com',
         password: 'password123',
         profile: {
           firstName: 'Mike',
@@ -45,7 +45,7 @@ async function createTestUsers() {
       },
       {
         username: 'sarah_wilson',
-        email: 'sarah@example.com',
+      email: 'sarah.wilson@gmail.com',
         password: 'password123',
         profile: {
           firstName: 'Sarah',
@@ -56,7 +56,7 @@ async function createTestUsers() {
       },
       {
         username: 'david_brown',
-        email: 'david@example.com',
+      email: 'david.brown@gmail.com',
         password: 'password123',
         profile: {
           firstName: 'David',

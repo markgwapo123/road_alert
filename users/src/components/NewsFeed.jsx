@@ -1,205 +1,382 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
+import config from '../config/index.js';
+import ReportDetailModal from './ReportDetailModal.jsx';
+
+// Color configurations based on professional road & safety alert standards
+const ALERT_COLORS = {
+  emergency: {
+    background: '#dc2626', // Professional Red
+    text: '#ffffff',       // White for maximum contrast
+    icon: '🚨'
+  },
+  caution: {
+    background: '#fbbf24', // Professional Yellow
+    text: '#000000',       // Black for high visibility
+    icon: '⚠️'
+  },
+  info: {
+    background: '#2563eb', // Professional Blue
+    text: '#ffffff',       // White for clarity
+    icon: 'ℹ️'
+  },
+  safe: {
+    background: '#16a34a', // Professional Green
+    text: '#ffffff',       // White for clean look
+    icon: '✅'
+  },
+  construction: {
+    background: '#ea580c', // Professional Orange
+    text: '#ffffff',       // White for high contrast
+    icon: '🚧'
+  }
+};
 
 const NewsFeed = () => {
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-
-  // Test backend connection
-  const testBackendConnection = async () => {
-    try {
-      await axios.get('http://localhost:3001/api/health', { timeout: 3000 });
-      return true;
-    } catch (err) {
-      return false;
-    }
-  };
+  const [selectedReport, setSelectedReport] = useState(null);
+  const [selectedReportUser, setSelectedReportUser] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
     const fetchReports = async () => {
-      setLoading(true);
-      setError('');
-      
-      // First test if backend is reachable
-      const isBackendUp = await testBackendConnection();
-      if (!isBackendUp) {
-        setError('🔌 Backend server is not running. Please start your Express.js server on port 3001.');
-        setLoading(false);
-        return;
-      }
-      
       try {
-        // Check if we have a token
-        const token = localStorage.getItem('token');
-        if (!token) {
-          setError('No authentication token found. Please login again.');
-          setLoading(false);
-          return;
-        }
-
-        const res = await axios.get('http://localhost:3001/api/reports/verified', {
-          headers: { 'Authorization': `Bearer ${token}` },
-          timeout: 10000 // Increased timeout to 10 seconds
+        // Only fetch verified reports for the public home feed
+        const response = await axios.get(`${config.API_BASE_URL}/reports`, {
+          params: {
+            status: 'verified',
+            limit: 20,
+            sortBy: 'createdAt',
+            sortOrder: 'desc'
+          }
         });
-        
-        // Check if response has data
-        if (res.data && Array.isArray(res.data)) {
-          setReports(res.data);
-        } else {
-          setReports([]);
-        }
+        setReports(response.data.data || []);
       } catch (err) {
+        setError('Failed to load reports');
         console.error('Error fetching reports:', err);
-        
-        // More specific error handling
-        if (err.code === 'ECONNREFUSED' || err.message.includes('Network Error') || err.message.includes('connect ECONNREFUSED')) {
-          setError('🔌 Cannot connect to server. Please ensure the backend is running on http://localhost:3001');
-        } else if (err.response?.status === 401) {
-          setError('🔐 Authentication failed. Please login again.');
-          // Clear invalid token
-          localStorage.removeItem('token');
-          setTimeout(() => window.location.reload(), 2000);
-        } else if (err.response?.status === 404) {
-          setError('📭 Reports endpoint not found. Please check your backend configuration.');
-        } else if (err.response?.status === 500) {
-          setError('🛠️ Server error. Please try again later.');
-        } else if (err.code === 'ENOTFOUND') {
-          setError('🌐 Network error. Please check your internet connection.');
-        } else {
-          setError(`❌ ${err.response?.data?.message || err.message || 'Failed to load reports'}`);
-        }
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
-    
+
     fetchReports();
-    
-    // Optional: Set up polling to retry every 30 seconds if there's an error
-    const interval = setInterval(() => {
-      if (error && !loading) {
-        fetchReports();
-      }
-    }, 30000);
+  }, []);
 
-    return () => clearInterval(interval);
-  }, [error, loading]);
-
-  const retryFetch = () => {
-    setError('');
-    setLoading(true);
-    // This will trigger the useEffect to run again
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
   };
 
-  if (loading) return (
-    <div className="loading" style={{
-      textAlign: 'center', 
-      padding: '40px', 
-      color: '#6b7280',
-      background: 'white',
-      borderRadius: '12px',
-      margin: '20px auto',
-      maxWidth: '600px',
-      boxShadow: '0 2px 10px rgba(0, 0, 0, 0.08)'
-    }}>
-      <div style={{fontSize: '24px', marginBottom: '10px'}}>🔄</div>
-      Loading reports...
-    </div>
-  );
-  
-  if (error) return (
-    <div className="error" style={{
-      maxWidth: '600px', 
-      margin: '20px auto',
-      background: 'white',
-      borderRadius: '12px',
-      padding: '30px',
-      textAlign: 'center',
-      border: '1px solid #fee2e2',
-      boxShadow: '0 2px 10px rgba(0, 0, 0, 0.08)'
-    }}>
-      <div style={{fontSize: '24px', marginBottom: '15px'}}>⚠️</div>
-      <div style={{color: '#dc2626', marginBottom: '20px', fontSize: '16px', lineHeight: '1.5'}}>
-        {error}
+  const fetchReportUser = async (userId) => {
+    try {
+      const response = await axios.get(`${config.API_BASE_URL}/users/profile/${userId}`);
+      return response.data.data;
+    } catch (err) {
+      console.error('Error fetching user details:', err);
+      return null;
+    }
+  };
+
+  const handleReportClick = async (report) => {
+    setSelectedReport(report);
+    setIsModalOpen(true);
+    
+    // Use the populated user data directly from the report
+    if (report.submittedBy) {
+      setSelectedReportUser(report.submittedBy);
+    } else {
+      setSelectedReportUser(null);
+    }
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setSelectedReport(null);
+    setSelectedReportUser(null);
+  };
+
+  if (loading) {
+    return (
+      <div style={{ textAlign: 'center', padding: '40px' }}>
+        <div>Loading reports...</div>
       </div>
-      <button 
-        onClick={retryFetch}
-        style={{
-          background: '#3498db',
-          color: 'white',
-          border: 'none',
-          padding: '12px 24px',
-          borderRadius: '8px',
-          cursor: 'pointer',
-          fontSize: '14px',
-          fontWeight: '600'
-        }}
-      >
-        🔄 Try Again
-      </button>
-    </div>
-  );
-  
-  if (!reports.length) return (
-    <div className="info" style={{
-      maxWidth: '600px', 
-      margin: '20px auto',
-      background: 'white',
-      borderRadius: '12px',
-      padding: '40px',
-      textAlign: 'center',
-      border: '1px solid #fef3c7',
-      boxShadow: '0 2px 10px rgba(0, 0, 0, 0.08)'
-    }}>
-      <div style={{fontSize: '48px', marginBottom: '20px'}}>📭</div>
-      <h3 style={{margin: '0 0 10px 0', color: '#2c3e50'}}>No Reports Yet</h3>
-      <p style={{color: '#6b7280', margin: '0'}}>
-        Be the first to report a road hazard in your area!
-      </p>
-    </div>
-  );
+    );
+  }
+
+  if (error) {
+    return (
+      <div style={{ textAlign: 'center', padding: '40px', color: '#dc3545' }}>
+        <div>{error}</div>
+      </div>
+    );
+  }
 
   return (
     <div className="news-feed">
-      {reports.map(r => (
-        <div key={r._id} className="report-card social-post">
-          <div className="post-header">
-            <div className="post-author">
-              <div className="avatar">👤</div>
-              <div className="author-info">
-                <div className="author-name">RoadAlert User</div>
-                <div className="post-time">{new Date(r.createdAt || Date.now()).toLocaleDateString()}</div>
-              </div>
-            </div>
-            <div className="post-badges">
-              <span className={`severity-badge severity-${r.severity?.toLowerCase()}`}>
-                {r.severity}
-              </span>
-              <span className={`status-badge status-${r.status?.toLowerCase()}`}>
-                {r.status}
-              </span>
-            </div>
-          </div>
-          
-          <div className="post-content">
-            <h3 className="report-title">{r.type}</h3>
-            <p className="report-description">{r.description}</p>
-            <p className="report-location">📍 Location: {r.location?.lat?.toFixed(4)}, {r.location?.lng?.toFixed(4)}</p>
-            
-            {r.imageUrl && (
-              <div className="post-image">
-                <img src={r.imageUrl} alt="Report evidence" />
-              </div>
-            )}
-          </div>
-          
-          <div className="post-actions">
-            <button className="action-btn">👍 Like</button>
-            <button className="action-btn">💬 Comment</button>
-            <button className="action-btn">📤 Share</button>
-          </div>
+      <h2 style={{ 
+        textAlign: 'center', 
+        marginBottom: '20px', 
+        color: '#1f2937',
+        fontSize: '24px',
+        fontWeight: '600',
+        letterSpacing: '0.5px'
+      }}>
+        Recent Road Alerts
+      </h2>
+      
+      {reports.length === 0 ? (
+        <div style={{
+          textAlign: 'center',
+          padding: '40px',
+          background: '#f8f9fa',
+          borderRadius: '12px',
+          color: '#6c757d',
+          maxWidth: '600px',
+          margin: '0 auto'
+        }}>
+          No reports available yet
         </div>
-      ))}
+      ) : (
+        <div style={{ 
+          display: 'grid', 
+          gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))',
+          gap: '16px',
+          padding: '0 16px',
+          maxWidth: '1400px',
+          margin: '0 auto',
+          width: '100%'
+        }}>
+          {reports.map((report) => {
+            const alertStyle = ALERT_COLORS[report.type] || ALERT_COLORS.info;
+            
+            return (
+              <div
+                key={report._id}
+                onClick={() => handleReportClick(report)}
+                style={{
+                  background: '#ffffff',
+                  color: '#1f2937',
+                  padding: '16px',
+                  borderRadius: '12px',
+                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '12px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  position: 'relative',
+                  border: '1px solid #e5e7eb'
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.1)';
+                }}
+              >
+                {/* Header with Alert Type and Date */}
+                <div style={{ 
+                  display: 'flex', 
+                  justifyContent: 'space-between',
+                  alignItems: 'flex-start',
+                  marginBottom: '8px'
+                }}>
+                  <h3 style={{ 
+                    margin: 0, 
+                    fontSize: '16px', 
+                    fontWeight: '600',
+                    color: '#1f2937',
+                    textTransform: 'capitalize'
+                  }}>
+                    {report.type.replace('_', ' ')} alert
+                  </h3>
+                  <div style={{ 
+                    fontSize: '11px', 
+                    color: '#6b7280',
+                    fontWeight: '500'
+                  }}>
+                    {formatDate(report.createdAt)}
+                  </div>
+                </div>
+                
+                {/* Description */}
+                <p style={{ 
+                  margin: 0, 
+                  fontSize: '14px', 
+                  lineHeight: '1.4',
+                  marginBottom: '12px',
+                  color: '#4b5563',
+                  display: '-webkit-box',
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: 'vertical',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis'
+                }}>
+                  {report.description}
+                </p>
+                  
+                  {/* Image and Map Section */}
+                  <div style={{ 
+                    display: 'flex', 
+                    gap: '8px', 
+                    marginBottom: '12px',
+                    height: '120px'
+                  }}>
+                    {/* Report Image */}
+                    {report.images && report.images.length > 0 ? (
+                      <div style={{ flex: '1' }}>
+                        <img 
+                          src={`${config.BACKEND_URL}/uploads/${report.images[0].filename || report.images[0]}`}
+                          alt="Report preview"
+                          style={{
+                            width: '100%',
+                            height: '120px',
+                            objectFit: 'contain',
+                            backgroundColor: '#f9fafb',
+                            borderRadius: '6px',
+                            border: '1px solid #e5e7eb'
+                          }}
+                          onError={(e) => {
+                            console.error('Image failed to load:', e.target.src);
+                            console.log('Report images data:', report.images);
+                            e.target.style.display = 'none';
+                            e.target.parentElement.innerHTML = `
+                              <div style="
+                                width: 100%; 
+                                height: 120px; 
+                                display: flex; 
+                                align-items: center; 
+                                justify-content: center; 
+                                background-color: #f3f4f6; 
+                                border-radius: 6px; 
+                                color: #6b7280;
+                                border: 1px solid #e5e7eb;
+                              ">
+                                <div style="text-align: center;">
+                                  <div style="font-size: 24px; margin-bottom: 4px;">📷</div>
+                                  <div style="font-size: 12px;">Image not available</div>
+                                </div>
+                              </div>
+                            `;
+                          }}
+                          onMouseOver={(e) => {
+                            e.target.style.transform = 'scale(1.01)';
+                          }}
+                          onMouseOut={(e) => {
+                            e.target.style.transform = 'scale(1)';
+                          }}
+                        />
+                      </div>
+                    ) : (
+                      <div style={{ 
+                        flex: '1',
+                        height: '120px',
+                        backgroundColor: '#f9fafb',
+                        borderRadius: '6px',
+                        border: '1px solid #e5e7eb',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: '#6b7280',
+                        fontSize: '12px'
+                      }}>
+                        No Image
+                      </div>
+                    )}
+                    
+                    {/* Map Section */}
+                    <div style={{ flex: '1' }}>
+                      {report.location && report.location.coordinates ? (
+                        <div style={{
+                          width: '100%',
+                          height: '120px',
+                          borderRadius: '6px',
+                          border: '1px solid #e5e7eb',
+                          overflow: 'hidden',
+                          position: 'relative',
+                          backgroundColor: '#f9fafb'
+                        }}>
+                          <iframe
+                            src={`https://www.google.com/maps/embed?pb=!1m14!1m12!1m3!1d3921.4!2d${report.location.coordinates[0]}!3d${report.location.coordinates[1]}!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!5e0!3m2!1sen!2sph!4v1635820000000!5m2!1sen!2sph`}
+                            width="100%"
+                            height="100%"
+                            style={{ border: 0 }}
+                            allowFullScreen=""
+                            loading="lazy"
+                            referrerPolicy="no-referrer-when-downgrade"
+                          ></iframe>
+                        </div>
+                      ) : (
+                        <div style={{
+                          width: '100%',
+                          height: '120px',
+                          backgroundColor: '#f9fafb',
+                          borderRadius: '6px',
+                          border: '1px solid #e5e7eb',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: '#6b7280',
+                          fontSize: '12px',
+                          flexDirection: 'column',
+                          gap: '4px'
+                        }}>
+                          <span>📍</span>
+                          <span>Location not available</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {/* Footer Information */}
+                  <div style={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'center',
+                    fontSize: '12px',
+                    color: '#6b7280',
+                    paddingTop: '8px',
+                    borderTop: '1px solid #f3f4f6'
+                  }}>
+                    <div>
+                      <div style={{ marginBottom: '2px' }}>
+                        Reported by: <span style={{ fontWeight: '500', color: '#374151' }}>{report.submittedBy?.username || 'Anonymous'}</span>
+                      </div>
+                    </div>
+                    
+                    <div style={{
+                      background: alertStyle.background,
+                      color: 'white',
+                      padding: '4px 8px',
+                      borderRadius: '12px',
+                      fontSize: '10px',
+                      fontWeight: '600',
+                      textTransform: 'uppercase'
+                    }}>
+                      {report.severity}
+                    </div>
+                  </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+      
+      {/* Report Detail Modal */}
+      <ReportDetailModal
+        report={selectedReport}
+        reportUser={selectedReportUser}
+        isOpen={isModalOpen}
+        onClose={closeModal}
+      />
     </div>
   );
 };

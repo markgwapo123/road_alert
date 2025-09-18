@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { MagnifyingGlassIcon, FunnelIcon } from '@heroicons/react/24/outline'
 import { reportsAPI } from '../services/api'
+import config from '../config/index.js'
 
 const ReportsManagement = () => {  const [searchTerm, setSearchTerm] = useState('')
   const [filterStatus, setFilterStatus] = useState('all')
@@ -307,21 +308,36 @@ const ReportsManagement = () => {  const [searchTerm, setSearchTerm] = useState(
                           Uploaded Images ({report.images.length})
                         </h4>                        <div className="grid grid-cols-1 gap-3">
                           {report.images.map((image, index) => {
-                            const imageUrl = `http://localhost:3001/uploads/${image.filename}`;
+                            // Support both object (with filename) & direct string values
+                            const filename = image?.filename || image;
+                            // Bust cache if images were recently added / replaced
+                            const imageUrl = `${config.BACKEND_URL}/uploads/${filename}`;
                             return (
-                              <div key={index} className="relative">
+                              <div key={index} className="relative group">
                                 <img
                                   src={imageUrl}
                                   alt={`Report image ${index + 1}`}
-                                  className="w-full h-48 object-cover rounded-lg shadow-sm border border-gray-200"
+                                  className="w-full h-48 object-cover rounded-lg shadow-sm border border-gray-200 transition-opacity duration-200"
+                                  loading="lazy"
                                   onError={(e) => {
                                     console.error('❌ Image load failed:', imageUrl);
-                                    console.error('Image object:', image);
-                                    e.target.src = 'https://via.placeholder.com/400x200/e5e7eb/6b7280?text=Image+Load+Failed';
-                                    e.target.style.backgroundColor = '#f3f4f6';
+                                    const fallback = `data:image/svg+xml;utf8,${encodeURIComponent(`
+                                      <svg xmlns='http://www.w3.org/2000/svg' width='400' height='200'>
+                                        <rect width='400' height='200' fill='%23f3f4f6'/>
+                                        <text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='%236b7280' font-size='14'>Image Not Available</text>
+                                        <text x='50%' y='65%' dominant-baseline='middle' text-anchor='middle' fill='%239ca3af' font-size='10'>${filename}</text>
+                                      </svg>
+                                    `)}`;
+                                    e.target.src = fallback;
+                                    e.target.classList.add('object-contain');
                                   }}
-                                  onLoad={() => {
-                                    console.log('✅ Image loaded successfully:', imageUrl);
+                                  onLoad={(ev) => {
+                                    console.log('✅ Image loaded:', imageUrl);
+                                    // If server accidentally returned HTML (CSP error), width/height might be 0
+                                    if (ev.target.naturalWidth === 0) {
+                                      console.warn('Image naturalWidth is 0, forcing fallback');
+                                      ev.target.onerror();
+                                    }
                                   }}
                                 />
                                 <div className="absolute bottom-2 left-2 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded">
@@ -329,7 +345,10 @@ const ReportsManagement = () => {  const [searchTerm, setSearchTerm] = useState(
                                 </div>
                                 {/* Debug filename display */}
                                 <div className="absolute top-2 right-2 bg-blue-600 text-white text-xs px-2 py-1 rounded opacity-80">
-                                  {image.filename}
+                                  {filename}
+                                </div>
+                                <div className="absolute inset-0 hidden group-hover:flex items-center justify-center bg-black bg-opacity-40 text-white text-xs font-medium rounded-lg">
+                                  Click to open
                                 </div>
                               </div>
                             );

@@ -8,7 +8,7 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Security middleware with proper CSP for images
+// Security middleware with proper CSP for images and CORS
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
@@ -19,7 +19,8 @@ app.use(helmet({
       connectSrc: ["'self'"]
     }
   },
-  crossOriginEmbedderPolicy: false // Disable COEP which can block images
+  crossOriginEmbedderPolicy: false, // Disable COEP which can block images
+  crossOriginResourcePolicy: { policy: "cross-origin" } // Allow cross-origin resource requests
 }));
 app.use(cors({
   origin: process.env.NODE_ENV === 'production' 
@@ -97,6 +98,8 @@ app.use('/uploads', (req, res, next) => {
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/reports', require('./routes/reports'));
 app.use('/api/admin', require('./routes/admin'));
+app.use('/api/users', require('./routes/users'));
+app.use('/api/notifications', require('./routes/notifications'));
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

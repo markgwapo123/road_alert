@@ -1,6 +1,18 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:3001/api';
+// Use environment variables for API URL
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
+
+console.log('🔗 API Configuration:', {
+  API_BASE_URL,
+  BACKEND_URL,
+  environment: import.meta.env.MODE
+});
+
+// Configure axios defaults
+axios.defaults.timeout = 10000; // 10 second timeout
+axios.defaults.withCredentials = true;
 
 // Test backend connection
 export const testConnection = async () => {
@@ -25,9 +37,6 @@ export const authAPI = {
 
 export const userAPI = {
   getProfile: (token) => axios.get(`${API_BASE_URL}/users/profile`, {
-    headers: { Authorization: `Bearer ${token}` }
-  }),
-  verify: (formData, token) => axios.post(`${API_BASE_URL}/users/verify`, formData, {
     headers: { Authorization: `Bearer ${token}` }
   }),
 };

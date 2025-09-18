@@ -1,14 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-
-const getInitialTheme = () => {
-  if (typeof window !== 'undefined') {
-    const stored = localStorage.getItem('theme');
-    if (stored) return stored;
-    if (window.matchMedia('(prefers-color-scheme: dark)').matches) return 'dark';
-  }
-  return 'light';
-};
+import config from '../config/index.js';
 
 const Register = ({ onRegister, switchToLogin }) => {
   const [email, setEmail] = useState('');
@@ -18,16 +10,16 @@ const Register = ({ onRegister, switchToLogin }) => {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [passwordStrength, setPasswordStrength] = useState(0);
-  const [theme, setTheme] = useState(getInitialTheme());
+  const [formKey, setFormKey] = useState(Date.now()); // Force form refresh
 
+  // Clear form when component mounts
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem('theme', theme);
-  }, [theme]);
-
-  const handleThemeToggle = () => {
-    setTheme(theme === 'dark' ? 'light' : 'dark');
-  };
+    setEmail('');
+    setPassword('');
+    setUsername('');
+    setError('');
+    setFormKey(Date.now());
+  }, []);
 
   // Password strength checker
   const checkPasswordStrength = (pass) => {
@@ -68,7 +60,7 @@ const Register = ({ onRegister, switchToLogin }) => {
     }
 
     try {
-      const res = await axios.post('http://localhost:3001/api/auth/register', {
+      const res = await axios.post(`${config.API_BASE_URL}/auth/register`, {
         username: username.trim(),
         email: email.trim(),
         password
@@ -108,10 +100,6 @@ const Register = ({ onRegister, switchToLogin }) => {
 
   return (
     <div className="auth-container">
-      <button className="theme-toggle" onClick={handleThemeToggle} title="Toggle theme">
-        {theme === 'dark' ? '🌞' : '🌙'}
-      </button>
-      
       <div className="auth-left">
         <div className="auth-logo">
           <div className="auth-logo-icon">🚨</div>
@@ -120,7 +108,7 @@ const Register = ({ onRegister, switchToLogin }) => {
           </h1>
         </div>
         
-        <form onSubmit={handleSubmit} className="auth-form">
+        <form onSubmit={handleSubmit} className="auth-form" key={formKey}>
           <div className="input-group">
             <div className="input-wrapper">
               <input
@@ -129,6 +117,7 @@ const Register = ({ onRegister, switchToLogin }) => {
                 placeholder="Username"
                 value={username}
                 onChange={e => setUsername(e.target.value)}
+                autocomplete="off"
                 required
               />
             </div>
@@ -142,6 +131,7 @@ const Register = ({ onRegister, switchToLogin }) => {
                 placeholder="Email address"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
+                autocomplete="off"
                 required
               />
             </div>
@@ -155,6 +145,7 @@ const Register = ({ onRegister, switchToLogin }) => {
                 placeholder="Password"
                 value={password}
                 onChange={handlePasswordChange}
+                autocomplete="new-password"
                 required
               />
               <button

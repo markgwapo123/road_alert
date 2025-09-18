@@ -4,7 +4,9 @@ const path = require('path');
 const fs = require('fs');
 const { body, validationResult } = require('express-validator');
 const Report = require('../models/Report');
+const User = require('../models/User');
 const auth = require('../middleware/auth');
+const NotificationService = require('../services/NotificationService');
 
 const router = express.Router();
 
@@ -41,9 +43,9 @@ const upload = multer({
 const reportValidation = [
   body('type').isIn(['pothole', 'debris', 'flooding', 'construction', 'accident', 'other']),
   body('description').isLength({ min: 10, max: 500 }),
-  body('location.address').notEmpty(),
-  body('location.coordinates.latitude').isFloat({ min: -90, max: 90 }),
-  body('location.coordinates.longitude').isFloat({ min: -180, max: 180 }),
+  body('location.address').isLength({ min: 3, max: 200 }).withMessage('Address must be between 3 and 200 characters'),
+  body('location.coordinates.latitude').isFloat({ min: -90, max: 90 }).withMessage('Latitude must be between -90 and 90'),
+  body('location.coordinates.longitude').isFloat({ min: -180, max: 180 }).withMessage('Longitude must be between -180 and 180'),
   body('severity').isIn(['low', 'medium', 'high'])
 ];
 
@@ -300,7 +302,19 @@ router.patch('/:id/status', async (req, res) => {
       return res.status(400).json({
         error: 'Invalid status value'
       });
-    }    const updateData = { 
+    }
+
+    // First, get the current report to access old status and user info
+    const currentReport = await Report.findById(req.params.id);
+    if (!currentReport) {
+      return res.status(404).json({
+        error: 'Report not found'
+      });
+    }
+
+    const oldStatus = currentReport.status;
+
+    const updateData = { 
       status, 
       verifiedAt: new Date()
     };
@@ -319,10 +333,20 @@ router.patch('/:id/status', async (req, res) => {
       { new: true }
     ).populate('verifiedBy', 'username');
 
-    if (!report) {
-      return res.status(404).json({
-        error: 'Report not found'
-      });
+    // Create notification for status change
+    if (currentReport.reportedBy && currentReport.reportedBy.username) {
+      // Find user by username to get their ID
+      const user = await User.findOne({ username: currentReport.reportedBy.username });
+      if (user) {
+        await NotificationService.createReportStatusNotification({
+          userId: user._id,
+          reportId: report._id,
+          oldStatus,
+          newStatus: status,
+          reportType: report.type,
+          adminNotes
+        });
+      }
     }
 
     res.json({
@@ -371,6 +395,91 @@ router.delete('/:id', auth, async (req, res) => {
     console.error('Delete report error:', error);
     res.status(500).json({
       error: 'Server error while deleting report'
+    });
+  }
+});
+
+// @route   POST /api/reports/user
+// @desc    Create new report (for authenticated users)
+// @access  Private
+router.post('/user', require('../middleware/userAuth'), upload.array('images', 5), reportValidation, async (req, res) => {
+  try {
+    // Check validation errors
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        error: 'Validation failed',
+        details: errors.array()
+      });
+    }
+
+    // Process uploaded images
+    const images = req.files ? req.files.map(file => ({
+      filename: file.filename,
+      originalName: file.originalname,
+      mimetype: file.mimetype,
+      size: file.size,
+      uploadPath: `/uploads/${file.filename}`
+    })) : [];
+
+    // Create report data
+    const reportData = {
+      type: req.body.type,
+      description: req.body.description,
+      severity: req.body.severity || 'medium',
+      status: 'pending',
+      location: {
+        address: req.body['location[address]'] || req.body.location?.address,
+        coordinates: {
+          latitude: parseFloat(req.body['location[coordinates][latitude]'] || req.body.location?.coordinates?.latitude),
+          longitude: parseFloat(req.body['location[coordinates][longitude]'] || req.body.location?.coordinates?.longitude)
+        }
+      },
+      images: images,
+      submittedBy: req.user.id, // User ID from authentication
+      reporterName: req.user.username,
+      reporterEmail: req.user.email,
+      submittedAt: new Date(),
+      isAnonymous: false
+    };
+
+    console.log('Creating report for user:', req.user.username);
+    console.log('Report data:', reportData);
+
+    // Create the report
+    const report = new Report(reportData);
+    await report.save();
+
+    res.status(201).json({
+      success: true,
+      message: 'Report submitted successfully',
+      data: {
+        id: report._id,
+        type: report.type,
+        description: report.description,
+        severity: report.severity,
+        status: report.status,
+        submittedAt: report.submittedAt
+      }
+    });
+
+  } catch (error) {
+    console.error('User report submission error:', error);
+    
+    // Clean up uploaded files if report creation fails
+    if (req.files && req.files.length > 0) {
+      req.files.forEach(file => {
+        const filePath = path.join(__dirname, '../uploads', file.filename);
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath);
+        }
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      error: 'Failed to submit report. Please try again.'
     });
   }
 });

@@ -1,7 +1,8 @@
 import axios from 'axios'
+import config from '../config/index.js'
 
-// API base URL - update this to match your backend server
-const API_BASE_URL = 'http://localhost:3001/api'
+// Use centralized config (supports env overrides)
+const API_BASE_URL = config.API_BASE_URL
 
 // Create axios instance with default config
 const api = axios.create({
