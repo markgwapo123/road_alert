@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { ExclamationTriangleIcon, ClockIcon, CheckCircleIcon, XMarkIcon } from '@heroicons/react/24/outline'
 import { reportsAPI } from '../services/api'
 import SystemStatus from '../components/SystemStatus'
 
 const Dashboard = () => {
+  const navigate = useNavigate()
   const [stats, setStats] = useState({
     totalReports: 0,
     pendingReports: 0,
@@ -80,14 +82,27 @@ const Dashboard = () => {
     fetchDashboardData()
   }, [])
 
-  const StatCard = ({ title, value, icon: Icon, color }) => (
-    <div className="bg-white rounded-lg shadow p-6">
+  const StatCard = ({ title, value, icon: Icon, color, onClick }) => (
+    <div 
+      className="bg-white rounded-lg shadow p-6 cursor-pointer transition-all duration-200 hover:shadow-lg hover:scale-105 transform"
+      onClick={onClick}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          onClick()
+        }
+      }}
+    >
       <div className="flex items-center justify-between">
         <div>
           <p className="text-sm font-medium text-gray-600">{title}</p>
           <p className="text-3xl font-bold text-gray-900">{loading ? '...' : value}</p>
         </div>
         <Icon className={`h-8 w-8 ${color}`} />
+      </div>
+      <div className="mt-2 text-xs text-gray-500">
+        Click to view details
       </div>
     </div>
   )
@@ -147,6 +162,23 @@ const Dashboard = () => {
     setSelectedReport(null)
   }
 
+  // Click handlers for statistics cards
+  const handleTotalReportsClick = () => {
+    navigate('/reports?filter=all')
+  }
+
+  const handlePendingReportsClick = () => {
+    navigate('/reports?filter=pending')
+  }
+
+  const handleVerifiedReportsClick = () => {
+    navigate('/reports?filter=verified')
+  }
+
+  const handleRejectedReportsClick = () => {
+    navigate('/reports?filter=rejected')
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -162,24 +194,28 @@ const Dashboard = () => {
           value={stats.totalReports}
           icon={ExclamationTriangleIcon}
           color="text-blue-600"
+          onClick={handleTotalReportsClick}
         />
         <StatCard
           title="Pending Review"
           value={stats.pendingReports}
           icon={ClockIcon}
           color="text-yellow-600"
+          onClick={handlePendingReportsClick}
         />
         <StatCard
           title="Verified"
           value={stats.verifiedReports}
           icon={CheckCircleIcon}
           color="text-green-600"
+          onClick={handleVerifiedReportsClick}
         />
         <StatCard
           title="Rejected"
           value={stats.rejectedReports}
           icon={XMarkIcon}
           color="text-red-600"
+          onClick={handleRejectedReportsClick}
         />
       </div>
 

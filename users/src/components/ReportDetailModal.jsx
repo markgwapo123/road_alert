@@ -283,7 +283,7 @@ const ReportDetailModal = ({ report, isOpen, onClose, reportUser }) => {
               }}>
                 <button
                   onClick={() => {
-                    const url = `https://www.google.com/maps?q=${report.location?.lat},${report.location?.lng}`;
+                    const url = `https://www.google.com/maps?q=${report.location?.coordinates?.latitude},${report.location?.coordinates?.longitude}`;
                     window.open(url, '_blank');
                   }}
                   style={{
@@ -390,9 +390,9 @@ const ReportDetailModal = ({ report, isOpen, onClose, reportUser }) => {
                         <div style="font-size: 48px; margin-bottom: 16px;">🗺️</div>
                         <div style="font-size: 16px; font-weight: 600; margin-bottom: 8px;">Interactive Map Unavailable</div>
                         <div style="font-size: 14px; margin-bottom: 12px;">
-                          Location: ${report.location.lat.toFixed(6)}, ${report.location.lng.toFixed(6)}
+                          Location: ${report.location.coordinates.latitude.toFixed(6)}, ${report.location.coordinates.longitude.toFixed(6)}
                         </div>
-                        <button onclick="window.open('https://www.google.com/maps?q=${report.location.lat},${report.location.lng}', '_blank')" 
+                        <button onclick="window.open('https://www.google.com/maps?q=${report.location.coordinates.latitude},${report.location.coordinates.longitude}', '_blank')" 
                                 style="background: #3b82f6; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 14px;">
                           🗺️ View on Google Maps
                         </button>

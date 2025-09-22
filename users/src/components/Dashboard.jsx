@@ -59,8 +59,8 @@ const Dashboard = ({ token }) => {
     setSelectedReport(report);
     setIsModalOpen(true);
     
-    if (report.submittedBy) {
-      setSelectedReportUser(report.submittedBy);
+    if (report.reportedBy) {
+      setSelectedReportUser(report.reportedBy);
     } else {
       setSelectedReportUser(null);
     }
@@ -450,7 +450,7 @@ const Dashboard = ({ token }) => {
                         overflow: 'hidden'
                       }}>
                         <iframe
-                          src={`https://www.google.com/maps/embed?pb=!1m14!1m12!1m3!1d3921.4!2d${report.location.coordinates[0]}!3d${report.location.coordinates[1]}!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!5e0!3m2!1sen!2sph!4v1635820000000!5m2!1sen!2sph`}
+                          src={`https://www.google.com/maps/embed?pb=!1m14!1m12!1m3!1d3921.4!2d${report.location.coordinates?.longitude}!3d${report.location.coordinates?.latitude}!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!5e0!3m2!1sen!2sph!4v1635820000000!5m2!1sen!2sph`}
                           width="100%"
                           height="100%"
                           style={{ border: 0 }}
@@ -484,7 +484,7 @@ const Dashboard = ({ token }) => {
                     fontSize: '12px'
                   }}>
                     <span style={{ color: '#6b7280' }}>
-                      by <strong>{report.submittedBy?.username || 'Anonymous'}</strong>
+                      by <strong>{report.reportedBy?.name || report.reportedBy?.username || 'Anonymous'}</strong>
                     </span>
                     <button style={{
                       backgroundColor: '#3b82f6',

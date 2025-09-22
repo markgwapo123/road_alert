@@ -1,12 +1,25 @@
 import { useState, useEffect } from 'react'
+import { useLocation, useSearchParams } from 'react-router-dom'
 import { MagnifyingGlassIcon, FunnelIcon } from '@heroicons/react/24/outline'
 import { reportsAPI } from '../services/api'
 import config from '../config/index.js'
 
-const ReportsManagement = () => {  const [searchTerm, setSearchTerm] = useState('')
+const ReportsManagement = () => {
+  const location = useLocation()
+  const [searchParams] = useSearchParams()
+  
+  const [searchTerm, setSearchTerm] = useState('')
   const [filterStatus, setFilterStatus] = useState('all')
   const [reports, setReports] = useState([])
   const [loading, setLoading] = useState(true)
+  
+  // Set initial filter from URL parameter
+  useEffect(() => {
+    const filterParam = searchParams.get('filter')
+    if (filterParam && ['all', 'pending', 'verified', 'rejected'].includes(filterParam)) {
+      setFilterStatus(filterParam)
+    }
+  }, [searchParams])
   
   useEffect(() => {
     fetchReports()
@@ -112,11 +125,27 @@ const ReportsManagement = () => {  const [searchTerm, setSearchTerm] = useState(
   }
   return (
     <div className="space-y-6">
+      {/* Header with navigation indicator */}
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-900">Reports Management</h1>
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Reports Management</h1>
+          {filterStatus !== 'all' && (
+            <div className="mt-1 flex items-center text-sm text-blue-600">
+              <span>Filtered by: </span>
+              <span className="font-semibold capitalize ml-1">{filterStatus} Reports</span>
+              <button 
+                onClick={() => setFilterStatus('all')}
+                className="ml-2 text-gray-500 hover:text-gray-700"
+                title="Clear filter"
+              >
+                ✕
+              </button>
+            </div>
+          )}
+        </div>
         <div className="flex items-center gap-4">
           <div className="text-sm text-gray-500">
-            Total Reports: {reports.length}
+            Total Reports: {reports.length} | Showing: {filteredReports.length}
           </div>
           <button
             onClick={handleRefresh}

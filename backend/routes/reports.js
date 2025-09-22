@@ -170,6 +170,64 @@ router.get('/my-reports', require('../middleware/userAuth'), async (req, res) =>
   }
 });
 
+// @route   DELETE /api/reports/my-reports/:id
+// @desc    Delete user's own report
+// @access  Private
+router.delete('/my-reports/:id', require('../middleware/userAuth'), async (req, res) => {
+  try {
+    const reportId = req.params.id;
+    const userId = req.user.id;
+
+    // Find the report and verify ownership
+    const report = await Report.findById(reportId);
+
+    if (!report) {
+      return res.status(404).json({
+        success: false,
+        error: 'Report not found'
+      });
+    }
+
+    // Check if the user owns this report
+    if (report.reportedBy.id.toString() !== userId.toString()) {
+      return res.status(403).json({
+        success: false,
+        error: 'You can only delete your own reports'
+      });
+    }
+
+    // Delete any associated images
+    if (report.images && Array.isArray(report.images) && report.images.length > 0) {
+      for (const image of report.images) {
+        try {
+          const imagePath = path.join(__dirname, '../uploads', image.filename || image);
+          if (fs.existsSync(imagePath)) {
+            fs.unlinkSync(imagePath);
+          }
+        } catch (imageError) {
+          console.warn('Error deleting image file:', imageError.message);
+          // Continue with report deletion even if image deletion fails
+        }
+      }
+    }
+
+    // Delete the report
+    await Report.findByIdAndDelete(reportId);
+
+    res.json({
+      success: true,
+      message: 'Report deleted successfully'
+    });
+
+  } catch (error) {
+    console.error('Delete report error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Server error while deleting report'
+    });
+  }
+});
+
 // @route   GET /api/reports/stats
 // @desc    Get reports statistics
 // @access  Public
@@ -496,7 +554,9 @@ router.post('/user', require('../middleware/userAuth'), upload.array('images', 5
       images: images,
       reportedBy: {
         id: req.user.id,
-        name: req.user.username,
+        name: req.user.profile?.firstName && req.user.profile?.lastName 
+          ? `${req.user.profile.firstName} ${req.user.profile.lastName}`
+          : req.user.username,
         username: req.user.username,
         email: req.user.email
       },
