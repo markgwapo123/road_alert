@@ -73,7 +73,10 @@ router.get('/app-users', auth, async (req, res) => {
         ...userObj,
         isOnline,
         lastActivityTime: user.lastActivity,
-        onlineStatus: isOnline ? 'Online' : 'Offline'
+        onlineStatus: isOnline ? 'Online' : 'Offline',
+        isFrozen: user.isFrozen || false,
+        frozenAt: user.frozenAt,
+        canSubmitReports: !user.isFrozen && user.isActive
       };
     });
 
@@ -81,6 +84,7 @@ router.get('/app-users', auth, async (req, res) => {
     const totalUsers = users.length;
     const activeUsers = users.filter(user => user.isActive).length;
     const onlineUsers = usersWithStatus.filter(user => user.isOnline).length;
+    const frozenUsers = users.filter(user => user.isFrozen).length;
 
     res.json({
       success: true,
@@ -90,7 +94,8 @@ router.get('/app-users', auth, async (req, res) => {
           totalUsers,
           activeUsers,
           onlineUsers,
-          offlineUsers: totalUsers - onlineUsers
+          offlineUsers: totalUsers - onlineUsers,
+          frozenUsers
         }
       }
     });
@@ -100,6 +105,114 @@ router.get('/app-users', auth, async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Server error while fetching users'
+    });
+  }
+});
+
+// @route   GET /api/admin/user-reports/:userId
+// @desc    Get all reports submitted by a specific user
+// @access  Private (admin only)
+router.get('/user-reports/:userId', auth, async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    // Verify the user exists
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: 'User not found'
+      });
+    }
+
+    // Get all reports by this user, sorted by most recent first
+    const reports = await Report.find({ 'reportedBy.id': userId })
+      .sort({ createdAt: -1 })
+      .select('type description location status severity createdAt images updatedAt reportedBy');
+
+    // Get user's report statistics
+    const totalReports = reports.length;
+    const pendingReports = reports.filter(report => report.status === 'pending').length;
+    const verifiedReports = reports.filter(report => report.status === 'verified').length;
+    const rejectedReports = reports.filter(report => report.status === 'rejected').length;
+
+    res.json({
+      success: true,
+      data: {
+        user: {
+          id: user._id,
+          name: user.name,
+          email: user.email
+        },
+        reports: reports,
+        stats: {
+          totalReports,
+          pendingReports,
+          verifiedReports,
+          rejectedReports
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('Get user reports error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Server error while fetching user reports'
+    });
+  }
+});
+
+// @route   PATCH /api/admin/user-freeze/:userId
+// @desc    Freeze or unfreeze a user account
+// @access  Private (admin only)
+router.patch('/user-freeze/:userId', auth, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { isFrozen } = req.body;
+
+    // Verify the user exists
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: 'User not found'
+      });
+    }
+
+    // Update the user's freeze status
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      { 
+        isFrozen: isFrozen,
+        frozenAt: isFrozen ? new Date() : null,
+        frozenBy: isFrozen ? req.admin.id : null
+      },
+      { new: true }
+    ).select('-password');
+
+    // Log the admin action
+    console.log(`Admin ${req.admin.email} ${isFrozen ? 'froze' : 'unfroze'} user ${user.email}`);
+
+    res.json({
+      success: true,
+      message: `User account ${isFrozen ? 'frozen' : 'unfrozen'} successfully`,
+      data: {
+        user: {
+          id: updatedUser._id,
+          name: updatedUser.name,
+          email: updatedUser.email,
+          isFrozen: updatedUser.isFrozen,
+          frozenAt: updatedUser.frozenAt
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('Freeze user error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Server error while updating user freeze status'
     });
   }
 });

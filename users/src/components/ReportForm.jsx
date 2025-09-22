@@ -184,6 +184,13 @@ const ReportForm = ({ onReport, onClose }) => {
         }
       } else if (err.response?.status === 401) {
         setError('❌ Authentication failed. Please log in again.');
+      } else if (err.response?.status === 403) {
+        const errorData = err.response.data;
+        if (errorData?.frozen) {
+          setError('🧊 Your account has been frozen. You cannot submit reports while your account is frozen. You can still view the news feed and existing reports.');
+        } else {
+          setError(`❌ Access denied: ${errorData?.error || 'You are not authorized to perform this action.'}`);
+        }
       } else if (err.response?.status === 500) {
         setError('❌ Server error. Please try again later or contact support.');
       } else if (err.code === 'NETWORK_ERROR' || err.code === 'ECONNREFUSED' || !err.response) {

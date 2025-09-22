@@ -37,6 +37,23 @@ const userSchema = new mongoose.Schema({
         firstName: String,
         lastName: String,
         phone: String
+    },
+    isFrozen: {
+        type: Boolean,
+        default: false
+    },
+    frozenAt: {
+        type: Date,
+        default: null
+    },
+    frozenBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Admin',
+        default: null
+    },
+    freezeReason: {
+        type: String,
+        default: null
     }
 }, {
     timestamps: true
@@ -77,6 +94,11 @@ userSchema.methods.isOnline = function() {
     if (!this.lastActivity) return false;
     const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
     return this.lastActivity > fiveMinutesAgo;
+};
+
+// Check if user can submit reports (not frozen)
+userSchema.methods.canSubmitReports = function() {
+    return !this.isFrozen && this.isActive;
 };
 
 module.exports = mongoose.model('User', userSchema);

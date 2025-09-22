@@ -34,11 +34,7 @@ const userAuth = async (req, res, next) => {
     }
 
     // Add user to request object
-    req.user = {
-      id: user._id,
-      username: user.username,
-      email: user.email
-    };
+    req.user = user;
 
     // Update user's last activity
     user.updateLastActivity().catch(err => {

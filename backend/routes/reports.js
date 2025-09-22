@@ -519,6 +519,24 @@ router.delete('/:id', auth, async (req, res) => {
 // @access  Private
 router.post('/user', require('../middleware/userAuth'), upload.array('images', 5), reportValidation, async (req, res) => {
   try {
+    // Check if user account is frozen
+    if (req.user.isFrozen === true) {
+      return res.status(403).json({
+        success: false,
+        error: 'Account is frozen. You cannot submit reports while your account is frozen.',
+        frozen: true
+      });
+    }
+
+    // Check if user can submit reports (additional validation)
+    if (req.user.isActive === false) {
+      return res.status(403).json({
+        success: false,
+        error: 'Account is not active. Please contact support.',
+        frozen: req.user.isFrozen || false
+      });
+    }
+
     // Check validation errors
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
