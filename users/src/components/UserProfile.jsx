@@ -24,10 +24,14 @@ const UserProfile = ({ onLogout }) => {
       setLoading(true);
       setError('');
       try {
-        const res = await axios.get(`${config.API_BASE_URL}/auth/me`, {
+        const res = await axios.get(`${config.API_BASE_URL}/users/me`, {
           headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
         });
-        setUser(res.data);
+        if (res.data && res.data.success) {
+          setUser(res.data.data);
+        } else {
+          setError('Invalid response format');
+        }
       } catch (err) {
         setError('Failed to load profile');
         console.error('Profile fetch error:', err);

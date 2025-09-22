@@ -29,6 +29,10 @@ const userSchema = new mongoose.Schema({
         type: Date,
         default: null
     },
+    lastActivity: {
+        type: Date,
+        default: Date.now
+    },
     profile: {
         firstName: String,
         lastName: String,
@@ -60,6 +64,19 @@ userSchema.methods.comparePassword = async function(candidatePassword) {
 userSchema.methods.updateLastLogin = function() {
     this.lastLogin = new Date();
     return this.save();
+};
+
+// Update last activity
+userSchema.methods.updateLastActivity = function() {
+    this.lastActivity = new Date();
+    return this.save();
+};
+
+// Check if user is online (active within last 5 minutes)
+userSchema.methods.isOnline = function() {
+    if (!this.lastActivity) return false;
+    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+    return this.lastActivity > fiveMinutesAgo;
 };
 
 module.exports = mongoose.model('User', userSchema);

@@ -103,6 +103,12 @@ function App() {
     }
   };
 
+  const handleSuccessfulReport = () => {
+    setShowReport(false);
+    // Auto-navigate to My Reports so user can see their submitted report
+    setCurrentView('myreports');
+  };
+
   const handleLogin = (jwt) => {
     localStorage.setItem('token', jwt);
     setToken(jwt);
@@ -169,7 +175,7 @@ function App() {
             }}
           >
             <ReportForm 
-              onReport={() => setShowReport(false)} 
+              onReport={handleSuccessfulReport} 
               onClose={() => setShowReport(false)}
             />
           </div>

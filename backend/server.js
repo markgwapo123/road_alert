@@ -5,6 +5,15 @@ const rateLimit = require('express-rate-limit');
 const path = require('path');
 require('dotenv').config();
 
+// Add global error handlers
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
+process.on('uncaughtException', (error) => {
+  console.error('❌ Uncaught Exception:', error);
+});
+
 const app = express();
 const PORT = process.env.PORT || 3001;
 

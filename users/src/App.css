@@ -2488,7 +2488,10 @@ main h1 {
   max-width: 1200px;
   margin: 0 auto;
   padding: 20px;
-  min-height: 500px;
+  height: calc(100vh - 120px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  scroll-behavior: smooth;
 }
 
 .my-reports-header {
@@ -2585,6 +2588,49 @@ main h1 {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
   gap: 20px;
+  max-height: calc(100vh - 300px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 10px;
+  margin-right: -10px;
+  scroll-behavior: smooth;
+}
+
+/* Custom Scrollbar for Reports List */
+.reports-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.reports-list::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.reports-list::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+.reports-list::-webkit-scrollbar-thumb:hover {
+  background: #a1a1a1;
+}
+
+.my-reports::-webkit-scrollbar {
+  width: 8px;
+}
+
+.my-reports::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.my-reports::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+.my-reports::-webkit-scrollbar-thumb:hover {
+  background: #a1a1a1;
 }
 
 .my-report-card {
@@ -2749,10 +2795,14 @@ main h1 {
 @media (max-width: 768px) {
   .reports-list {
     grid-template-columns: 1fr;
+    max-height: calc(100vh - 200px);
+    overflow-y: auto;
   }
   
   .my-reports {
     padding: 10px;
+    height: calc(100vh - 100px);
+    overflow-y: auto;
   }
   
   .verification-modal {

@@ -1,6 +1,7 @@
 const express = require('express');
 const Admin = require('../models/Admin');
 const Report = require('../models/Report');
+const User = require('../models/User');
 const auth = require('../middleware/auth');
 
 const router = express.Router();
@@ -46,6 +47,59 @@ router.get('/dashboard', auth, async (req, res) => {
     console.error('Dashboard error:', error);
     res.status(500).json({
       error: 'Server error while fetching dashboard data'
+    });
+  }
+});
+
+// @route   GET /api/admin/app-users
+// @desc    Get all app users with online status
+// @access  Private (admin only)
+router.get('/app-users', auth, async (req, res) => {
+  try {
+    // Get all users with basic info and activity status
+    const users = await User.find({}, {
+      password: 0 // Exclude password field
+    }).sort({ createdAt: -1 });
+
+    // Process users to include online status
+    const usersWithStatus = users.map(user => {
+      const userObj = user.toObject();
+      
+      // Calculate online status (active within last 5 minutes)
+      const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+      const isOnline = user.lastActivity && user.lastActivity > fiveMinutesAgo;
+      
+      return {
+        ...userObj,
+        isOnline,
+        lastActivityTime: user.lastActivity,
+        onlineStatus: isOnline ? 'Online' : 'Offline'
+      };
+    });
+
+    // Get user statistics
+    const totalUsers = users.length;
+    const activeUsers = users.filter(user => user.isActive).length;
+    const onlineUsers = usersWithStatus.filter(user => user.isOnline).length;
+
+    res.json({
+      success: true,
+      data: {
+        users: usersWithStatus,
+        stats: {
+          totalUsers,
+          activeUsers,
+          onlineUsers,
+          offlineUsers: totalUsers - onlineUsers
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('Get app users error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Server error while fetching users'
     });
   }
 });

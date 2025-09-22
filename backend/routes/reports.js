@@ -41,11 +41,11 @@ const upload = multer({
 
 // Validation rules
 const reportValidation = [
-  body('type').isIn(['pothole', 'debris', 'flooding', 'construction', 'accident', 'other']),
+  body('type').isIn(['pothole', 'debris', 'flooding', 'construction', 'accident', 'other', 'emergency', 'caution', 'info', 'safe']),
   body('description').isLength({ min: 10, max: 500 }),
-  body('location.address').isLength({ min: 3, max: 200 }).withMessage('Address must be between 3 and 200 characters'),
-  body('location.coordinates.latitude').isFloat({ min: -90, max: 90 }).withMessage('Latitude must be between -90 and 90'),
-  body('location.coordinates.longitude').isFloat({ min: -180, max: 180 }).withMessage('Longitude must be between -180 and 180'),
+  body('location[address]').isLength({ min: 3, max: 200 }).withMessage('Address must be between 3 and 200 characters'),
+  body('location[coordinates][latitude]').isFloat({ min: -90, max: 90 }).withMessage('Latitude must be between -90 and 90'),
+  body('location[coordinates][longitude]').isFloat({ min: -180, max: 180 }).withMessage('Longitude must be between -180 and 180'),
   body('severity').isIn(['low', 'medium', 'high'])
 ];
 
@@ -109,6 +109,63 @@ router.get('/', async (req, res) => {
     console.error('Get reports error:', error);
     res.status(500).json({
       error: 'Server error while fetching reports'
+    });
+  }
+});
+
+// @route   GET /api/reports/my-reports
+// @desc    Get current user's reports
+// @access  Private
+router.get('/my-reports', require('../middleware/userAuth'), async (req, res) => {
+  try {
+    const { 
+      page = 1, 
+      limit = 10, 
+      status, 
+      type, 
+      severity,
+      sortBy = 'createdAt',
+      sortOrder = 'desc'
+    } = req.query;
+
+    // Build filter object for user's reports
+    const filter = { 'reportedBy.id': req.user.id };
+    if (status) filter.status = status;
+    if (type) filter.type = type;
+    if (severity) filter.severity = severity;
+
+    // Build sort object
+    const sort = {};
+    sort[sortBy] = sortOrder === 'desc' ? -1 : 1;
+
+    // Execute query with pagination
+    const reports = await Report.find(filter)
+      .sort(sort)
+      .limit(limit * 1)
+      .skip((page - 1) * limit)
+      .populate('verifiedBy', 'username')
+      .exec();
+
+    // Get total count for pagination
+    const totalReports = await Report.countDocuments(filter);
+
+    res.json({
+      success: true,
+      reports: reports,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages: Math.ceil(totalReports / limit),
+        totalReports,
+        hasNextPage: page < Math.ceil(totalReports / limit),
+        hasPrevPage: page > 1
+      }
+    });
+
+  } catch (error) {
+    console.error('Get user reports error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Server error while fetching report'
     });
   }
 });
@@ -437,9 +494,12 @@ router.post('/user', require('../middleware/userAuth'), upload.array('images', 5
         }
       },
       images: images,
-      submittedBy: req.user.id, // User ID from authentication
-      reporterName: req.user.username,
-      reporterEmail: req.user.email,
+      reportedBy: {
+        id: req.user.id,
+        name: req.user.username,
+        username: req.user.username,
+        email: req.user.email
+      },
       submittedAt: new Date(),
       isAnonymous: false
     };

@@ -36,12 +36,15 @@ export const authAPI = {
 };
 
 export const userAPI = {
-  getProfile: (token) => axios.get(`${API_BASE_URL}/users/profile`, {
+  getProfile: (token) => axios.get(`${API_BASE_URL}/users/me`, {
     headers: { Authorization: `Bearer ${token}` }
   }),
 };
 
 export const reportsAPI = {
+  getMyReports: (token) => axios.get(`${API_BASE_URL}/reports/my-reports`, {
+    headers: { Authorization: `Bearer ${token}` }
+  }),
   getVerified: (token) => axios.get(`${API_BASE_URL}/reports/verified`, {
     headers: { Authorization: `Bearer ${token}` }
   }),

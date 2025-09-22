@@ -7,6 +7,7 @@ import AdminProfile from './pages/AdminProfile'
 import ChangePassword from './pages/ChangePassword'
 import CreateAdmin from './pages/CreateAdmin'
 import ReportsPDF from './pages/ReportsPDF'
+import Users from './pages/Users'
 import Navbar from './components/Navbar'
 import './App.css'
 
@@ -32,6 +33,11 @@ function App() {
             <Route path="/reports" element={
               <PrivateRoute>
                 <ReportsManagement />
+              </PrivateRoute>
+            } />
+            <Route path="/users" element={
+              <PrivateRoute>
+                <Users />
               </PrivateRoute>
             } />
             <Route path="/map" element={<MapView />} />

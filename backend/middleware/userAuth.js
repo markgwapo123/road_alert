@@ -40,6 +40,11 @@ const userAuth = async (req, res, next) => {
       email: user.email
     };
 
+    // Update user's last activity
+    user.updateLastActivity().catch(err => {
+      console.log('Failed to update user activity:', err);
+    });
+
     next();
 
   } catch (error) {

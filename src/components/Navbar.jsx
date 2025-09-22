@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom'
-import { MapPinIcon, ChartBarIcon, DocumentTextIcon, UserIcon, ChevronDownIcon, CogIcon, KeyIcon, UserPlusIcon, ArrowRightOnRectangleIcon } from '@heroicons/react/24/outline'
+import { MapPinIcon, ChartBarIcon, DocumentTextIcon, UserIcon, ChevronDownIcon, CogIcon, KeyIcon, UserPlusIcon, ArrowRightOnRectangleIcon, UsersIcon } from '@heroicons/react/24/outline'
 import { useState } from 'react'
 
 const Navbar = () => {
@@ -9,6 +9,7 @@ const Navbar = () => {
   const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: ChartBarIcon },
     { name: 'Reports', href: '/reports', icon: DocumentTextIcon },
+    { name: 'Users', href: '/users', icon: UsersIcon },
     { name: 'Map View', href: '/map', icon: MapPinIcon },
   ]
 
