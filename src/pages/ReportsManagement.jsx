@@ -128,7 +128,7 @@ const ReportsManagement = () => {
       {/* Header with navigation indicator */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Reports Management</h1>
+          <h1 className="text-2xl font-bold text-gray-800">Reports Management</h1>
           {filterStatus !== 'all' && (
             <div className="mt-1 flex items-center text-sm text-blue-600">
               <span>Filtered by: </span>
@@ -144,7 +144,7 @@ const ReportsManagement = () => {
           )}
         </div>
         <div className="flex items-center gap-4">
-          <div className="text-sm text-gray-500">
+          <div className="text-sm font-medium text-gray-700">
             Total Reports: {reports.length} | Showing: {filteredReports.length}
           </div>
           <button
@@ -167,7 +167,7 @@ const ReportsManagement = () => {
           <input
             type="text"
             placeholder="Search reports..."
-            className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 placeholder-gray-500"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -175,7 +175,7 @@ const ReportsManagement = () => {
         <div className="relative">
           <FunnelIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
           <select
-            className="pl-10 pr-8 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white"
+            className="pl-10 pr-8 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white text-gray-900"
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
           >
@@ -187,282 +187,215 @@ const ReportsManagement = () => {
         </div>
       </div>
 
-      {/* Reports List */}
-      <div className="bg-white shadow rounded-lg overflow-hidden">
+      {/* Reports Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
         {filteredReports.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-gray-500">No reports found.</p>
+          <div className="col-span-full text-center py-12">
+            <div className="mx-auto h-12 w-12 text-gray-400">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+            </div>
+            <h3 className="mt-4 text-lg font-bold text-gray-800">No reports found</h3>
+            <p className="mt-2 font-medium text-gray-700">Try adjusting your search criteria or filters.</p>
           </div>
-        ) : (          <div className="divide-y divide-gray-200">
-            {filteredReports.map((report) => (
-              <div key={report._id} className="p-6">
-                {/* Report Header */}
-                <div className="flex items-center gap-3 mb-4">
-                  <h3 className="text-xl font-semibold text-gray-900 capitalize">
-                    {report.type}
-                  </h3>
-                  <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(report.status)}`}>
-                    {report.status}
-                  </span>
-                  <span className={`text-sm font-medium ${getSeverityColor(report.severity)}`}>
-                    {report.severity} severity
-                  </span>
-                </div>
-
-                {/* Main Content Grid */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                  {/* Left Column - Report Details */}
-                  <div className="space-y-4">
-                    {/* Basic Info */}
-                    <div>
-                      <h4 className="text-sm font-medium text-gray-500 mb-2">Location</h4>
-                      <p className="text-gray-900 bg-gray-50 p-3 rounded-lg">{report.location?.address || 'No address provided'}</p>
+        ) : (
+          filteredReports.map((report) => (
+            <div key={report._id} className="bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300 border border-gray-100 overflow-hidden">
+              {/* Card Header */}
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-6 py-4 border-b border-gray-100">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <div className="p-2 bg-white rounded-lg shadow-sm">
+                      <svg className="h-5 w-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.464 0L4.35 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                      </svg>
                     </div>
-                    
                     <div>
-                      <h4 className="text-sm font-medium text-gray-500 mb-2">Description</h4>
-                      <p className="text-gray-900 bg-gray-50 p-3 rounded-lg">{report.description}</p>
-                    </div>
-                    
-                    <div>
-                      <h4 className="text-sm font-medium text-gray-500 mb-2">Date & Time</h4>
-                      <p className="text-gray-900">
-                        {new Date(report.createdAt).toLocaleDateString('en-US', { 
-                          weekday: 'long',
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric'
-                        })} at {new Date(report.createdAt).toLocaleTimeString('en-US', {
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
-                      </p>
-                    </div>                    <div>
-                      <h4 className="text-sm font-medium text-gray-500 mb-2">Reporter Information</h4>
-                      <div className="text-gray-900">
-                        <p className="font-medium">
-                          {report.reportedBy?.username || report.reportedBy?.name || 'Anonymous Reporter'}
-                          {report.reportedBy?.username && report.reportedBy?.name && 
-                            <span className="text-sm text-gray-600 ml-2">({report.reportedBy.name})</span>
-                          }
-                        </p>
-                        {report.reportedBy?.email && (
-                          <p className="text-sm text-gray-600 mt-1">📧 {report.reportedBy.email}</p>
-                        )}
-                        {report.reportedBy?.phone && (
-                          <p className="text-sm text-gray-600 mt-1">📱 {report.reportedBy.phone}</p>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Quick Info Card */}
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                      <h5 className="text-sm font-medium text-blue-900 mb-2">Report Details</h5>
-                      <div className="space-y-1 text-sm text-blue-800">
-                        <p>Report ID: {report._id}</p>
-                        <p>Priority: {report.severity} severity</p>
-                        <p>Status: {report.status}</p>
-                        {report.verifiedAt && (
-                          <p>Verified: {new Date(report.verifiedAt).toLocaleDateString()}</p>
-                        )}
-                        {report.location?.coordinates && (
-                          <div className="mt-2 pt-2 border-t border-blue-200">
-                            <p className="font-medium">Coordinates:</p>
-                            <p>Lat: {report.location.coordinates.latitude}</p>
-                            <p>Lng: {report.location.coordinates.longitude}</p>
-                          </div>
-                        )}
-                      </div>
+                      <h3 className="text-lg font-bold text-gray-800 capitalize">{report.type}</h3>
+                      <p className="text-sm font-medium text-gray-700">Report #{report._id.slice(-8)}</p>
                     </div>
                   </div>
+                  <div className="flex flex-col items-end space-y-1">
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(report.status)}`}>
+                      {report.status.toUpperCase()}
+                    </span>
+                    <span className={`text-xs font-medium ${getSeverityColor(report.severity)}`}>
+                      {report.severity.toUpperCase()} PRIORITY
+                    </span>
+                  </div>
+                </div>
+              </div>
 
-                  {/* Right Column - Map and Images */}
-                  <div className="space-y-4">
-                    {/* Map Section */}
-                    <div>
-                      <h4 className="text-sm font-medium text-gray-500 mb-3">Location on Map</h4>
-                      {report.location?.coordinates ? (
-                        <div className="space-y-3">
-                          <div className="w-full h-64 bg-gray-200 rounded-lg overflow-hidden shadow-sm border border-gray-200">
-                            <iframe
-                              src={`https://maps.google.com/maps?q=${report.location.coordinates.latitude},${report.location.coordinates.longitude}&z=15&output=embed`}
-                              width="100%"
-                              height="100%"
-                              style={{ border: 0 }}
-                              title="Report Location Map"
-                              loading="lazy"
-                              allowFullScreen
-                            ></iframe>
+              {/* Card Body */}
+              <div className="p-6 space-y-4">
+                {/* Location */}
+                <div className="flex items-start space-x-3">
+                  <div className="p-1.5 bg-red-100 rounded-lg">
+                    <svg className="h-4 w-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-gray-800">Location</p>
+                    <p className="text-sm font-medium text-gray-700 truncate" title={report.location?.address}>
+                      {report.location?.address || 'No address provided'}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Description */}
+                <div className="flex items-start space-x-3">
+                  <div className="p-1.5 bg-blue-100 rounded-lg">
+                    <svg className="h-4 w-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h7" />
+                    </svg>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-gray-800">Description</p>
+                    <p className="text-sm font-medium text-gray-700 line-clamp-2" title={report.description}>
+                      {report.description}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Reporter & Date */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="flex items-center space-x-2">
+                    <div className="p-1.5 bg-green-100 rounded-lg">
+                      <svg className="h-4 w-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      </svg>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-medium text-gray-600">Reporter</p>
+                      <p className="text-sm font-bold text-gray-800 truncate">
+                        {report.reportedBy?.name || report.reportedBy?.username || 'Anonymous'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <div className="p-1.5 bg-purple-100 rounded-lg">
+                      <svg className="h-4 w-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-medium text-gray-600">Date</p>
+                      <p className="text-sm font-bold text-gray-800">
+                        {new Date(report.createdAt).toLocaleDateString('en-US', { 
+                          month: 'short', 
+                          day: 'numeric',
+                          year: '2-digit'
+                        })}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Image Preview */}
+                {report.images && report.images.length > 0 && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-bold text-gray-800">Images ({report.images.length})</p>
+                      <button className="text-xs font-medium text-blue-600 hover:text-blue-800">View All</button>
+                    </div>
+                    <div className="flex space-x-2 overflow-x-auto">
+                      {report.images.slice(0, 3).map((image, index) => {
+                        const filename = image?.filename || image;
+                        const imageUrl = `${config.BACKEND_URL}/uploads/${filename}`;
+                        return (
+                          <div key={index} className="flex-shrink-0">
+                            <img
+                              src={imageUrl}
+                              alt={`Report image ${index + 1}`}
+                              className="h-16 w-16 object-cover rounded-lg border border-gray-200"
+                              onError={(e) => {
+                                e.target.src = `data:image/svg+xml;utf8,${encodeURIComponent(`
+                                  <svg xmlns='http://www.w3.org/2000/svg' width='64' height='64'>
+                                    <rect width='64' height='64' fill='%23f3f4f6'/>
+                                    <text x='32' y='32' text-anchor='middle' dy='0.3em' fill='%236b7280' font-size='10'>IMG</text>
+                                  </svg>
+                                `)}`;
+                              }}
+                            />
                           </div>
-                          
-                          <div className="flex gap-2 text-sm">
-                            <a
-                              href={`https://www.google.com/maps?q=${report.location.coordinates.latitude},${report.location.coordinates.longitude}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-blue-600 hover:text-blue-800 underline"
-                            >
-                              Open in Google Maps
-                            </a>
-                            <span className="text-gray-300">|</span>
-                            <a
-                              href={`https://www.openstreetmap.org/?mlat=${report.location.coordinates.latitude}&mlon=${report.location.coordinates.longitude}#map=15/${report.location.coordinates.latitude}/${report.location.coordinates.longitude}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-blue-600 hover:text-blue-800 underline"
-                            >
-                              OpenStreetMap
-                            </a>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="w-full h-64 bg-gray-100 rounded-lg flex items-center justify-center border border-gray-200">
-                          <div className="text-center">
-                            <div className="text-gray-400 mb-2">
-                              <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                              </svg>
-                            </div>
-                            <p className="text-gray-500 text-sm">No location coordinates available</p>
-                          </div>
+                        );
+                      })}
+                      {report.images.length > 3 && (
+                        <div className="flex-shrink-0 h-16 w-16 bg-gray-100 rounded-lg border border-gray-200 flex items-center justify-center">
+                          <span className="text-xs font-bold text-gray-700">+{report.images.length - 3}</span>
                         </div>
                       )}
                     </div>
-
-                    {/* Images Section */}
-                    {report.images && report.images.length > 0 && (
-                      <div>
-                        <h4 className="text-sm font-medium text-gray-500 mb-3">
-                          Uploaded Images ({report.images.length})
-                        </h4>                        <div className="grid grid-cols-1 gap-3">
-                          {report.images.map((image, index) => {
-                            // Support both object (with filename) & direct string values
-                            const filename = image?.filename || image;
-                            // Bust cache if images were recently added / replaced
-                            const imageUrl = `${config.BACKEND_URL}/uploads/${filename}`;
-                            return (
-                              <div key={index} className="relative group">
-                                <img
-                                  src={imageUrl}
-                                  alt={`Report image ${index + 1}`}
-                                  className="w-full h-48 object-cover rounded-lg shadow-sm border border-gray-200 transition-opacity duration-200"
-                                  loading="lazy"
-                                  onError={(e) => {
-                                    console.error('❌ Image load failed:', imageUrl);
-                                    const fallback = `data:image/svg+xml;utf8,${encodeURIComponent(`
-                                      <svg xmlns='http://www.w3.org/2000/svg' width='400' height='200'>
-                                        <rect width='400' height='200' fill='%23f3f4f6'/>
-                                        <text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='%236b7280' font-size='14'>Image Not Available</text>
-                                        <text x='50%' y='65%' dominant-baseline='middle' text-anchor='middle' fill='%239ca3af' font-size='10'>${filename}</text>
-                                      </svg>
-                                    `)}`;
-                                    e.target.src = fallback;
-                                    e.target.classList.add('object-contain');
-                                  }}
-                                  onLoad={(ev) => {
-                                    console.log('✅ Image loaded:', imageUrl);
-                                    // If server accidentally returned HTML (CSP error), width/height might be 0
-                                    if (ev.target.naturalWidth === 0) {
-                                      console.warn('Image naturalWidth is 0, forcing fallback');
-                                      ev.target.onerror();
-                                    }
-                                  }}
-                                />
-                                <div className="absolute bottom-2 left-2 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded">
-                                  {image.originalName || `Image ${index + 1}`}
-                                </div>
-                                {/* Debug filename display */}
-                                <div className="absolute top-2 right-2 bg-blue-600 text-white text-xs px-2 py-1 rounded opacity-80">
-                                  {filename}
-                                </div>
-                                <div className="absolute inset-0 hidden group-hover:flex items-center justify-center bg-black bg-opacity-40 text-white text-xs font-medium rounded-lg">
-                                  Click to open
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                        
-                        {/* Debug information panel */}
-                        <div className="mt-3 p-3 bg-gray-50 rounded text-xs text-gray-600">
-                          <strong>🔍 Debug Info:</strong> Images served from: <code>localhost:3001/uploads/</code>
-                          <br />
-                          <strong>📊 Image count:</strong> {report.images.length}
-                          <br />
-                          <strong>🌐 Troubleshooting:</strong> If images don't load, check Network tab in DevTools
-                        </div>
-                      </div>
-                    )}
-
-                    {(!report.images || report.images.length === 0) && (
-                      <div>
-                        <h4 className="text-sm font-medium text-gray-500 mb-3">Images</h4>
-                        <div className="w-full h-32 bg-gray-100 rounded-lg flex items-center justify-center border border-gray-200">
-                          <div className="text-center">
-                            <div className="text-gray-400 mb-1">
-                              <svg className="w-8 h-8 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                              </svg>
-                            </div>
-                            <p className="text-gray-500 text-xs">No images uploaded</p>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Action Buttons */}
-                {report.status === 'pending' && (
-                  <div className="border-t border-gray-200 pt-4">
-                    <h5 className="text-sm font-medium text-gray-900 mb-3">Actions Required</h5>
-                    <div className="flex gap-3">
-                      <button
-                        onClick={() => handleAccept(report._id)}
-                        className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 focus:ring-2 focus:ring-green-500 focus:ring-offset-2 font-medium"
-                      >
-                        ✓ Accept Report
-                      </button>
-                      <button
-                        onClick={() => handleReject(report._id)}
-                        className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 focus:ring-2 focus:ring-red-500 focus:ring-offset-2 font-medium"
-                      >
-                        ✗ Reject Report
-                      </button>
-                      <button
-                        onClick={() => handleDelete(report._id)}
-                        className="px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 font-medium"
-                      >
-                        🗑️ Delete Report
-                      </button>
-                    </div>
                   </div>
                 )}
-                
-                {report.status !== 'pending' && (
-                  <div className="border-t border-gray-200 pt-4">
-                    <div className="flex justify-between items-center">
-                      <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 flex-1 mr-3">
-                        <h5 className="text-sm font-medium text-gray-900 mb-1">Report Status</h5>
-                        <p className="text-sm text-gray-600">
-                          This report has been {report.status}. 
-                          {report.status === 'verified' && ' It is now visible to the public.'}
-                          {report.status === 'rejected' && ' It has been rejected and is not visible to the public.'}
-                        </p>
-                      </div>
-                      <button
-                        onClick={() => handleDelete(report._id)}
-                        className="px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 font-medium"
-                      >
-                        🗑️ Delete Report
-                      </button>
+
+                {/* Map Preview */}
+                {report.location?.coordinates && (
+                  <div className="space-y-2">
+                    <p className="text-sm font-bold text-gray-800">Location Map</p>
+                    <div className="h-32 bg-gray-100 rounded-lg overflow-hidden border border-gray-200">
+                      <iframe
+                        src={`https://maps.google.com/maps?q=${report.location.coordinates.latitude},${report.location.coordinates.longitude}&z=15&output=embed`}
+                        width="100%"
+                        height="100%"
+                        style={{ border: 0 }}
+                        title="Report Location"
+                        loading="lazy"
+                      ></iframe>
                     </div>
                   </div>
                 )}
               </div>
-            ))}
-          </div>
+
+              {/* Card Footer - Actions */}
+              <div className="px-6 py-4 bg-gray-50 border-t border-gray-100">
+                {report.status === 'pending' ? (
+                  <div className="space-y-3">
+                    <p className="text-xs font-bold text-gray-700 text-center">Action Required</p>
+                    <div className="grid grid-cols-3 gap-2">
+                      <button
+                        onClick={() => handleAccept(report._id)}
+                        className="px-3 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 focus:ring-2 focus:ring-green-500 focus:ring-offset-1 transition-colors font-medium text-center"
+                      >
+                        ✓ Accept
+                      </button>
+                      <button
+                        onClick={() => handleReject(report._id)}
+                        className="px-3 py-2 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 focus:ring-2 focus:ring-red-500 focus:ring-offset-1 transition-colors font-medium text-center"
+                      >
+                        ✗ Reject
+                      </button>
+                      <button
+                        onClick={() => handleDelete(report._id)}
+                        className="px-3 py-2 bg-gray-600 text-white text-sm rounded-lg hover:bg-gray-700 focus:ring-2 focus:ring-gray-500 focus:ring-offset-1 transition-colors font-medium text-center"
+                      >
+                        🗑️ Delete
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <div className={`w-2 h-2 rounded-full ${
+                        report.status === 'verified' ? 'bg-green-500' : 'bg-red-500'
+                      }`}></div>
+                      <span className="text-sm font-medium text-gray-700">
+                        {report.status === 'verified' ? 'Verified & Published' : 'Rejected'}
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => handleDelete(report._id)}
+                      className="px-3 py-1.5 bg-gray-600 text-white text-xs rounded-md hover:bg-gray-700 transition-colors"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          ))
         )}
       </div>
     </div>

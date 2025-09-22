@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { UsersIcon, ClockIcon, CheckCircleIcon, XCircleIcon, UserGroupIcon, EyeIcon, DocumentTextIcon, CalendarIcon, MapPinIcon, PhoneIcon } from '@heroicons/react/24/outline'
+import { UsersIcon, ClockIcon, CheckCircleIcon, XCircleIcon, UserGroupIcon, EyeIcon, DocumentTextIcon, CalendarIcon, MapPinIcon, PhoneIcon, FunnelIcon, UserIcon } from '@heroicons/react/24/outline'
 
 const Users = () => {
   const [users, setUsers] = useState([])
@@ -13,10 +13,25 @@ const Users = () => {
   const [selectedReport, setSelectedReport] = useState(null)
   const [showReportModal, setShowReportModal] = useState(false)
   const [loadingFreezeAction, setLoadingFreezeAction] = useState(false)
+  const [filterType, setFilterType] = useState('all')
+  const [filteredUsers, setFilteredUsers] = useState([])
 
   useEffect(() => {
     fetchUsers()
   }, [])
+
+  useEffect(() => {
+    // Filter users based on selected filter type
+    if (filterType === 'all') {
+      setFilteredUsers(users)
+    } else if (filterType === 'online') {
+      setFilteredUsers(users.filter(user => user.isOnline))
+    } else if (filterType === 'active') {
+      setFilteredUsers(users.filter(user => user.isActive))
+    } else if (filterType === 'frozen') {
+      setFilteredUsers(users.filter(user => user.isFrozen))
+    }
+  }, [users, filterType])
 
   const fetchUsers = async () => {
     try {
@@ -183,6 +198,21 @@ const Users = () => {
     }
   }
 
+  const handleStatCardClick = (filterType) => {
+    setFilterType(filterType)
+  }
+
+  const clearFilter = () => {
+    setFilterType('all')
+  }
+
+  const getStatCardStyle = (cardType) => {
+    const isActive = filterType === cardType
+    return `bg-white rounded-lg shadow-md p-6 cursor-pointer transition-all duration-200 transform hover:scale-105 hover:shadow-lg ${
+      isActive ? 'ring-2 ring-blue-500 bg-blue-50' : 'hover:bg-gray-50'
+    }`
+  }
+
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A'
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -246,62 +276,108 @@ const Users = () => {
 
         {/* Statistics Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white rounded-lg shadow-md p-6">
+          <div 
+            className={getStatCardStyle('all')}
+            onClick={() => handleStatCardClick('all')}
+            title="Click to show all users"
+          >
             <div className="flex items-center">
               <UserGroupIcon className="h-8 w-8 text-blue-600" />
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Total Users</p>
                 <p className="text-2xl font-bold text-gray-900">{stats.totalUsers || 0}</p>
+                <p className="text-xs text-blue-600 mt-1">Click to view all</p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow-md p-6">
+          <div 
+            className={getStatCardStyle('online')}
+            onClick={() => handleStatCardClick('online')}
+            title="Click to show only online users"
+          >
             <div className="flex items-center">
               <CheckCircleIcon className="h-8 w-8 text-green-600" />
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Online Users</p>
                 <p className="text-2xl font-bold text-green-600">{stats.onlineUsers || 0}</p>
+                <p className="text-xs text-green-600 mt-1">Click to filter</p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow-md p-6">
+          <div 
+            className={getStatCardStyle('active')}
+            onClick={() => handleStatCardClick('active')}
+            title="Click to show only active users"
+          >
             <div className="flex items-center">
               <EyeIcon className="h-8 w-8 text-purple-600" />
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Active Users</p>
                 <p className="text-2xl font-bold text-purple-600">{stats.activeUsers || 0}</p>
+                <p className="text-xs text-purple-600 mt-1">Click to filter</p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow-md p-6">
+          <div 
+            className={getStatCardStyle('frozen')}
+            onClick={() => handleStatCardClick('frozen')}
+            title="Click to show only frozen users"
+          >
             <div className="flex items-center">
               <XCircleIcon className="h-8 w-8 text-red-600" />
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Frozen Users</p>
                 <p className="text-2xl font-bold text-red-600">{stats.frozenUsers || 0}</p>
+                <p className="text-xs text-red-600 mt-1">Click to filter</p>
               </div>
             </div>
           </div>
         </div>
 
+        {/* Filter Indicator */}
+        {filterType !== 'all' && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <FunnelIcon className="h-5 w-5 text-blue-600 mr-2" />
+                <span className="text-blue-800 font-medium">
+                  Showing {filterType} users ({filteredUsers.length} total)
+                </span>
+              </div>
+              <button 
+                onClick={clearFilter}
+                className="text-blue-600 hover:text-blue-800 underline text-sm"
+              >
+                Clear filter
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Users List */}
         <div className="bg-white rounded-lg shadow-md">
           <div className="px-6 py-4 border-b border-gray-200">
-            <h2 className="text-xl font-semibold text-gray-900">All Users</h2>
-            <p className="text-gray-600">Total: {users.length} users</p>
+            <h2 className="text-xl font-semibold text-gray-900">
+              {filterType === 'all' ? 'All Users' : `${filterType.charAt(0).toUpperCase() + filterType.slice(1)} Users`}
+            </h2>
+            <p className="text-gray-600">
+              {filterType === 'all' ? `Total: ${users.length} users` : `Showing: ${filteredUsers.length} of ${users.length} users`}
+            </p>
           </div>
 
-          {users.length === 0 ? (
+          {filteredUsers.length === 0 ? (
             <div className="text-center py-12">
               <UsersIcon className="h-12 w-12 text-gray-400 mx-auto" />
-              <p className="mt-4 text-gray-600">No users found</p>
+              <p className="mt-4 text-gray-600">
+                {filterType === 'all' ? 'No users found' : `No ${filterType} users found`}
+              </p>
             </div>
           ) : (
             <div className="divide-y divide-gray-200">
-              {users.map((user) => {
+              {filteredUsers.map((user) => {
                 const StatusIcon = getStatusIcon(user.isOnline)
                 return (
                   <div key={user._id} className="px-6 py-4 hover:bg-gray-50 transition-colors">
