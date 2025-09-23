@@ -119,14 +119,7 @@ const NewsFeed = () => {
 
   return (
     <div className="news-feed">
-      <h2 style={{ 
-        textAlign: 'center', 
-        marginBottom: '20px', 
-        color: '#1f2937',
-        fontSize: '24px',
-        fontWeight: '600',
-        letterSpacing: '0.5px'
-      }}>
+      <h2 className="news-feed-title">
         Recent Road Alerts
       </h2>
       
@@ -143,15 +136,7 @@ const NewsFeed = () => {
           No reports available yet
         </div>
       ) : (
-        <div style={{ 
-          display: 'grid', 
-          gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))',
-          gap: '16px',
-          padding: '0 16px',
-          maxWidth: '1400px',
-          margin: '0 auto',
-          width: '100%'
-        }}>
+        <div className="news-feed-grid">
           {reports.map((report) => {
             const alertStyle = ALERT_COLORS[report.type] || ALERT_COLORS.info;
             
@@ -159,211 +144,85 @@ const NewsFeed = () => {
               <div
                 key={report._id}
                 onClick={() => handleReportClick(report)}
-                style={{
-                  background: '#ffffff',
-                  color: '#1f2937',
-                  padding: '16px',
-                  borderRadius: '12px',
-                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '12px',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                  position: 'relative',
-                  border: '1px solid #e5e7eb'
-                }}
-                onMouseOver={(e) => {
-                  e.currentTarget.style.transform = 'translateY(-2px)';
-                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
-                }}
-                onMouseOut={(e) => {
-                  e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.1)';
-                }}
+                className="report-card"
               >
-                {/* Header with Alert Type and Date */}
-                <div style={{ 
-                  display: 'flex', 
-                  justifyContent: 'space-between',
-                  alignItems: 'flex-start',
-                  marginBottom: '8px'
-                }}>
-                  <h3 style={{ 
-                    margin: 0, 
-                    fontSize: '16px', 
-                    fontWeight: '600',
-                    color: '#1f2937',
-                    textTransform: 'capitalize'
+                {/* Mobile-optimized Header */}
+                <div className="report-card-header">
+                  <div className="report-type-badge" style={{
+                    background: alertStyle.background,
+                    color: 'white'
                   }}>
-                    {report.type.replace('_', ' ')} alert
-                  </h3>
-                  <div style={{ 
-                    fontSize: '11px', 
-                    color: '#6b7280',
-                    fontWeight: '500'
-                  }}>
+                    {alertStyle.icon} {report.type.replace('_', ' ')}
+                  </div>
+                  <div className="report-date">
                     {formatDate(report.createdAt)}
                   </div>
                 </div>
                 
-                {/* Description */}
-                <p style={{ 
-                  margin: 0, 
-                  fontSize: '14px', 
-                  lineHeight: '1.4',
-                  marginBottom: '12px',
-                  color: '#4b5563',
-                  display: '-webkit-box',
-                  WebkitLineClamp: 2,
-                  WebkitBoxOrient: 'vertical',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis'
-                }}>
-                  {report.description}
-                </p>
+                {/* Compact Content Section */}
+                <div className="report-content">
+                  <p className="report-description">
+                    {report.description}
+                  </p>
                   
-                  {/* Image and Map Section */}
-                  <div style={{ 
-                    display: 'flex', 
-                    gap: '8px', 
-                    marginBottom: '12px',
-                    height: '120px'
-                  }}>
+                  {/* Mobile-optimized Media Section */}
+                  <div className="report-media">
                     {/* Report Image */}
-                    {report.images && report.images.length > 0 ? (
-                      <div style={{ flex: '1' }}>
+                    <div className="report-image-container">
+                      {report.images && report.images.length > 0 ? (
                         <img 
                           src={`${config.BACKEND_URL}/uploads/${report.images[0].filename || report.images[0]}`}
-                          alt="Report preview"
-                          style={{
-                            width: '100%',
-                            height: '120px',
-                            objectFit: 'contain',
-                            backgroundColor: '#f9fafb',
-                            borderRadius: '6px',
-                            border: '1px solid #e5e7eb'
-                          }}
+                          alt="Report"
+                          className="report-image"
                           onError={(e) => {
-                            console.error('Image failed to load:', e.target.src);
-                            console.log('Report images data:', report.images);
                             e.target.style.display = 'none';
                             e.target.parentElement.innerHTML = `
-                              <div style="
-                                width: 100%; 
-                                height: 120px; 
-                                display: flex; 
-                                align-items: center; 
-                                justify-content: center; 
-                                background-color: #f3f4f6; 
-                                border-radius: 6px; 
-                                color: #6b7280;
-                                border: 1px solid #e5e7eb;
-                              ">
-                                <div style="text-align: center;">
-                                  <div style="font-size: 24px; margin-bottom: 4px;">📷</div>
-                                  <div style="font-size: 12px;">Image not available</div>
-                                </div>
+                              <div class="report-image-placeholder">
+                                <span class="placeholder-icon">📷</span>
+                                <span class="placeholder-text">No Image</span>
                               </div>
                             `;
                           }}
-                          onMouseOver={(e) => {
-                            e.target.style.transform = 'scale(1.01)';
-                          }}
-                          onMouseOut={(e) => {
-                            e.target.style.transform = 'scale(1)';
-                          }}
                         />
-                      </div>
-                    ) : (
-                      <div style={{ 
-                        flex: '1',
-                        height: '120px',
-                        backgroundColor: '#f9fafb',
-                        borderRadius: '6px',
-                        border: '1px solid #e5e7eb',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: '#6b7280',
-                        fontSize: '12px'
-                      }}>
-                        No Image
-                      </div>
-                    )}
-                    
-                    {/* Map Section */}
-                    <div style={{ flex: '1' }}>
-                      {report.location && report.location.coordinates ? (
-                        <div style={{
-                          width: '100%',
-                          height: '120px',
-                          borderRadius: '6px',
-                          border: '1px solid #e5e7eb',
-                          overflow: 'hidden',
-                          position: 'relative',
-                          backgroundColor: '#f9fafb'
-                        }}>
-                          <iframe
-                            src={`https://www.google.com/maps/embed?pb=!1m14!1m12!1m3!1d3921.4!2d${report.location.coordinates?.longitude}!3d${report.location.coordinates?.latitude}!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!5e0!3m2!1sen!2sph!4v1635820000000!5m2!1sen!2sph`}
-                            width="100%"
-                            height="100%"
-                            style={{ border: 0 }}
-                            allowFullScreen=""
-                            loading="lazy"
-                            referrerPolicy="no-referrer-when-downgrade"
-                          ></iframe>
-                        </div>
                       ) : (
-                        <div style={{
-                          width: '100%',
-                          height: '120px',
-                          backgroundColor: '#f9fafb',
-                          borderRadius: '6px',
-                          border: '1px solid #e5e7eb',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          color: '#6b7280',
-                          fontSize: '12px',
-                          flexDirection: 'column',
-                          gap: '4px'
-                        }}>
-                          <span>📍</span>
-                          <span>Location not available</span>
+                        <div className="report-image-placeholder">
+                          <span className="placeholder-icon">📷</span>
+                          <span className="placeholder-text">No Image</span>
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Compact Map */}
+                    <div className="report-map-container">
+                      {report.location && report.location.coordinates ? (
+                        <iframe
+                          src={`https://www.google.com/maps/embed?pb=!1m14!1m12!1m3!1d3921.4!2d${report.location.coordinates?.longitude}!3d${report.location.coordinates?.latitude}!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!5e0!3m2!1sen!2sph!4v1635820000000!5m2!1sen!2sph`}
+                          className="report-map"
+                          loading="lazy"
+                          referrerPolicy="no-referrer-when-downgrade"
+                        ></iframe>
+                      ) : (
+                        <div className="report-map-placeholder">
+                          <span className="placeholder-icon">📍</span>
+                          <span className="placeholder-text">No Location</span>
                         </div>
                       )}
                     </div>
                   </div>
+                </div>
                   
-                  {/* Footer Information */}
-                  <div style={{ 
-                    display: 'flex', 
-                    justifyContent: 'space-between', 
-                    alignItems: 'center',
-                    fontSize: '12px',
-                    color: '#6b7280',
-                    paddingTop: '8px',
-                    borderTop: '1px solid #f3f4f6'
-                  }}>
-                    <div>
-                      <div style={{ marginBottom: '2px' }}>
-                        Reported by: <span style={{ fontWeight: '500', color: '#374151' }}>{report.reportedBy?.name || report.reportedBy?.username || 'Anonymous'}</span>
-                      </div>
-                    </div>
-                    
-                    <div style={{
-                      background: alertStyle.background,
-                      color: 'white',
-                      padding: '4px 8px',
-                      borderRadius: '12px',
-                      fontSize: '10px',
-                      fontWeight: '600',
-                      textTransform: 'uppercase'
-                    }}>
-                      {report.severity}
-                    </div>
+                {/* Compact Footer */}
+                <div className="report-card-footer">
+                  <div className="report-author">
+                    By: {report.reportedBy?.name || report.reportedBy?.username || 'Anonymous'}
                   </div>
+                  <div className="report-severity-badge" style={{
+                    background: alertStyle.background === '#fbbf24' ? '#000' : alertStyle.background,
+                    color: alertStyle.background === '#fbbf24' ? '#fff' : 'white'
+                  }}>
+                    {report.severity}
+                  </div>
+                </div>
               </div>
             );
           })}

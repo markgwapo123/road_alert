@@ -11,7 +11,6 @@ import UserProfile from './components/UserProfile';
 import MyReports from './components/MyReports';
 import NotificationPage from './pages/NotificationPage';
 import './App.css';
-// import './sidebar.css';
 
 function App() {
   const [token, setToken] = useState(localStorage.getItem('token'));
@@ -19,15 +18,14 @@ function App() {
   const [showReport, setShowReport] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
-  const [currentView, setCurrentView] = useState('home'); // 'home', 'myreports', 'profile', 'notifications'
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false); // Mobile menu state
+  const [currentView, setCurrentView] = useState('home');
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // Fetch notifications when token changes
   useEffect(() => {
     if (token) {
       fetchNotifications();
-      // Set up periodic notification checking
-      const notificationInterval = setInterval(fetchNotifications, 30000); // Check every 30 seconds
+      const notificationInterval = setInterval(fetchNotifications, 30000);
       return () => clearInterval(notificationInterval);
     }
   }, [token]);
@@ -42,7 +40,7 @@ function App() {
 
     if (showReport) {
       document.addEventListener('keydown', handleEscKey);
-      document.body.style.overflow = 'hidden'; // Prevent background scrolling
+      document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = 'unset';
     }
@@ -55,7 +53,6 @@ function App() {
 
   const fetchNotifications = async () => {
     try {
-      // Only fetch notifications if user is logged in with a valid token
       if (!token) {
         return;
       }
@@ -66,7 +63,6 @@ function App() {
       setNotifications(res.data.notifications || []);
       setUnreadCount(res.data.unreadCount || 0);
     } catch (err) {
-      // Silently handle notification errors - they're not critical for basic app functionality
       console.log('Notifications unavailable:', err.response?.status || err.message);
       setNotifications([]);
       setUnreadCount(0);
@@ -83,7 +79,6 @@ function App() {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       
-      // Refresh notifications
       fetchNotifications();
     } catch (err) {
       console.log('Error marking notification as read:', err.response?.status || err.message);
@@ -96,7 +91,6 @@ function App() {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       
-      // Refresh notifications
       fetchNotifications();
     } catch (err) {
       console.error('Error marking all notifications as read:', err);
@@ -105,7 +99,6 @@ function App() {
 
   const handleSuccessfulReport = () => {
     setShowReport(false);
-    // Auto-navigate to My Reports so user can see their submitted report
     setCurrentView('myreports');
   };
 
@@ -113,23 +106,21 @@ function App() {
     localStorage.setItem('token', jwt);
     setToken(jwt);
   };
+
   const handleLogout = () => {
     localStorage.removeItem('token');
     setToken(null);
   };
 
-  // Helper function to handle navigation and close mobile menu
   const handleNavigation = (view) => {
     setCurrentView(view);
-    setIsMobileMenuOpen(false); // Close mobile menu after navigation
+    setIsMobileMenuOpen(false);
   };
 
   const handleRegister = (token) => {
     if (token) {
-      // Auto-login after registration
       handleLogin(token);
     } else {
-      // Just switch to login page
       setShowRegister(false);
     }
   };
@@ -143,32 +134,60 @@ function App() {
 
   return (
     <div className={currentView === 'profile' || currentView === 'notifications' ? 'verification-active' : ''}>
-      <nav className="navbar">
+      {/* Desktop Navigation */}
+      <nav className="navbar desktop-nav">
         <div className="navbar-left">
-          <button 
-            className="burger-menu"
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            style={{
-              background: 'none',
-              border: 'none',
-              fontSize: '24px',
-              cursor: 'pointer',
-              padding: '8px',
-              marginRight: '12px'
-            }}
-          >
-            ☰
-          </button>
           <span className="logo">🚧</span>
           <span className="app-name">ROAD ALERT</span>
         </div>
       </nav>
+
+      {/* Mobile Bottom Navigation */}
+      <nav className="mobile-bottom-nav">
+        <button 
+          className={`nav-btn ${currentView === 'home' ? 'active' : ''}`}
+          onClick={() => handleNavigation('home')}
+        >
+          <span className="nav-icon">🏠</span>
+        </button>
+        
+        <button 
+          className="nav-btn add-btn"
+          onClick={() => setShowReport(true)}
+        >
+          <span className="nav-icon">✚</span>
+        </button>
+        
+        <button 
+          className={`nav-btn ${currentView === 'myreports' ? 'active' : ''}`}
+          onClick={() => handleNavigation('myreports')}
+        >
+          <span className="nav-icon">📊</span>
+        </button>
+        
+        <button 
+          className={`nav-btn ${currentView === 'notifications' ? 'active' : ''}`}
+          onClick={() => handleNavigation('notifications')}
+        >
+          <span className="nav-icon">🔔</span>
+          {unreadCount > 0 && (
+            <span className="notification-badge">{unreadCount}</span>
+          )}
+        </button>
+        
+        <button 
+          className={`nav-btn ${isMobileMenuOpen ? 'active' : ''}`}
+          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+        >
+          <span className="nav-icon">≡</span>
+        </button>
+      </nav>
+
       <main>
         {showReport && (
           <div 
             className="report-form-fullscreen-overlay"
             onClick={(e) => {
-              // Close form when clicking the overlay background
               if (e.target === e.currentTarget) {
                 setShowReport(false);
               }
@@ -181,42 +200,47 @@ function App() {
           </div>
         )}
         
-        {/* Main Layout with Responsive Sidebar */}
-        <div style={{ display: 'flex', height: '100%' }}>
-          {/* Mobile Overlay */}
+        <div className="app-layout">
+          {/* Mobile Menu Overlay */}
           {isMobileMenuOpen && (
             <div 
-              style={{
-                position: 'fixed',
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                backgroundColor: 'rgba(0, 0, 0, 0.5)',
-                zIndex: 998
-              }}
-              className="mobile-overlay"
+              className="mobile-menu-overlay"
               onClick={() => setIsMobileMenuOpen(false)}
-            />
+            >
+              <div className="mobile-menu-content" onClick={(e) => e.stopPropagation()}>
+                <div className="mobile-menu-header">
+                  <h3>Menu</h3>
+                  <button 
+                    className="close-menu-btn"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    ✕
+                  </button>
+                </div>
+                
+                <div className="mobile-menu-items">
+                  <button
+                    className="mobile-menu-item"
+                    onClick={() => handleNavigation('profile')}
+                  >
+                    <span className="menu-icon">👤</span>
+                    <span>Profile</span>
+                  </button>
+                  
+                  <button
+                    className="mobile-menu-item logout-item"
+                    onClick={handleLogout}
+                  >
+                    <span className="menu-icon">🚪</span>
+                    <span>Logout</span>
+                  </button>
+                </div>
+              </div>
+            </div>
           )}
           
-          {/* Responsive Sidebar */}
-          <div 
-            style={{
-              width: '250px',
-              backgroundColor: '#f8f9fa',
-              borderRight: '1px solid #e5e7eb',
-              padding: '20px',
-              height: 'calc(100vh - 80px)',
-              position: 'fixed',
-              top: '80px',
-              overflowY: 'auto',
-              transition: 'left 0.3s ease',
-              zIndex: 999
-            }}
-            className={`sidebar ${isMobileMenuOpen ? 'mobile-open' : ''}`}
-          >
-            {/* User Profile Section */}
+          {/* Desktop Sidebar */}
+          <div className="desktop-sidebar">
             <div style={{
               backgroundColor: '#ffffff',
               borderRadius: '12px',
@@ -256,7 +280,6 @@ function App() {
               </p>
             </div>
 
-            {/* Navigation Menu */}
             <nav style={{ marginBottom: '20px' }}>
               <h4 style={{
                 margin: '0 0 12px 0',
@@ -268,7 +291,6 @@ function App() {
               }}>
                 Navigation
               </h4>
-              
 
               <button
                 onClick={() => handleNavigation('home')}
@@ -288,16 +310,6 @@ function App() {
                   alignItems: 'center',
                   gap: '8px',
                   transition: 'all 0.2s ease'
-                }}
-                onMouseOver={(e) => {
-                  if (currentView !== 'home') {
-                    e.target.style.backgroundColor = '#f3f4f6';
-                  }
-                }}
-                onMouseOut={(e) => {
-                  if (currentView !== 'home') {
-                    e.target.style.backgroundColor = 'transparent';
-                  }
                 }}
               >
                 🏠 News Feed
@@ -322,16 +334,6 @@ function App() {
                   gap: '8px',
                   transition: 'all 0.2s ease'
                 }}
-                onMouseOver={(e) => {
-                  if (!showReport) {
-                    e.target.style.backgroundColor = '#f3f4f6';
-                  }
-                }}
-                onMouseOut={(e) => {
-                  if (!showReport) {
-                    e.target.style.backgroundColor = 'transparent';
-                  }
-                }}
               >
                 📝 New Report
               </button>
@@ -355,16 +357,6 @@ function App() {
                   gap: '8px',
                   transition: 'all 0.2s ease'
                 }}
-                onMouseOver={(e) => {
-                  if (currentView !== 'myreports') {
-                    e.target.style.backgroundColor = '#f3f4f6';
-                  }
-                }}
-                onMouseOut={(e) => {
-                  if (currentView !== 'myreports') {
-                    e.target.style.backgroundColor = 'transparent';
-                  }
-                }}
               >
                 📊 My Reports
               </button>
@@ -387,16 +379,6 @@ function App() {
                   alignItems: 'center',
                   gap: '8px',
                   transition: 'all 0.2s ease'
-                }}
-                onMouseOver={(e) => {
-                  if (currentView !== 'notifications') {
-                    e.target.style.backgroundColor = '#f3f4f6';
-                  }
-                }}
-                onMouseOut={(e) => {
-                  if (currentView !== 'notifications') {
-                    e.target.style.backgroundColor = 'transparent';
-                  }
                 }}
               >
                 🔔 Notification
@@ -434,23 +416,11 @@ function App() {
                   gap: '8px',
                   transition: 'all 0.2s ease'
                 }}
-                onMouseOver={(e) => {
-                  if (currentView !== 'profile') {
-                    e.target.style.backgroundColor = '#f3f4f6';
-                  }
-                }}
-                onMouseOut={(e) => {
-                  if (currentView !== 'profile') {
-                    e.target.style.backgroundColor = 'transparent';
-                  }
-                }}
               >
                 👤 Profile
               </button>
-
             </nav>
 
-            {/* Logout Button */}
             <button
               onClick={handleLogout}
               style={{
@@ -469,46 +439,21 @@ function App() {
                 transition: 'all 0.2s ease',
                 marginTop: 'auto'
               }}
-              onMouseOver={(e) => {
-                e.target.style.backgroundColor = '#dc2626';
-              }}
-              onMouseOut={(e) => {
-                e.target.style.backgroundColor = '#ef4444';
-              }}
             >
               🚪 Logout
             </button>
           </div>
 
           {/* Main Content Area */}
-          <div 
-            className="main-content"
-            style={{ 
-              marginLeft: '250px', 
-              flex: 1, 
-              padding: '20px',
-              width: 'calc(100% - 250px)',
-              transition: 'margin-left 0.3s ease'
-            }}
-          >
-
-            {currentView === 'home' && (
-              <>
-                <NewsFeed />
-              </>
-            )}
-
-            {currentView === 'myreports' && (
-              <MyReports token={token} />
-            )}
-
+          <div className="main-content">
+            {currentView === 'home' && <NewsFeed />}
+            {currentView === 'myreports' && <MyReports token={token} />}
             {currentView === 'profile' && (
               <ProfilePage 
                 token={token} 
                 onLogout={handleLogout}
               />
             )}
-
             {currentView === 'notifications' && (
               <NotificationPage 
                 token={token}
