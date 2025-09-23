@@ -8,7 +8,7 @@ const MapView = () => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [filters, setFilters] = useState({
-    status: 'verified', // Default to verified reports for public map
+    status: 'all', // Changed from 'verified' to 'all' to show all reports
     type: 'all',
     severity: 'all'
   })
@@ -22,6 +22,12 @@ const MapView = () => {
         console.log('Fetching map reports with filters:', filters)
         const response = await reportsAPI.getMapReports(filters)
         console.log('Map reports response:', response.data)
+        console.log('Number of reports received:', response.data.data?.length || 0)
+        
+        if (response.data.data) {
+          console.log('Sample report structure:', response.data.data[0])
+        }
+        
         setReports(response.data.data || [])
       } catch (err) {
         console.error('Failed to fetch map reports:', err)

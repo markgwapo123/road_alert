@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
+import config from '../config/index.js'
 
 // Fix for default markers in React-Leaflet
 delete L.Icon.Default.prototype._getIconUrl
@@ -42,14 +43,17 @@ const createCustomIcon = (type, severity, status) => {
 }
 
 // Component to handle map updates
-const MapController = ({ center, zoom }) => {
+const MapController = ({ center, zoom, bounds, filteredReports }) => {
   const map = useMap()
   
   useEffect(() => {
-    if (center) {
+    if (bounds && filteredReports.length > 1) {
+      // Fit map to show all filtered reports
+      map.fitBounds(bounds, { padding: [20, 20] });
+    } else if (center) {
       map.setView(center, zoom)
     }
-  }, [center, zoom, map])
+  }, [center, zoom, bounds, filteredReports.length, map])
   
   return null
 }
@@ -59,6 +63,7 @@ const InteractiveMap = ({ reports = [], filters = {}, onReportClick, focusReport
   const [mapZoom, setMapZoom] = useState(14) // Balanced zoom for city view
   const [filteredReports, setFilteredReports] = useState([])
   const [activePopupId, setActivePopupId] = useState(null)
+  const [mapBounds, setMapBounds] = useState(null)
 
   // Filter reports based on current filters
   useEffect(() => {
@@ -77,6 +82,76 @@ const InteractiveMap = ({ reports = [], filters = {}, onReportClick, focusReport
     }
 
     setFilteredReports(filtered)
+    
+    // Auto-center map when filters change and reports are available
+    if (filtered.length > 0) {
+      // Calculate the center point of all filtered reports
+      const validReports = filtered.filter(report => {
+        const coords = report.location?.coordinates;
+        if (Array.isArray(coords)) {
+          return !isNaN(coords[1]) && !isNaN(coords[0]);
+        } else if (coords?.latitude && coords?.longitude) {
+          return !isNaN(coords.latitude) && !isNaN(coords.longitude);
+        }
+        return false;
+      });
+
+      if (validReports.length > 0) {
+        if (validReports.length === 1) {
+          // Single report - center on it
+          const report = validReports[0];
+          const coords = report.location.coordinates;
+          let lat, lng;
+          
+          if (Array.isArray(coords)) {
+            lat = coords[1];
+            lng = coords[0];
+          } else {
+            lat = coords.latitude;
+            lng = coords.longitude;
+          }
+          
+          console.log('🎯 Centering on single report:', { lat, lng });
+          setMapCenter([lat, lng]);
+          setMapZoom(16);
+          setMapBounds(null);
+        } else {
+          // Multiple reports - calculate bounds
+          let minLat = Infinity, maxLat = -Infinity;
+          let minLng = Infinity, maxLng = -Infinity;
+          
+          validReports.forEach(report => {
+            const coords = report.location.coordinates;
+            let lat, lng;
+            
+            if (Array.isArray(coords)) {
+              lat = coords[1];
+              lng = coords[0];
+            } else {
+              lat = coords.latitude;
+              lng = coords.longitude;
+            }
+            
+            minLat = Math.min(minLat, lat);
+            maxLat = Math.max(maxLat, lat);
+            minLng = Math.min(minLng, lng);
+            maxLng = Math.max(maxLng, lng);
+          });
+          
+          const bounds = [[minLat, minLng], [maxLat, maxLng]];
+          console.log('🗺️ Setting bounds for multiple reports:', bounds, 'Report count:', validReports.length);
+          
+          setMapBounds(bounds);
+          setMapCenter(null); // Let bounds control the view
+        }
+      }
+    } else if (filtered.length === 0 && reports.length > 0) {
+      // If no reports match filters, reset to default view
+      console.log('🔄 No reports match filters, resetting to default view');
+      setMapCenter([10.2397, 122.8203]);
+      setMapZoom(14);
+      setMapBounds(null);
+    }
   }, [reports, filters])
 
   // Auto-focus on the report with focusReportId
@@ -130,7 +205,12 @@ const InteractiveMap = ({ reports = [], filters = {}, onReportClick, focusReport
         style={{ height: '100%', width: '100%' }}
         className="z-0"
       >
-        <MapController center={mapCenter} zoom={mapZoom} />
+        <MapController 
+          center={mapCenter} 
+          zoom={mapZoom} 
+          bounds={mapBounds} 
+          filteredReports={filteredReports} 
+        />
         {/* Base map layer */}
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -145,10 +225,14 @@ const InteractiveMap = ({ reports = [], filters = {}, onReportClick, focusReport
         )}
         {filteredReports.map((report) => {
           let lat, lng;
+          
+          console.log('🔍 Processing report for popup:', report._id, 'Images:', report.images);
+          
           if (Array.isArray(report.location.coordinates)) {
             // GeoJSON: [lng, lat]
             lng = report.location.coordinates[0];
             lat = report.location.coordinates[1];
+            console.log('📍 Array coordinates:', { lat, lng });
           } else if (
             typeof report.location.coordinates === 'object' &&
             'latitude' in report.location.coordinates &&
@@ -156,7 +240,18 @@ const InteractiveMap = ({ reports = [], filters = {}, onReportClick, focusReport
           ) {
             lat = report.location.coordinates.latitude;
             lng = report.location.coordinates.longitude;
+            console.log('📍 Object coordinates:', { lat, lng });
+          } else {
+            console.error('❌ Invalid coordinate format for report:', report._id, report.location);
+            return null; // Skip this report if coordinates are invalid
           }
+          
+          // Validate coordinates are numbers and in valid range
+          if (isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+            console.error('❌ Invalid coordinate values for report:', report._id, { lat, lng });
+            return null; // Skip this report if coordinates are invalid
+          }
+          
           return (
             <Marker
               key={report._id || report.id}
@@ -174,11 +269,54 @@ const InteractiveMap = ({ reports = [], filters = {}, onReportClick, focusReport
                     </h3>
                     <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusBadgeColor(report.status)}`}>{report.status}</span>
                   </div>
-                  {report.imageUrl && (
-                    <div className="mb-2 flex justify-center">
-                      <img src={report.imageUrl} alt="Report" className="rounded-md max-h-28 object-cover border max-w-full" />
+                  
+                  {/* Report Images */}
+                  {report.images && report.images.length > 0 && (
+                    <div className="mb-3">
+                      <div className="text-xs text-gray-500 mb-1">Images ({report.images.length})</div>
+                      <div className="flex flex-wrap gap-1 justify-center">
+                        {report.images.slice(0, 2).map((image, index) => {
+                          const filename = image?.filename || image;
+                          const imageUrl = `${config.BACKEND_URL}/uploads/${filename}`;
+                          console.log('🖼️ Popup image:', { index, image, filename, imageUrl });
+                          return (
+                            <div key={index} className="relative">
+                              <img
+                                src={imageUrl}
+                                alt={`Report image ${index + 1}`}
+                                className="h-20 w-20 object-cover rounded-lg border border-gray-200"
+                                onLoad={(e) => {
+                                  console.log('✅ Popup image loaded:', imageUrl);
+                                }}
+                                onError={(e) => { 
+                                  console.error('❌ Popup image failed to load:', imageUrl);
+                                  e.target.src = `data:image/svg+xml;utf8,${encodeURIComponent(`
+                                    <svg xmlns='http://www.w3.org/2000/svg' width='80' height='80'>
+                                      <rect width='80' height='80' fill='%23f3f4f6' stroke='%23d1d5db' stroke-width='1'/>
+                                      <text x='40' y='40' text-anchor='middle' dy='0.3em' fill='%236b7280' font-size='12'>IMG</text>
+                                    </svg>
+                                  `)}`;
+                                }}
+                              />
+                            </div>
+                          );
+                        })}
+                        {report.images.length > 2 && (
+                          <div className="h-20 w-20 bg-gray-100 rounded-lg border border-gray-200 flex items-center justify-center">
+                            <span className="text-xs font-medium text-gray-600">+{report.images.length - 2}</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   )}
+                  
+                  {/* Debug info */}
+                  {(!report.images || report.images.length === 0) && (
+                    <div className="mb-2 text-xs text-gray-400 italic">
+                      No images available for this report
+                    </div>
+                  )}
+                  
                   <div className="space-y-1 text-sm">
                     <div className="flex flex-col sm:flex-row items-start sm:items-center gap-1 sm:gap-2">
                       <span className="font-semibold text-gray-700">Location:</span>
@@ -241,12 +379,60 @@ const InteractiveMap = ({ reports = [], filters = {}, onReportClick, focusReport
           onClick={() => {
             setMapCenter([10.2397, 122.8203])
             setMapZoom(14)
+            setMapBounds(null)
           }}
           className="bg-blue-600 text-white px-3 py-1 rounded text-xs hover:bg-blue-700 transition-colors shadow-sm flex-1"
           title="Reset map to Kabankalan City center"
         >
           <span role="img" aria-label="Reset">🔄</span> <span className="hidden sm:inline">Reset View</span>
         </button>
+        {filteredReports.length > 1 && (
+          <button
+            onClick={() => {
+              // Manually trigger bounds fitting for all filtered reports
+              const validReports = filteredReports.filter(report => {
+                const coords = report.location?.coordinates;
+                if (Array.isArray(coords)) {
+                  return !isNaN(coords[1]) && !isNaN(coords[0]);
+                } else if (coords?.latitude && coords?.longitude) {
+                  return !isNaN(coords.latitude) && !isNaN(coords.longitude);
+                }
+                return false;
+              });
+
+              if (validReports.length > 1) {
+                let minLat = Infinity, maxLat = -Infinity;
+                let minLng = Infinity, maxLng = -Infinity;
+                
+                validReports.forEach(report => {
+                  const coords = report.location.coordinates;
+                  let lat, lng;
+                  
+                  if (Array.isArray(coords)) {
+                    lat = coords[1];
+                    lng = coords[0];
+                  } else {
+                    lat = coords.latitude;
+                    lng = coords.longitude;
+                  }
+                  
+                  minLat = Math.min(minLat, lat);
+                  maxLat = Math.max(maxLat, lat);
+                  minLng = Math.min(minLng, lng);
+                  maxLng = Math.max(maxLng, lng);
+                });
+                
+                const bounds = [[minLat, minLng], [maxLat, maxLng]];
+                setMapBounds(bounds);
+                setMapCenter(null);
+              }
+            }}
+            className="bg-green-600 text-white px-3 py-1 rounded text-xs hover:bg-green-700 transition-colors shadow-sm flex-1"
+            title="Fit all filtered reports in view"
+          >
+            <span role="img" aria-label="Fit all">📍</span> <span className="hidden sm:inline">Fit All</span>
+          </button>
+        )}
         <button
           onClick={() => setMapZoom(mapZoom + 1)}
           className="bg-gray-600 text-white px-3 py-1 rounded text-xs hover:bg-gray-700 transition-colors shadow-sm flex-1"

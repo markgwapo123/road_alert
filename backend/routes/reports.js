@@ -301,25 +301,42 @@ router.get('/stats', async (req, res) => {
 // @access  Public
 router.get('/map', async (req, res) => {
   try {
-    const { status = 'verified', type, severity } = req.query;
+    const { status, type, severity } = req.query;
+    console.log('🗺️ Map reports request with filters:', { status, type, severity });
 
-    // Build filter - only show verified reports by default for public map
-    const filter = { status };
-    if (type) filter.type = type;
-    if (severity) filter.severity = severity;
+    // Build filter - allow all statuses by default, but apply filters if specified
+    const filter = {};
+    
+    if (status && status !== 'all') {
+      filter.status = status;
+    }
+    
+    if (type && type !== 'all') {
+      filter.type = type;
+    }
+    
+    if (severity && severity !== 'all') {
+      filter.severity = severity;
+    }
+
+    console.log('🔍 Final filter object:', filter);
 
     const reports = await Report.find(filter)
-      .select('type location severity status createdAt description')
+      .select('type location severity status createdAt description reportedBy images')
+      .populate('reportedBy', 'name email')
       .limit(1000) // Limit for performance
       .exec();
 
+    console.log(`📍 Found ${reports.length} reports for map display`);
+
     res.json({
       success: true,
-      data: reports
+      data: reports,
+      count: reports.length
     });
 
   } catch (error) {
-    console.error('Get map reports error:', error);
+    console.error('❌ Get map reports error:', error);
     res.status(500).json({
       error: 'Server error while fetching map reports'
     });
