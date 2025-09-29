@@ -38,6 +38,8 @@ app.use(cors({
     'http://localhost:3000',
     'https://road-alerts-git-main-markstephens-projects.vercel.app',
     'https://road-alerts.vercel.app',
+    'https://users-git-main-markstephens-projects.vercel.app',
+    'https://users.vercel.app',
     /https:\/\/.*\.vercel\.app$/ // Allow all Vercel preview deployments
   ],
   credentials: true,
