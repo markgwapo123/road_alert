@@ -1,7 +1,6 @@
 // Centralized configuration for admin frontend
-// Uses Vite environment variables when available with sensible fallbacks
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || `${BACKEND_URL}/api`;
+const BACKEND_URL = 'http://localhost:3001';
+const API_BASE_URL = 'http://localhost:3001/api';
 
 // Lightweight logger (only in development)
 if (import.meta.env.DEV) {
