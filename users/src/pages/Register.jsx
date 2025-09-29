@@ -75,7 +75,7 @@ const Register = ({ onRegister, switchToLogin }) => {
     } catch (err) {
       console.error('Registration error:', err);
       if (err.code === 'ECONNREFUSED' || (err.message && err.message.includes('Network Error'))) {
-        setError('Cannot connect to server. Please ensure the backend is running on port 3001.');
+        setError('Cannot connect to server. Please check your internet connection.');
       } else if (err.response?.status === 400) {
         setError(err.response.data.error || 'Invalid registration data');
       } else if (err.response?.status === 409) {

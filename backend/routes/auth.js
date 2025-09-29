@@ -1,11 +1,15 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const { OAuth2Client } = require('google-auth-library');
 const User = require('../models/User');
 const Admin = require('../models/Admin');
 const auth = require('../middleware/auth');
 
 const router = express.Router();
+
+// Initialize Google OAuth client
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 // @route   POST /api/auth/register
 // @desc    Register a new user
@@ -327,6 +331,119 @@ router.get('/verification-status', require('../middleware/userAuth'), async (req
       success: false,
       error: 'Server error while fetching verification status'
     });
+  }
+});
+
+// @route   POST /api/auth/social-login
+// @desc    Social login with Google or Facebook
+// @access  Public
+router.post('/social-login', async (req, res) => {
+  try {
+    const { provider, token, userData } = req.body;
+
+    let userInfo = null;
+
+    if (provider === 'google') {
+      // Verify Google token
+      try {
+        const ticket = await googleClient.verifyIdToken({
+          idToken: token,
+          audience: process.env.GOOGLE_CLIENT_ID,
+        });
+        const payload = ticket.getPayload();
+        
+        userInfo = {
+          id: payload.sub,
+          email: payload.email,
+          name: payload.name,
+          picture: payload.picture,
+          provider: 'google'
+        };
+      } catch (error) {
+        return res.status(400).json({ error: 'Invalid Google token' });
+      }
+    } else if (provider === 'facebook') {
+      // For Facebook, we trust the frontend verification for now
+      // In production, you should verify the token with Facebook's API
+      if (!userData || !userData.email) {
+        return res.status(400).json({ error: 'Invalid Facebook data' });
+      }
+      
+      userInfo = {
+        id: userData.id,
+        email: userData.email,
+        name: userData.name,
+        picture: userData.picture,
+        provider: 'facebook'
+      };
+    } else {
+      return res.status(400).json({ error: 'Unsupported provider' });
+    }
+
+    if (!userInfo || !userInfo.email) {
+      return res.status(400).json({ error: 'Unable to get user information' });
+    }
+
+    // Check if user exists
+    let user = await User.findOne({ email: userInfo.email });
+
+    if (!user) {
+      // Create new user from social login
+      const username = userInfo.email.split('@')[0] + '_' + userInfo.provider;
+      
+      user = new User({
+        username: username,
+        email: userInfo.email,
+        password: 'social_login_' + Date.now(), // Dummy password for social users
+        socialLogin: {
+          provider: userInfo.provider,
+          providerId: userInfo.id,
+          picture: userInfo.picture
+        },
+        isActive: true // Auto-activate social login users
+      });
+
+      await user.save();
+    } else {
+      // Update existing user with social login info if not already set
+      if (!user.socialLogin || user.socialLogin.provider !== userInfo.provider) {
+        user.socialLogin = {
+          provider: userInfo.provider,
+          providerId: userInfo.id,
+          picture: userInfo.picture
+        };
+        await user.save();
+      }
+    }
+
+    // Generate JWT token
+    const jwtPayload = {
+      id: user._id,
+      username: user.username,
+      email: user.email,
+      role: 'user'
+    };
+
+    const jwtToken = jwt.sign(
+      jwtPayload,
+      process.env.JWT_SECRET,
+      { expiresIn: process.env.JWT_EXPIRE || '7d' }
+    );
+
+    res.json({
+      success: true,
+      token: jwtToken,
+      user: {
+        id: user._id,
+        username: user.username,
+        email: user.email,
+        socialLogin: user.socialLogin
+      }
+    });
+
+  } catch (error) {
+    console.error('Social login error:', error);
+    res.status(500).json({ error: 'Server error during social login' });
   }
 });
 

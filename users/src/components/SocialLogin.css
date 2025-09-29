@@ -1,0 +1,110 @@
+/* Social Login Styles */
+.social-login-container {
+  margin: 20px 0;
+  width: 100%;
+}
+
+.social-divider {
+  position: relative;
+  text-align: center;
+  margin: 20px 0;
+}
+
+.social-divider::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: #e1e5e9;
+}
+
+.social-divider-text {
+  background: white;
+  padding: 0 15px;
+  color: #6c757d;
+  font-size: 14px;
+  position: relative;
+  z-index: 1;
+}
+
+.social-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+
+.google-login-wrapper {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+.facebook-login-wrapper {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+.facebook-login-button {
+  width: 100% !important;
+  max-width: 280px !important;
+  height: 40px !important;
+  background-color: #1877f2 !important;
+  border: none !important;
+  border-radius: 6px !important;
+  color: white !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: background-color 0.2s ease !important;
+  text-decoration: none !important;
+  box-sizing: border-box !important;
+}
+
+.facebook-login-button:hover {
+  background-color: #166fe5 !important;
+}
+
+.facebook-login-button:disabled {
+  background-color: #8b9dc3 !important;
+  cursor: not-allowed !important;
+}
+
+.facebook-login-button:focus {
+  outline: 2px solid #1877f2;
+  outline-offset: 2px;
+}
+
+/* Mobile responsive */
+@media (max-width: 480px) {
+  .social-buttons {
+    gap: 10px;
+  }
+  
+  .google-login-wrapper,
+  .facebook-login-wrapper {
+    width: 100%;
+  }
+  
+  .facebook-login-button {
+    max-width: 100% !important;
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .social-divider::before {
+    background: #374151;
+  }
+  
+  .social-divider-text {
+    background: #1f2937;
+    color: #9ca3af;
+  }
+}

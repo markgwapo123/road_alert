@@ -125,8 +125,6 @@ function App() {
     }
   };
 
-
-
   if (!token) {
     if (showRegister) {
       return <Register onRegister={handleRegister} switchToLogin={() => setShowRegister(false)} />;

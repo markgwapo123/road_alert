@@ -32,19 +32,10 @@ app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" } // Allow cross-origin resource requests
 }));
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production' 
-    ? ['https://your-domain.com'] 
-    : [
-        'http://localhost:5173', 
-        'http://localhost:5174', 
-        'http://localhost:5175', 
-        'http://localhost:3000',
-        'http://192.168.1.9:5173',
-        'http://192.168.1.9:5174',
-        'http://192.168.1.9:5175',
-        'http://192.168.1.9:3000'
-      ],
-  credentials: true
+  origin: ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:3000'], // Allow admin dashboard on different ports
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
 // Rate limiting - temporarily disabled for testing
@@ -102,6 +93,24 @@ app.use('/uploads', (req, res, next) => {
   etag: true,
   lastModified: true
 }));
+
+// Root route
+app.get('/', (req, res) => {
+  res.json({
+    message: '🚀 RoadAlert Backend API',
+    status: 'Running',
+    version: '1.0.0',
+    endpoints: {
+      auth: '/api/auth',
+      reports: '/api/reports',
+      admin: '/api/admin',
+      users: '/api/users',
+      notifications: '/api/notifications',
+      health: '/api/health',
+      status: '/api/system/status'
+    }
+  });
+});
 
 // Routes
 app.use('/api/auth', require('./routes/auth'));

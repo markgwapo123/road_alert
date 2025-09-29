@@ -9,14 +9,13 @@ const connectDB = async () => {
     
     // Create initial admin user if it doesn't exist
     const Admin = require('../models/Admin');
-    const bcrypt = require('bcryptjs');
     
     const existingAdmin = await Admin.findOne({ username: process.env.ADMIN_USERNAME });
     if (!existingAdmin) {
-      const hashedPassword = await bcrypt.hash(process.env.ADMIN_PASSWORD, 10);
+      // Let the Admin model pre-save hook handle password hashing
       await Admin.create({
         username: process.env.ADMIN_USERNAME,
-        password: hashedPassword,
+        password: process.env.ADMIN_PASSWORD, // Don't hash here, let the model do it
         role: 'admin'
       });
       console.log('🔐 Initial admin user created');

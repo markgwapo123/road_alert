@@ -54,6 +54,21 @@ const userSchema = new mongoose.Schema({
     freezeReason: {
         type: String,
         default: null
+    },
+    socialLogin: {
+        provider: {
+            type: String,
+            enum: ['google', 'facebook'],
+            default: null
+        },
+        providerId: {
+            type: String,
+            default: null
+        },
+        picture: {
+            type: String,
+            default: null
+        }
     }
 }, {
     timestamps: true

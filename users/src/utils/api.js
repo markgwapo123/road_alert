@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-// Use environment variables for API URL
+// Use local backend URLs by default
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
 
@@ -23,7 +23,7 @@ export const testConnection = async () => {
     return { 
       success: false, 
       error: error.code === 'ECONNREFUSED' 
-        ? 'Backend server is not running on port 3001' 
+        ? 'Backend server is not responding' 
         : error.message 
     };
   }
