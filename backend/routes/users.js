@@ -264,4 +264,49 @@ router.post('/profile-image', userAuth, upload.single('image'), async (req, res)
   }
 });
 
+// @route   DELETE /api/users/profile-image
+// @desc    Remove user profile image
+// @access  Private
+router.delete('/profile-image', userAuth, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: 'User not found'
+      });
+    }
+
+    // Check if user has a profile image
+    if (!user.profile.profileImage) {
+      return res.status(400).json({
+        success: false,
+        error: 'No profile image to remove'
+      });
+    }
+
+    // Delete the profile image file
+    const imagePath = path.join(__dirname, '../uploads', path.basename(user.profile.profileImage));
+    if (fs.existsSync(imagePath)) {
+      fs.unlinkSync(imagePath);
+    }
+
+    // Remove profile image from user record
+    user.profile.profileImage = null;
+    await user.save();
+
+    res.json({
+      success: true,
+      message: 'Profile image removed successfully'
+    });
+
+  } catch (error) {
+    console.error('Remove profile image error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Server error while removing profile image'
+    });
+  }
+});
+
 module.exports = router;

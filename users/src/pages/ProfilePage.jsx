@@ -14,6 +14,7 @@ const ProfilePage = ({ onBack, onLogout }) => {
   });
   const [profileImage, setProfileImage] = useState(null);
   const [uploadSuccess, setUploadSuccess] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
   const [showUploadConfirm, setShowUploadConfirm] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
   const [previewImage, setPreviewImage] = useState(null);
@@ -47,8 +48,12 @@ const ProfilePage = ({ onBack, onLogout }) => {
           }
         });
         setProfileImage(`${config.BACKEND_URL}${res.data.imageUrl}`);
+        setSuccessMessage('Profile picture updated successfully!');
         setUploadSuccess(true);
-        setTimeout(() => setUploadSuccess(false), 3000);
+        setTimeout(() => {
+          setUploadSuccess(false);
+          setSuccessMessage('');
+        }, 3000);
         setShowUploadConfirm(false);
         setSelectedFile(null);
         setPreviewImage(null);
@@ -66,6 +71,31 @@ const ProfilePage = ({ onBack, onLogout }) => {
     setShowUploadConfirm(false);
     setSelectedFile(null);
     setPreviewImage(null);
+  };
+
+  const handleRemoveProfilePicture = async () => {
+    if (!profileImage) return;
+    
+    const confirmed = window.confirm('Are you sure you want to remove your profile picture?');
+    if (confirmed) {
+      try {
+        await axios.delete(`${config.API_BASE_URL}/users/profile-image`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+        setProfileImage(null);
+        setSuccessMessage('Profile picture removed successfully!');
+        setUploadSuccess(true);
+        setTimeout(() => {
+          setUploadSuccess(false);
+          setSuccessMessage('');
+        }, 3000);
+      } catch (err) {
+        setError('Failed to remove profile picture');
+        console.error('Remove profile picture error:', err);
+      }
+    }
   };
 
   useEffect(() => {
@@ -179,6 +209,16 @@ const ProfilePage = ({ onBack, onLogout }) => {
                   >
                     📷
                   </button>
+                  {profileImage && (
+                    <button
+                      type="button"
+                      onClick={handleRemoveProfilePicture}
+                      className="remove-btn"
+                      title="Remove profile picture"
+                    >
+                      🗑️
+                    </button>
+                  )}
                 </div>
               </div>
               
@@ -198,7 +238,7 @@ const ProfilePage = ({ onBack, onLogout }) => {
         {/* Upload Success Message */}
         {uploadSuccess && (
           <div className="upload-success-message">
-            ✅ Profile picture updated successfully!
+            ✅ {successMessage}
           </div>
         )}
 

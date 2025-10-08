@@ -6548,6 +6548,8 @@ main h1 {
   position: absolute;
   bottom: 5px;
   right: 5px;
+  display: flex;
+  gap: 8px;
 }
 
 .upload-btn {
@@ -6572,6 +6574,30 @@ main h1 {
   background: rgba(37, 99, 235, 0.95);
   transform: scale(1.1);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.remove-btn {
+  background: rgba(239, 68, 68, 0.9);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+
+.remove-btn:hover {
+  background: rgba(220, 38, 38, 0.95);
+  transform: scale(1.1);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
 }
 
 .upload-success-message {
@@ -6837,10 +6863,15 @@ main h1 {
 }
 
 @media (max-width: 480px) {
-  .upload-btn {
+  .upload-btn,
+  .remove-btn {
     width: 35px;
     height: 35px;
-    font-size: 16px;
+    font-size: 14px;
+  }
+  
+  .profile-picture-upload {
+    gap: 6px;
   }
   
   .confirm-message {
