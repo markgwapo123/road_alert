@@ -262,10 +262,18 @@ const ReportsManagement = () => {
                 {/* Reporter & Date */}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="flex items-center space-x-2">
-                    <div className="p-1.5 bg-green-100 rounded-lg">
-                      <svg className="h-4 w-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                      </svg>
+                    <div className="w-7 h-7 rounded-full bg-green-100 flex items-center justify-center overflow-hidden">
+                      {report.reportedBy?.profile?.profileImage ? (
+                        <img 
+                          src={`http://localhost:3001${report.reportedBy.profile.profileImage}`}
+                          alt={`${report.reportedBy?.name || report.reportedBy?.username}'s profile`}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <svg className="h-4 w-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>
+                      )}
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="text-xs font-medium text-gray-600">Reporter</p>

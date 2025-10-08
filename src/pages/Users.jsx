@@ -384,8 +384,16 @@ const Users = () => {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-4">
                         <div className="flex-shrink-0">
-                          <div className="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center">
-                            <UsersIcon className="h-6 w-6 text-gray-600" />
+                          <div className="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center overflow-hidden">
+                            {user.profile?.profileImage ? (
+                              <img 
+                                src={`http://localhost:3001${user.profile.profileImage}`}
+                                alt={`${user.name}'s profile`}
+                                className="h-full w-full object-cover"
+                              />
+                            ) : (
+                              <UsersIcon className="h-6 w-6 text-gray-600" />
+                            )}
                           </div>
                         </div>
                         <div>
@@ -468,6 +476,27 @@ const Users = () => {
                       Basic Information
                     </h4>
                     <div className="space-y-3">
+                      <div className="flex items-center space-x-4 pb-3 border-b border-gray-200">
+                        <div className="flex-shrink-0">
+                          <div className="h-16 w-16 rounded-full bg-gray-300 flex items-center justify-center overflow-hidden">
+                            {selectedUser.profile?.profileImage ? (
+                              <img 
+                                src={`http://localhost:3001${selectedUser.profile.profileImage}`}
+                                alt={`${selectedUser.name}'s profile`}
+                                className="h-full w-full object-cover"
+                              />
+                            ) : (
+                              <UsersIcon className="h-8 w-8 text-gray-600" />
+                            )}
+                          </div>
+                        </div>
+                        <div>
+                          <label className="text-sm font-medium text-gray-600">Profile Picture</label>
+                          <p className="text-gray-900 text-sm">
+                            {selectedUser.profile?.profileImage ? 'Custom profile picture' : 'Default avatar'}
+                          </p>
+                        </div>
+                      </div>
                       <div>
                         <label className="text-sm font-medium text-gray-600">Full Name</label>
                         <p className="text-gray-900">{selectedUser.name || 'Not provided'}</p>
