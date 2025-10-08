@@ -14,12 +14,31 @@ const ProfilePage = ({ onBack, onLogout }) => {
   });
   const [profileImage, setProfileImage] = useState(null);
   const [uploadSuccess, setUploadSuccess] = useState(false);
+  const [showUploadConfirm, setShowUploadConfirm] = useState(false);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [previewImage, setPreviewImage] = useState(null);
 
-  const handleImageChange = async (e) => {
+  const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
+      // Create preview URL
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setPreviewImage(e.target.result);
+      };
+      reader.readAsDataURL(file);
+      
+      setSelectedFile(file);
+      setShowUploadConfirm(true);
+    }
+    // Reset the input value so the same file can be selected again
+    e.target.value = '';
+  };
+
+  const handleConfirmUpload = async () => {
+    if (selectedFile) {
       const formData = new FormData();
-      formData.append('image', file);
+      formData.append('image', selectedFile);
       try {
         const res = await axios.post(`${config.API_BASE_URL}/users/profile-image`, formData, {
           headers: {
@@ -30,11 +49,23 @@ const ProfilePage = ({ onBack, onLogout }) => {
         setProfileImage(`${config.BACKEND_URL}${res.data.imageUrl}`);
         setUploadSuccess(true);
         setTimeout(() => setUploadSuccess(false), 3000);
+        setShowUploadConfirm(false);
+        setSelectedFile(null);
+        setPreviewImage(null);
       } catch (err) {
         setError('Failed to upload image');
         console.error('Image upload error:', err);
+        setShowUploadConfirm(false);
+        setSelectedFile(null);
+        setPreviewImage(null);
       }
     }
+  };
+
+  const handleCancelUpload = () => {
+    setShowUploadConfirm(false);
+    setSelectedFile(null);
+    setPreviewImage(null);
   };
 
   useEffect(() => {
@@ -168,6 +199,64 @@ const ProfilePage = ({ onBack, onLogout }) => {
         {uploadSuccess && (
           <div className="upload-success-message">
             ✅ Profile picture updated successfully!
+          </div>
+        )}
+
+        {/* Upload Confirmation Dialog */}
+        {showUploadConfirm && (
+          <div className="upload-confirm-overlay">
+            <div className="upload-confirm-dialog">
+              <div className="confirm-header">
+                <h3>Confirm Profile Picture Update</h3>
+                <button 
+                  className="close-btn"
+                  onClick={handleCancelUpload}
+                >
+                  ✕
+                </button>
+              </div>
+              
+              <div className="confirm-content">
+                <div className="image-preview-section">
+                  <div className="current-image">
+                    <h4>Current</h4>
+                    {profileImage ? (
+                      <img src={profileImage} alt="Current Profile" />
+                    ) : (
+                      <div className="default-profile-icon">👤</div>
+                    )}
+                  </div>
+                  
+                  <div className="arrow-icon">→</div>
+                  
+                  <div className="new-image">
+                    <h4>New</h4>
+                    {previewImage && (
+                      <img src={previewImage} alt="New Profile Preview" />
+                    )}
+                  </div>
+                </div>
+                
+                <p className="confirm-message">
+                  Are you sure you want to update your profile picture?
+                </p>
+              </div>
+              
+              <div className="confirm-actions">
+                <button 
+                  className="cancel-btn"
+                  onClick={handleCancelUpload}
+                >
+                  Cancel
+                </button>
+                <button 
+                  className="confirm-btn"
+                  onClick={handleConfirmUpload}
+                >
+                  Update Picture
+                </button>
+              </div>
+            </div>
           </div>
         )}
 
