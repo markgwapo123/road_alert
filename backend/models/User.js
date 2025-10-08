@@ -37,7 +37,18 @@ const userSchema = new mongoose.Schema({
         firstName: String,
         lastName: String,
         phone: String,
-        profileImage: String
+        profileImage: String,
+        profilePictureGallery: [{
+            imageUrl: String,
+            uploadedAt: {
+                type: Date,
+                default: Date.now
+            },
+            isCurrent: {
+                type: Boolean,
+                default: false
+            }
+        }]
     },
     isFrozen: {
         type: Boolean,

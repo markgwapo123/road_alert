@@ -18,6 +18,8 @@ const ProfilePage = ({ onBack, onLogout }) => {
   const [showUploadConfirm, setShowUploadConfirm] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
   const [previewImage, setPreviewImage] = useState(null);
+  const [showGallery, setShowGallery] = useState(false);
+  const [gallery, setGallery] = useState([]);
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
@@ -98,6 +100,79 @@ const ProfilePage = ({ onBack, onLogout }) => {
     }
   };
 
+  const handleViewGallery = () => {
+    setShowGallery(true);
+  };
+
+  const handleCloseGallery = () => {
+    setShowGallery(false);
+  };
+
+  const handleSetCurrentPicture = async (imageUrl) => {
+    try {
+      await axios.post(`${config.API_BASE_URL}/users/profile-gallery/set-current`, 
+        { imageUrl },
+        {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        }
+      );
+      
+      setProfileImage(`${config.BACKEND_URL}${imageUrl}`);
+      setSuccessMessage('Profile picture updated successfully!');
+      setUploadSuccess(true);
+      setTimeout(() => {
+        setUploadSuccess(false);
+        setSuccessMessage('');
+      }, 3000);
+      
+      // Update gallery state
+      setGallery(prev => prev.map(item => ({
+        ...item,
+        isCurrent: item.imageUrl === imageUrl
+      })));
+      
+      setShowGallery(false);
+    } catch (err) {
+      setError('Failed to update profile picture');
+      console.error('Set current picture error:', err);
+    }
+  };
+
+  const handleDeleteFromGallery = async (imageUrl) => {
+    const confirmed = window.confirm('Are you sure you want to permanently delete this picture from your gallery?');
+    if (confirmed) {
+      try {
+        const encodedUrl = encodeURIComponent(imageUrl.substring(1)); // Remove leading slash and encode
+        await axios.delete(`${config.API_BASE_URL}/users/profile-gallery/${encodedUrl}`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+        
+        // Update gallery state
+        setGallery(prev => prev.filter(item => item.imageUrl !== imageUrl));
+        
+        // If deleted image was current, clear profile image
+        if (profileImage && profileImage.includes(imageUrl)) {
+          setProfileImage(null);
+        }
+        
+        setSuccessMessage('Picture deleted from gallery successfully!');
+        setUploadSuccess(true);
+        setTimeout(() => {
+          setUploadSuccess(false);
+          setSuccessMessage('');
+        }, 3000);
+        
+      } catch (err) {
+        setError('Failed to delete picture from gallery');
+        console.error('Delete from gallery error:', err);
+      }
+    }
+  };
+
   useEffect(() => {
     const fetchProfile = async () => {
       setLoading(true);
@@ -115,6 +190,11 @@ const ProfilePage = ({ onBack, onLogout }) => {
         // Set existing profile image if available
         if (res.data.data.profileImage) {
           setProfileImage(`${config.BACKEND_URL}${res.data.data.profileImage}`);
+        }
+
+        // Set gallery data
+        if (res.data.data.profileGallery) {
+          setGallery(res.data.data.profileGallery);
         }
 
         // No verification status fetch
@@ -230,6 +310,19 @@ const ProfilePage = ({ onBack, onLogout }) => {
                     {status.icon} {status.text}
                   </span>
                 </div>
+                
+                {gallery.length > 0 && (
+                  <div className="profile-actions">
+                    <button
+                      type="button"
+                      onClick={handleViewGallery}
+                      className="gallery-btn"
+                      title="View profile picture gallery"
+                    >
+                      🖼️ View Gallery ({gallery.length})
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -295,6 +388,73 @@ const ProfilePage = ({ onBack, onLogout }) => {
                 >
                   Update Picture
                 </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Profile Picture Gallery Modal */}
+        {showGallery && (
+          <div className="gallery-overlay">
+            <div className="gallery-modal">
+              <div className="gallery-header">
+                <h3>Profile Picture Gallery</h3>
+                <button 
+                  className="close-btn"
+                  onClick={handleCloseGallery}
+                >
+                  ✕
+                </button>
+              </div>
+              
+              <div className="gallery-content">
+                {gallery.length === 0 ? (
+                  <div className="empty-gallery">
+                    <p>No pictures in your gallery yet.</p>
+                  </div>
+                ) : (
+                  <div className="gallery-grid">
+                    {gallery.map((item, index) => (
+                      <div key={index} className="gallery-item">
+                        <div className="gallery-image-container">
+                          <img 
+                            src={`${config.BACKEND_URL}${item.imageUrl}`} 
+                            alt={`Profile ${index + 1}`}
+                            className="gallery-image"
+                          />
+                          {item.isCurrent && (
+                            <div className="current-badge">Current</div>
+                          )}
+                        </div>
+                        
+                        <div className="gallery-item-info">
+                          <p className="upload-date">
+                            {new Date(item.uploadedAt).toLocaleDateString()}
+                          </p>
+                          
+                          <div className="gallery-actions">
+                            {!item.isCurrent && (
+                              <button
+                                onClick={() => handleSetCurrentPicture(item.imageUrl)}
+                                className="set-current-btn"
+                                title="Set as current profile picture"
+                              >
+                                Set Current
+                              </button>
+                            )}
+                            <button
+                              onClick={() => handleDeleteFromGallery(item.imageUrl)}
+                              className="delete-gallery-btn"
+                              title="Delete from gallery"
+                            >
+                              🗑️
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           </div>
