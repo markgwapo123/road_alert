@@ -132,6 +132,23 @@ const ProfilePage = ({ onBack, onLogout }) => {
                 ) : (
                   <div className="default-profile-icon">👤</div>
                 )}
+                <div className="profile-picture-upload">
+                  <input
+                    type="file"
+                    id="profileImageInput"
+                    accept="image/*"
+                    onChange={handleImageChange}
+                    style={{ display: 'none' }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => document.getElementById('profileImageInput').click()}
+                    className="upload-btn"
+                    title="Change profile picture"
+                  >
+                    📷
+                  </button>
+                </div>
               </div>
               
               <div className="profile-details">
@@ -146,6 +163,13 @@ const ProfilePage = ({ onBack, onLogout }) => {
             </div>
           </div>
         </div>
+
+        {/* Upload Success Message */}
+        {uploadSuccess && (
+          <div className="upload-success-message">
+            ✅ Profile picture updated successfully!
+          </div>
+        )}
 
         {/* Profile Content */}
         <div className="profile-content">

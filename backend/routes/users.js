@@ -1,10 +1,42 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
 const User = require('../models/User');
 const userAuth = require('../middleware/userAuth');
 
 const router = express.Router();
+
+// Configure multer for profile image uploads
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const uploadPath = path.join(__dirname, '../uploads');
+    if (!fs.existsSync(uploadPath)) {
+      fs.mkdirSync(uploadPath, { recursive: true });
+    }
+    cb(null, uploadPath);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, 'profile-' + uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({
+  storage: storage,
+  limits: {
+    fileSize: 5 * 1024 * 1024 // 5MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files are allowed'), false);
+    }
+  }
+});
 
 // @route   GET /api/users/me
 // @desc    Get current user profile
@@ -27,6 +59,7 @@ router.get('/me', userAuth, async (req, res) => {
         username: user.username,
         email: user.email,
         profile: user.profile,
+        profileImage: user.profile?.profileImage,
         isActive: user.isActive,
         lastLogin: user.lastLogin,
         createdAt: user.createdAt,
@@ -170,6 +203,63 @@ router.put('/change-password', userAuth, async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Server error while changing password'
+    });
+  }
+});
+
+// @route   POST /api/users/profile-image
+// @desc    Upload user profile image
+// @access  Private
+router.post('/profile-image', userAuth, upload.single('image'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        error: 'No image file provided'
+      });
+    }
+
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: 'User not found'
+      });
+    }
+
+    // Delete old profile image if it exists
+    if (user.profile.profileImage) {
+      const oldImagePath = path.join(__dirname, '../uploads', path.basename(user.profile.profileImage));
+      if (fs.existsSync(oldImagePath)) {
+        fs.unlinkSync(oldImagePath);
+      }
+    }
+
+    // Update user with new profile image path
+    const imageUrl = `/uploads/${req.file.filename}`;
+    user.profile.profileImage = imageUrl;
+    await user.save();
+
+    res.json({
+      success: true,
+      message: 'Profile image uploaded successfully',
+      imageUrl: imageUrl
+    });
+
+  } catch (error) {
+    console.error('Profile image upload error:', error);
+    
+    // Delete uploaded file if there was an error
+    if (req.file) {
+      const filePath = path.join(__dirname, '../uploads', req.file.filename);
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+    }
+
+    res.status(500).json({
+      success: false,
+      error: 'Server error while uploading profile image'
     });
   }
 });

@@ -36,7 +36,8 @@ const userSchema = new mongoose.Schema({
     profile: {
         firstName: String,
         lastName: String,
-        phone: String
+        phone: String,
+        profileImage: String
     },
     isFrozen: {
         type: Boolean,
