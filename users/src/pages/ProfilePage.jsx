@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import config from '../config/index.js';
 
-const ProfilePage = ({ onBack, onLogout }) => {
+const ProfilePage = ({ onBack, onLogout, onUserUpdate }) => {
   const [user, setUser] = useState(null);
   // Verification system removed
   const [loading, setLoading] = useState(true);
@@ -59,6 +59,11 @@ const ProfilePage = ({ onBack, onLogout }) => {
         setShowUploadConfirm(false);
         setSelectedFile(null);
         setPreviewImage(null);
+        
+        // Refresh user data in parent component
+        if (onUserUpdate) {
+          onUserUpdate();
+        }
       } catch (err) {
         setError('Failed to upload image');
         console.error('Image upload error:', err);
@@ -93,6 +98,11 @@ const ProfilePage = ({ onBack, onLogout }) => {
           setUploadSuccess(false);
           setSuccessMessage('');
         }, 3000);
+        
+        // Refresh user data in parent component
+        if (onUserUpdate) {
+          onUserUpdate();
+        }
       } catch (err) {
         setError('Failed to remove profile picture');
         console.error('Remove profile picture error:', err);
@@ -134,6 +144,11 @@ const ProfilePage = ({ onBack, onLogout }) => {
       })));
       
       setShowGallery(false);
+      
+      // Refresh user data in parent component
+      if (onUserUpdate) {
+        onUserUpdate();
+      }
     } catch (err) {
       setError('Failed to update profile picture');
       console.error('Set current picture error:', err);

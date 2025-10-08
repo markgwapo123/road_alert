@@ -20,13 +20,17 @@ function App() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [currentView, setCurrentView] = useState('home');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [user, setUser] = useState(null);
 
-  // Fetch notifications when token changes
+  // Fetch notifications and user data when token changes
   useEffect(() => {
     if (token) {
       fetchNotifications();
+      fetchUser();
       const notificationInterval = setInterval(fetchNotifications, 30000);
       return () => clearInterval(notificationInterval);
+    } else {
+      setUser(null);
     }
   }, [token]);
 
@@ -66,6 +70,23 @@ function App() {
       console.log('Notifications unavailable:', err.response?.status || err.message);
       setNotifications([]);
       setUnreadCount(0);
+    }
+  };
+
+  const fetchUser = async () => {
+    try {
+      if (!token) {
+        setUser(null);
+        return;
+      }
+      
+      const res = await axios.get(`${config.API_BASE_URL}/users/me`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      setUser(res.data.data);
+    } catch (err) {
+      console.log('User data unavailable:', err.response?.status || err.message);
+      setUser(null);
     }
   };
 
@@ -110,6 +131,13 @@ function App() {
   const handleLogout = () => {
     localStorage.removeItem('token');
     setToken(null);
+    setUser(null);
+  };
+
+  const refreshUserData = () => {
+    if (token) {
+      fetchUser();
+    }
   };
 
   const handleNavigation = (view) => {
@@ -261,9 +289,23 @@ function App() {
                 justifyContent: 'center',
                 margin: '0 auto 12px',
                 fontSize: '24px',
-                color: 'white'
+                color: 'white',
+                overflow: 'hidden',
+                border: '2px solid #e5e7eb'
               }}>
-                👤
+                {user?.profileImage ? (
+                  <img 
+                    src={`${config.BACKEND_URL}${user.profileImage}`}
+                    alt="Profile"
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover'
+                    }}
+                  />
+                ) : (
+                  '👤'
+                )}
               </div>
               <h3 style={{ 
                 margin: '0 0 4px 0', 
@@ -271,7 +313,7 @@ function App() {
                 fontWeight: '600',
                 color: '#1f2937'
               }}>
-                Welcome Back!
+                Welcome Back{user?.username ? `, ${user.username}` : ''}!
               </h3>
               <p style={{ 
                 margin: 0, 
@@ -454,6 +496,7 @@ function App() {
               <ProfilePage 
                 token={token} 
                 onLogout={handleLogout}
+                onUserUpdate={refreshUserData}
               />
             )}
             {currentView === 'notifications' && (
