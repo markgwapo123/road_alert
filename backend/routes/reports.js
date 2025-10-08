@@ -88,6 +88,7 @@ router.get('/', async (req, res) => {
       .limit(limit * 1)
       .skip((page - 1) * limit)
       .populate('verifiedBy', 'username')
+      .populate('reportedBy', 'username email profile')
       .exec();
 
     // Get total count for pagination
@@ -144,6 +145,7 @@ router.get('/my-reports', require('../middleware/userAuth'), async (req, res) =>
       .limit(limit * 1)
       .skip((page - 1) * limit)
       .populate('verifiedBy', 'username')
+      .populate('reportedBy', 'username email profile')
       .exec();
 
     // Get total count for pagination
@@ -323,7 +325,7 @@ router.get('/map', async (req, res) => {
 
     const reports = await Report.find(filter)
       .select('type location severity status createdAt description reportedBy images')
-      .populate('reportedBy', 'name email')
+      .populate('reportedBy', 'name email username profile')
       .limit(1000) // Limit for performance
       .exec();
 
@@ -402,7 +404,8 @@ router.post('/', upload.array('images', 5), reportValidation, async (req, res) =
 router.get('/:id', async (req, res) => {
   try {
     const report = await Report.findById(req.params.id)
-      .populate('verifiedBy', 'username');
+      .populate('verifiedBy', 'username')
+      .populate('reportedBy', 'username email profile');
 
     if (!report) {
       return res.status(404).json({
@@ -463,7 +466,8 @@ router.patch('/:id/status', async (req, res) => {
       req.params.id,
       updateData,
       { new: true }
-    ).populate('verifiedBy', 'username');
+    ).populate('verifiedBy', 'username')
+    .populate('reportedBy', 'username email profile');
 
     // Create notification for status change
     if (currentReport.reportedBy && currentReport.reportedBy.username) {

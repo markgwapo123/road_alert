@@ -4,6 +4,11 @@ import config from '../config/index.js';
 const ReportDetailModal = ({ report, isOpen, onClose, reportUser }) => {
   if (!isOpen || !report) return null;
 
+  // Debug: Log reportUser data to see what's available
+  console.log('🔍 ReportDetailModal - reportUser data:', reportUser);
+  console.log('🔍 ReportDetailModal - profile data:', reportUser?.profile);
+  console.log('🔍 ReportDetailModal - profileImage:', reportUser?.profile?.profileImage);
+
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       weekday: 'long',
@@ -165,9 +170,22 @@ const ReportDetailModal = ({ report, isOpen, onClose, reportUser }) => {
               fontSize: '16px',
               fontWeight: '600',
               border: '3px solid white',
-              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)'
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+              overflow: 'hidden'
             }}>
-              {getUserInitials(reportUser)}
+              {reportUser?.profile?.profileImage ? (
+                <img 
+                  src={`${config.BACKEND_URL}${reportUser.profile.profileImage}`}
+                  alt={`${reportUser?.username || 'User'}'s profile`}
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover'
+                  }}
+                />
+              ) : (
+                getUserInitials(reportUser)
+              )}
             </div>
             <div>
               <div style={{ 
@@ -312,14 +330,18 @@ const ReportDetailModal = ({ report, isOpen, onClose, reportUser }) => {
                         top: 20px;
                         right: 20px;
                         background: #10b981;
-                        color: white;
+                        color: white !important;
                         padding: 12px 16px;
                         border-radius: 8px;
-                        font-size: 14px;
+                        font-size: 14px !important;
+                        font-weight: 600 !important;
                         z-index: 10000;
-                        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+                        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+                        border: 2px solid #059669;
+                        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+                        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
                       `;
-                      notification.textContent = `📋 Coordinates copied: ${coordinates}`;
+                      notification.textContent = `✅ Coordinates copied: ${coordinates}`;
                       document.body.appendChild(notification);
                       
                       // Remove notification after 3 seconds

@@ -136,12 +136,15 @@ body {
 
 .success {
   background: #d1f2eb;
-  color: #0f5132;
+  color: #0f5132 !important;
   padding: 12px;
   border-radius: 8px;
   margin: 15px 0;
   border: 1px solid #a3cfbb;
   text-align: center;
+  font-weight: 600 !important;
+  opacity: 1 !important;
+  visibility: visible !important;
 }
 
 /* Navbar - Admin Dashboard Style */
@@ -158,6 +161,30 @@ body {
   width: 100%;
   box-sizing: border-box;
   border-bottom: 1px solid #374151;
+}
+
+/* Ensure all text in navbar is always visible */
+.navbar *, .navbar *::before, .navbar *::after {
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+.navbar .logo, .navbar .app-name {
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Enhanced visibility for all notification and success elements */
+.success, .error, .upload-success-message, 
+.notification-item, .notification-card,
+[class*="success"], [class*="notification"] {
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+.success *, .error *, .upload-success-message *,
+.notification-item *, .notification-card * {
+  opacity: 1 !important;
+  visibility: visible !important;
 }
 
 /* Left side - Logo and App Name together */
@@ -183,10 +210,12 @@ body {
 .navbar .app-name {
   font-weight: 700;
   font-size: 20px;
-  color: #ffffff;
+  color: #ffffff !important;
   text-shadow: none;
   letter-spacing: 0.5px;
   text-transform: uppercase;
+  opacity: 1 !important;
+  visibility: visible !important;
 }
 
 /* Remove location styles since we removed it */
@@ -1252,7 +1281,7 @@ main h1 {
 .news-feed h2 {
   text-align: center;
   margin-bottom: 20px;
-  color: #333;
+  color: rgb(245, 238, 238)4e4;
   font-size: 24px;
   font-weight: 600;
 }
@@ -6602,14 +6631,16 @@ main h1 {
 
 .upload-success-message {
   background: #d1fae5;
-  color: #065f46;
+  color: #065f46 !important;
   padding: 12px 20px;
   border-radius: 8px;
   margin: 15px 20px;
   text-align: center;
-  font-weight: 600;
+  font-weight: 600 !important;
   border: 1px solid #a7f3d0;
   animation: slideIn 0.3s ease-out;
+  opacity: 1 !important;
+  visibility: visible !important;
 }
 
 @keyframes slideIn {
