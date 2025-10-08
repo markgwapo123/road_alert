@@ -891,7 +891,7 @@ main {
 }
 
 main h1 {
-  text-align: center;
+  text-align: left;
   margin-bottom: 30px;
   color: #000000;
   font-size: 36px;
@@ -1548,14 +1548,14 @@ main h1 {
 
 .verify-container input:focus {
   outline: none;
-  border-color: #667eea;
+  border-color: #3b82f6;
   background: white;
   color: #333;
-  box-shadow: 0 5px 15px rgba(102, 126, 234, 0.2);
+  box-shadow: 0 5px 15px rgba(59, 130, 246, 0.2);
 }
 
 .verify-container button {
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
   color: white;
   border: none;
   padding: 15px;
@@ -1898,7 +1898,7 @@ main h1 {
   left: 0;
   right: 0;
   height: 4px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
 }
 
 .auth-header {
@@ -2103,7 +2103,7 @@ main h1 {
 
 .auth-button {
   width: 100%;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
   color: white;
   border: none;
   padding: 18px;
@@ -3887,26 +3887,10 @@ main h1 {
   margin-bottom: 20px;
 }
 
-.cover-photo {
-  height: 300px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
 
-.cover-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.1);
-}
 
 .profile-info-section {
-  padding: 0 40px 30px 40px;
+  padding: 30px 40px 30px 40px;
   position: relative;
 }
 
@@ -3919,7 +3903,7 @@ main h1 {
 
 .profile-picture-container {
   position: relative;
-  margin-top: -80px;
+  margin-top: 0;
   z-index: 2;
 }
 
@@ -4644,12 +4628,8 @@ main h1 {
     border-radius: 0;
   }
   
-  .cover-photo {
-    height: 150px;
-  }
-  
   .profile-info-section {
-    padding: 0 12px 15px 12px;
+    padding: 15px 12px 15px 12px;
   }
   
   .profile-main-info {
@@ -4660,7 +4640,7 @@ main h1 {
   }
   
   .profile-picture-container {
-    margin-top: -40px;
+    margin-top: 0;
   }
   
   .facebook-profile-image,
@@ -4676,7 +4656,9 @@ main h1 {
   
   .profile-details {
     padding-top: 0;
-    text-align: center;
+    text-align: left;
+    align-self: flex-start;
+    width: 100%;
   }
   
   .profile-name {
@@ -4772,16 +4754,12 @@ main h1 {
 }
 
 @media (max-width: 480px) {
-  .cover-photo {
-    height: 150px;
-  }
-  
   .profile-info-section {
-    padding: 0 15px 15px 15px;
+    padding: 15px 15px 15px 15px;
   }
   
   .profile-picture-container {
-    margin-top: -40px;
+    margin-top: 0;
   }
   
   .facebook-profile-image,
@@ -4797,10 +4775,12 @@ main h1 {
   
   .profile-name {
     font-size: 24px;
+    text-align: left;
   }
   
   .profile-subtitle {
     font-size: 14px;
+    text-align: left;
   }
   
   .profile-action-btn {
@@ -4810,16 +4790,12 @@ main h1 {
 }
 
 @media (max-width: 480px) {
-  .cover-photo {
-    height: 150px;
-  }
-  
   .profile-info-section {
-    padding: 0 15px 15px 15px;
+    padding: 15px 15px 15px 15px;
   }
   
   .profile-picture-container {
-    margin-top: -40px;
+    margin-top: 0;
   }
   
   .facebook-profile-image,
@@ -4835,10 +4811,12 @@ main h1 {
   
   .profile-name {
     font-size: 24px;
+    text-align: left;
   }
   
   .profile-subtitle {
     font-size: 14px;
+    text-align: left;
   }
   
   .profile-content {
@@ -5479,7 +5457,7 @@ main h1 {
 }
 
 .stat-icon-purple {
-  background-color: #8b5cf6;
+  background-color: #3b82f6;
 }
 
 .stat-label {

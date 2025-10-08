@@ -123,11 +123,6 @@ const ProfilePage = ({ onBack, onLogout }) => {
       <div className="profile-container">
         {/* Facebook-style Profile Header */}
         <div className="facebook-profile-header">
-          {/* Cover Photo Area */}
-          <div className="cover-photo">
-            <div className="cover-overlay"></div>
-          </div>
-          
           {/* Profile Info Section */}
           <div className="profile-info-section">
             <div className="profile-main-info">
@@ -141,12 +136,12 @@ const ProfilePage = ({ onBack, onLogout }) => {
               
               <div className="profile-details">
                 <h1 className="profile-name">{user?.username}</h1>
+                <p className="profile-subtitle">Road Alert Community Member</p>
                 <div className="profile-status">
                   <span className={`status-badge ${status.className}`}>
                     {status.icon} {status.text}
                   </span>
                 </div>
-                <p className="profile-subtitle">Road Alert Community Member</p>
               </div>
             </div>
           </div>
