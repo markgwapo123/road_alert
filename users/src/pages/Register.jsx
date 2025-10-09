@@ -5,10 +5,12 @@ import config from '../config/index.js';
 const Register = ({ onRegister, switchToLogin }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [username, setUsername] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [passwordStrength, setPasswordStrength] = useState(0);
   const [formKey, setFormKey] = useState(Date.now()); // Force form refresh
 
@@ -16,6 +18,7 @@ const Register = ({ onRegister, switchToLogin }) => {
   useEffect(() => {
     setEmail('');
     setPassword('');
+    setConfirmPassword('');
     setUsername('');
     setError('');
     setFormKey(Date.now());
@@ -55,6 +58,11 @@ const Register = ({ onRegister, switchToLogin }) => {
     }
     if (password.length < 6) {
       setError('Password must be at least 6 characters long');
+      setLoading(false);
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError('Passwords do not match');
       setLoading(false);
       return;
     }
@@ -101,8 +109,16 @@ const Register = ({ onRegister, switchToLogin }) => {
   return (
     <div className="auth-container">
       <div className="auth-left">
+        {/* Mobile mockup image - visible only on mobile */}
+        <div className="mobile-mockup">
+          <img 
+            src="/mockup-laptop-phone.png" 
+            alt="RoadAlert on laptop and phone" 
+          />
+        </div>
+
         <div className="auth-logo">
-          <div className="auth-logo-icon">🚨</div>
+          <img src="/roadalerlogo.png" alt="RoadAlert Logo" className="auth-logo-icon" />
           <h1 className="auth-logo-text">
             <span className="brand-name">Road</span><span className="brand-suffix">Alert</span>
           </h1>
@@ -178,6 +194,37 @@ const Register = ({ onRegister, switchToLogin }) => {
             )}
           </div>
 
+          <div className="input-group">
+            <div className="input-wrapper">
+              <input
+                id="confirmPassword"
+                type={showConfirmPassword ? "text" : "password"}
+                placeholder="Confirm Password"
+                value={confirmPassword}
+                onChange={e => setConfirmPassword(e.target.value)}
+                autocomplete="new-password"
+                required
+              />
+              <button
+                type="button"
+                className="password-toggle"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                aria-label={showConfirmPassword ? "Hide confirm password" : "Show confirm password"}
+              >
+                {showConfirmPassword ? "👁️" : "👁️‍🗨️"}
+              </button>
+            </div>
+            {confirmPassword && password && (
+              <div className="password-match-indicator">
+                {password === confirmPassword ? (
+                  <span className="match-success">✅ Passwords match</span>
+                ) : (
+                  <span className="match-error">❌ Passwords do not match</span>
+                )}
+              </div>
+            )}
+          </div>
+
           {error && (
             <div className="error-message">
               <span className="error-icon">⚠️</span>
@@ -204,6 +251,14 @@ const Register = ({ onRegister, switchToLogin }) => {
             Report road incidents and help make our roads safer for everyone. Join thousands of users 
             who are already making a difference in their communities.
           </p>
+        </div>
+        
+        <div className="device-mockup">
+          <img 
+            src="/mockup-laptop-phone.png" 
+            alt="RoadAlert on laptop and phone" 
+            className="mockup-image"
+          />
         </div>
       </div>
     </div>

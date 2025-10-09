@@ -251,8 +251,16 @@ const Login = ({ onLogin, switchToRegister }) => {
   return (
     <div className="auth-container">
       <div className="auth-left">
+        {/* Mobile mockup image - visible only on mobile */}
+        <div className="mobile-mockup">
+          <img 
+            src="/mockup-laptop-phone.png" 
+            alt="RoadAlert on laptop and phone" 
+          />
+        </div>
+
         <div className="auth-logo">
-          <div className="auth-logo-icon">🚨</div>
+          <img src="/roadalerlogo.png" alt="RoadAlert Logo" className="auth-logo-icon" />
           <h1 className="auth-logo-text">
             <span className="brand-name">Road</span><span className="brand-suffix">Alert</span>
           </h1>
