@@ -46,7 +46,9 @@ const reportValidation = [
   body('location[address]').isLength({ min: 3, max: 200 }).withMessage('Address must be between 3 and 200 characters'),
   body('location[coordinates][latitude]').isFloat({ min: -90, max: 90 }).withMessage('Latitude must be between -90 and 90'),
   body('location[coordinates][longitude]').isFloat({ min: -180, max: 180 }).withMessage('Longitude must be between -180 and 180'),
-  body('severity').isIn(['low', 'medium', 'high'])
+  body('province').notEmpty().withMessage('Province is required'),
+  body('city').notEmpty().withMessage('City is required'),
+  body('barangay').notEmpty().withMessage('Barangay is required')
 ];
 
 // @route   GET /api/reports
@@ -324,7 +326,7 @@ router.get('/map', async (req, res) => {
     console.log('🔍 Final filter object:', filter);
 
     const reports = await Report.find(filter)
-      .select('type location severity status createdAt description reportedBy images')
+      .select('type location province city barangay severity status createdAt description reportedBy images')
       .populate('reportedBy', 'name email username profile')
       .limit(1000) // Limit for performance
       .exec();
@@ -581,7 +583,9 @@ router.post('/user', require('../middleware/userAuth'), upload.array('images', 5
     const reportData = {
       type: req.body.type,
       description: req.body.description,
-      severity: req.body.severity || 'medium',
+      province: req.body.province,
+      city: req.body.city,
+      barangay: req.body.barangay,
       status: 'pending',
       location: {
         address: req.body['location[address]'] || req.body.location?.address,

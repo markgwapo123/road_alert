@@ -10,11 +10,15 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@google-cloud/local-auth": "^3.0.1",
     "@react-oauth/google": "^0.12.2",
     "@vitejs/plugin-react": "^4.6.0",
     "axios": "^1.11.0",
+    "google-auth-library": "^10.4.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "react-facebook-login": "^4.1.1",
+    "react-google-login": "^5.2.2",
     "vite": "^4.5.0"
   },
   "devDependencies": {

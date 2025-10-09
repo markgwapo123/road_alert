@@ -204,7 +204,7 @@ router.post('/logout', auth, (req, res) => {
 });
 
 // @route   PUT /api/auth/change-password
-// @desc    Change admin password
+// @desc    Change user password
 // @access  Private
 router.put('/change-password', auth, async (req, res) => {
   try {
@@ -222,10 +222,33 @@ router.put('/change-password', auth, async (req, res) => {
       });
     }
 
-    const admin = await Admin.findById(req.admin.id);
+    // Check if it's an admin request (has req.admin.id) or user request (has req.user.id)
+    let user;
+    if (req.admin && req.admin.id) {
+      // Admin user
+      user = await Admin.findById(req.admin.id);
+      if (!user) {
+        return res.status(404).json({
+          error: 'Admin not found'
+        });
+      }
+    } else if (req.user && req.user.id) {
+      // Regular user
+      const User = require('../models/User');
+      user = await User.findById(req.user.id);
+      if (!user) {
+        return res.status(404).json({
+          error: 'User not found'
+        });
+      }
+    } else {
+      return res.status(401).json({
+        error: 'Authentication required'
+      });
+    }
     
     // Verify current password
-    const isMatch = await admin.comparePassword(currentPassword);
+    const isMatch = await user.comparePassword(currentPassword);
     if (!isMatch) {
       return res.status(401).json({
         error: 'Current password is incorrect'
@@ -233,8 +256,8 @@ router.put('/change-password', auth, async (req, res) => {
     }
 
     // Update password
-    admin.password = newPassword;
-    await admin.save();
+    user.password = newPassword;
+    await user.save();
 
     res.json({
       success: true,
@@ -335,7 +358,7 @@ router.get('/verification-status', require('../middleware/userAuth'), async (req
 });
 
 // @route   POST /api/auth/social-login
-// @desc    Social login with Google or Facebook
+// @desc    Social login with Google
 // @access  Public
 router.post('/social-login', async (req, res) => {
   try {
@@ -362,20 +385,6 @@ router.post('/social-login', async (req, res) => {
       } catch (error) {
         return res.status(400).json({ error: 'Invalid Google token' });
       }
-    } else if (provider === 'facebook') {
-      // For Facebook, we trust the frontend verification for now
-      // In production, you should verify the token with Facebook's API
-      if (!userData || !userData.email) {
-        return res.status(400).json({ error: 'Invalid Facebook data' });
-      }
-      
-      userInfo = {
-        id: userData.id,
-        email: userData.email,
-        name: userData.name,
-        picture: userData.picture,
-        provider: 'facebook'
-      };
     } else {
       return res.status(400).json({ error: 'Unsupported provider' });
     }
@@ -446,5 +455,106 @@ router.post('/social-login', async (req, res) => {
     res.status(500).json({ error: 'Server error during social login' });
   }
 });
+
+// @route   POST /api/auth/google-login
+// @desc    Google OAuth login
+// @access  Public
+router.post('/google-login', async (req, res) => {
+  try {
+    const { idToken } = req.body;
+
+    if (!idToken) {
+      return res.status(400).json({ error: 'Google ID token is required' });
+    }
+
+    // Verify Google token
+    let userInfo = null;
+    try {
+      const ticket = await googleClient.verifyIdToken({
+        idToken: idToken,
+        audience: process.env.GOOGLE_CLIENT_ID,
+      });
+      const payload = ticket.getPayload();
+      
+      userInfo = {
+        id: payload.sub,
+        email: payload.email,
+        name: payload.name,
+        picture: payload.picture,
+        provider: 'google'
+      };
+    } catch (error) {
+      console.error('Google token verification error:', error);
+      return res.status(400).json({ error: 'Invalid Google token' });
+    }
+
+    if (!userInfo || !userInfo.email) {
+      return res.status(400).json({ error: 'Unable to get user information from Google' });
+    }
+
+    // Check if user exists
+    let user = await User.findOne({ email: userInfo.email });
+
+    if (!user) {
+      // Create new user from Google login
+      const username = userInfo.email.split('@')[0] + '_google';
+      
+      user = new User({
+        username: username,
+        email: userInfo.email,
+        password: 'google_login_' + Date.now(), // Dummy password for Google users
+        socialLogin: {
+          provider: 'google',
+          providerId: userInfo.id,
+          picture: userInfo.picture
+        },
+        profile: {
+          firstName: userInfo.name?.split(' ')[0] || '',
+          lastName: userInfo.name?.split(' ').slice(1).join(' ') || '',
+          profileImage: userInfo.picture
+        }
+      });
+
+      await user.save();
+    } else if (!user.socialLogin || user.socialLogin.provider !== 'google') {
+      // Update existing user with Google login info
+      user.socialLogin = {
+        provider: 'google',
+        providerId: userInfo.id,
+        picture: userInfo.picture
+      };
+      if (!user.profile.profileImage && userInfo.picture) {
+        user.profile.profileImage = userInfo.picture;
+      }
+      await user.save();
+    }
+
+    // Generate JWT token
+    const token = jwt.sign(
+      { userId: user._id, username: user.username },
+      process.env.JWT_SECRET || 'your-secret-key',
+      { expiresIn: '24h' }
+    );
+
+    res.json({
+      success: true,
+      token,
+      user: {
+        id: user._id,
+        username: user.username,
+        email: user.email,
+        verified: user.profile.verified,
+        profile: user.profile,
+        socialLogin: user.socialLogin
+      }
+    });
+
+  } catch (error) {
+    console.error('Google login error:', error);
+    res.status(500).json({ error: 'Server error during Google login' });
+  }
+});
+
+
 
 module.exports = router;

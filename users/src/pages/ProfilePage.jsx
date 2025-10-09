@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import config from '../config/index.js';
+import ChangePassword from './ChangePassword.jsx';
 
 const ProfilePage = ({ onBack, onLogout, onUserUpdate }) => {
   const [user, setUser] = useState(null);
@@ -20,6 +21,7 @@ const ProfilePage = ({ onBack, onLogout, onUserUpdate }) => {
   const [previewImage, setPreviewImage] = useState(null);
   const [showGallery, setShowGallery] = useState(false);
   const [gallery, setGallery] = useState([]);
+  const [showChangePassword, setShowChangePassword] = useState(false);
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
@@ -271,6 +273,16 @@ const ProfilePage = ({ onBack, onLogout, onUserUpdate }) => {
           </div>
         </div>
       </div>
+    );
+  }
+
+  // Show Change Password component if requested
+  if (showChangePassword) {
+    return (
+      <ChangePassword 
+        onBack={() => setShowChangePassword(false)}
+        onLogout={onLogout}
+      />
     );
   }
 
@@ -566,27 +578,14 @@ const ProfilePage = ({ onBack, onLogout, onUserUpdate }) => {
                 </div>
 
                 <div className="actions-grid">
-                  <button className="action-item change-password">
+                  <button 
+                    className="action-item change-password" 
+                    onClick={() => setShowChangePassword(true)}
+                  >
                     <span className="action-icon">🔒</span>
                     <div className="action-info">
                       <h3>Change Password</h3>
                       <p>Update your account password</p>
-                    </div>
-                  </button>
-
-                  <button className="action-item privacy-settings">
-                    <span className="action-icon">🛡️</span>
-                    <div className="action-info">
-                      <h3>Privacy Settings</h3>
-                      <p>Manage your privacy preferences</p>
-                    </div>
-                  </button>
-
-                  <button className="action-item download-data">
-                    <span className="action-icon">📥</span>
-                    <div className="action-info">
-                      <h3>Download Data</h3>
-                      <p>Export your account information</p>
                     </div>
                   </button>
 

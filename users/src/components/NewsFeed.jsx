@@ -165,6 +165,27 @@ const NewsFeed = () => {
                     {report.description}
                   </p>
                   
+                  {/* Location Information */}
+                  <div className="report-location-info" style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    marginTop: '8px',
+                    padding: '6px 8px',
+                    backgroundColor: '#f8f9fa',
+                    borderRadius: '6px',
+                    fontSize: '13px',
+                    color: '#495057'
+                  }}>
+                    <span className="location-icon">📍</span>
+                    <span className="location-text">
+                      {report.barangay && report.city && report.province 
+                        ? `${report.barangay}, ${report.city}, ${report.province}`
+                        : report.location?.address || 'Location not specified'
+                      }
+                    </span>
+                  </div>
+                  
                   {/* Mobile-optimized Media Section */}
                   <div className="report-media">
                     {/* Report Image */}
@@ -194,9 +215,9 @@ const NewsFeed = () => {
                     
                     {/* Compact Map */}
                     <div className="report-map-container">
-                      {report.location && report.location.coordinates ? (
+                      {report.location?.coordinates?.latitude && report.location?.coordinates?.longitude ? (
                         <iframe
-                          src={`https://www.google.com/maps/embed?pb=!1m14!1m12!1m3!1d3921.4!2d${report.location.coordinates?.longitude}!3d${report.location.coordinates?.latitude}!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!5e0!3m2!1sen!2sph!4v1635820000000!5m2!1sen!2sph`}
+                          src={`https://www.openstreetmap.org/export/embed.html?bbox=${(report.location.coordinates.longitude - 0.01)},${(report.location.coordinates.latitude - 0.01)},${(report.location.coordinates.longitude + 0.01)},${(report.location.coordinates.latitude + 0.01)}&layer=mapnik&marker=${report.location.coordinates.latitude},${report.location.coordinates.longitude}`}
                           className="report-map"
                           loading="lazy"
                           referrerPolicy="no-referrer-when-downgrade"

@@ -70,7 +70,7 @@ const userSchema = new mongoose.Schema({
     socialLogin: {
         provider: {
             type: String,
-            enum: ['google', 'facebook'],
+            enum: ['google'],
             default: null
         },
         providerId: {

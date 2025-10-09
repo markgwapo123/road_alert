@@ -286,9 +286,27 @@ const ReportDetailModal = ({ report, isOpen, onClose, reportUser }) => {
               border: '1px solid #e5e7eb',
               marginBottom: '12px'
             }}>
-              <div style={{ color: '#4b5563', fontSize: '14px' }}>
-                📍 Coordinates: {report.location?.lat?.toFixed(6)}, {report.location?.lng?.toFixed(6)}
-              </div>
+              {/* Province, City, Barangay Information */}
+              {(report.location?.barangay || report.barangay) && (report.location?.city || report.city) && (report.location?.province || report.province) && (
+                <div style={{ color: '#1f2937', fontSize: '15px', fontWeight: '600', marginBottom: '8px' }}>
+                  🏝️ {report.location?.barangay || report.barangay}, {report.location?.city || report.city}, {report.location?.province || report.province}
+                </div>
+              )}
+              
+              {/* Address fallback */}
+              {report.location?.address && !(report.location?.barangay || report.barangay) && (
+                <div style={{ color: '#4b5563', fontSize: '14px', marginBottom: '8px' }}>
+                  📍 {report.location.address}
+                </div>
+              )}
+              
+              {/* Coordinates */}
+              {report.location?.coordinates?.latitude && report.location?.coordinates?.longitude && (
+                <div style={{ color: '#6b7280', fontSize: '13px' }}>
+                  📍 Coordinates: {report.location.coordinates.latitude.toFixed(6)}, {report.location.coordinates.longitude.toFixed(6)}
+                </div>
+              )}
+              
               {report.locationName && (
                 <div style={{ color: '#4b5563', fontSize: '14px', marginTop: '4px' }}>
                   🏷️ {report.locationName}
@@ -301,8 +319,10 @@ const ReportDetailModal = ({ report, isOpen, onClose, reportUser }) => {
               }}>
                 <button
                   onClick={() => {
-                    const url = `https://www.google.com/maps?q=${report.location?.coordinates?.latitude},${report.location?.coordinates?.longitude}`;
-                    window.open(url, '_blank');
+                    if (report.location?.coordinates?.latitude && report.location?.coordinates?.longitude) {
+                      const url = `https://www.google.com/maps?q=${report.location.coordinates.latitude},${report.location.coordinates.longitude}`;
+                      window.open(url, '_blank');
+                    }
                   }}
                   style={{
                     background: '#3b82f6',
@@ -321,36 +341,38 @@ const ReportDetailModal = ({ report, isOpen, onClose, reportUser }) => {
                 </button>
                 <button
                   onClick={() => {
-                    const coordinates = `${report.location?.lat}, ${report.location?.lng}`;
-                    navigator.clipboard.writeText(coordinates).then(() => {
-                      // Create and show a better notification
-                      const notification = document.createElement('div');
-                      notification.style.cssText = `
-                        position: fixed;
-                        top: 20px;
-                        right: 20px;
-                        background: #10b981;
-                        color: white !important;
-                        padding: 12px 16px;
-                        border-radius: 8px;
-                        font-size: 14px !important;
-                        font-weight: 600 !important;
-                        z-index: 10000;
-                        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-                        border: 2px solid #059669;
-                        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-                        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
-                      `;
-                      notification.textContent = `✅ Coordinates copied: ${coordinates}`;
-                      document.body.appendChild(notification);
-                      
-                      // Remove notification after 3 seconds
-                      setTimeout(() => {
-                        document.body.removeChild(notification);
-                      }, 3000);
-                    }).catch(() => {
-                      alert('Coordinates copied to clipboard!');
-                    });
+                    if (report.location?.coordinates?.latitude && report.location?.coordinates?.longitude) {
+                      const coordinateText = `${report.location.coordinates.latitude}, ${report.location.coordinates.longitude}`;
+                      navigator.clipboard.writeText(coordinateText).then(() => {
+                        // Create and show a better notification
+                        const notification = document.createElement('div');
+                        notification.style.cssText = `
+                          position: fixed;
+                          top: 20px;
+                          right: 20px;
+                          background: #10b981;
+                          color: white !important;
+                          padding: 12px 16px;
+                          border-radius: 8px;
+                          font-size: 14px !important;
+                          font-weight: 600 !important;
+                          z-index: 10000;
+                          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+                          border: 2px solid #059669;
+                          text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+                          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+                        `;
+                        notification.textContent = `✅ Coordinates copied: ${coordinateText}`;
+                        document.body.appendChild(notification);
+                        
+                        // Remove notification after 3 seconds
+                        setTimeout(() => {
+                          document.body.removeChild(notification);
+                        }, 3000);
+                      }).catch(() => {
+                        alert('Coordinates copied to clipboard!');
+                      });
+                    }
                   }}
                   style={{
                     background: '#10b981',
@@ -371,7 +393,7 @@ const ReportDetailModal = ({ report, isOpen, onClose, reportUser }) => {
             </div>
             
             {/* Embedded Map */}
-            {report.location?.lat && report.location?.lng && (
+            {report.location?.coordinates?.latitude && report.location?.coordinates?.longitude && (
               <div style={{
                 border: '1px solid #e5e7eb',
                 borderRadius: '8px',
@@ -381,7 +403,7 @@ const ReportDetailModal = ({ report, isOpen, onClose, reportUser }) => {
                 background: '#f9fafb'
               }}>
                 <iframe
-                  src={`https://www.openstreetmap.org/export/embed.html?bbox=${(report.location.lng - 0.01)},${(report.location.lat - 0.01)},${(report.location.lng + 0.01)},${(report.location.lat + 0.01)}&layer=mapnik&marker=${report.location.lat},${report.location.lng}`}
+                  src={`https://www.openstreetmap.org/export/embed.html?bbox=${(report.location.coordinates.longitude - 0.01)},${(report.location.coordinates.latitude - 0.01)},${(report.location.coordinates.longitude + 0.01)},${(report.location.coordinates.latitude + 0.01)}&layer=mapnik&marker=${report.location.coordinates.latitude},${report.location.coordinates.longitude}`}
                   width="100%"
                   height="250"
                   style={{ border: 0 }}
@@ -447,7 +469,7 @@ const ReportDetailModal = ({ report, isOpen, onClose, reportUser }) => {
                   fontSize: '10px',
                   border: '1px solid #e5e7eb'
                 }}>
-                  📍 {report.location.lat.toFixed(4)}, {report.location.lng.toFixed(4)}
+                  📍 {report.location.coordinates.latitude.toFixed(4)}, {report.location.coordinates.longitude.toFixed(4)}
                 </div>
               </div>
             )}

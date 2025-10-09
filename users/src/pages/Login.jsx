@@ -21,6 +21,69 @@ const Login = ({ onLogin, switchToRegister }) => {
     setFormKey(Date.now());
   }, [forgotPasswordMode]);
 
+  // Auto-render Google button when component mounts
+  useEffect(() => {
+    const renderGoogleButton = () => {
+      if (window.google && window.google.accounts) {
+        const buttonContainer = document.getElementById('google-signin-button');
+        const fallbackButton = document.getElementById('google-fallback-button');
+        
+        if (buttonContainer && !buttonContainer.hasChildNodes()) {
+          try {
+            window.google.accounts.id.initialize({
+              client_id: '1272896031-jn5nlf6b7dc3b0qk0als90mfy2sfhm5d.apps.googleusercontent.com',
+              callback: async (response) => {
+                try {
+                  console.log('🔍 Google auto-button callback received:', response);
+                  if (!response.credential) {
+                    throw new Error('No credential received from Google');
+                  }
+
+                  setLoading(true);
+                  const loginResponse = await axios.post(`${config.API_BASE_URL}/auth/google-login`, {
+                    idToken: response.credential
+                  });
+
+                  if (loginResponse.data.token) {
+                    localStorage.setItem('token', loginResponse.data.token);
+                    localStorage.setItem('user', JSON.stringify(loginResponse.data.user));
+                    onLogin(loginResponse.data.user);
+                  }
+                } catch (err) {
+                  console.error('❌ Google auto-button login error:', err);
+                  setError('Google login failed. Please try again.');
+                } finally {
+                  setLoading(false);
+                }
+              }
+            });
+
+            window.google.accounts.id.renderButton(buttonContainer, {
+              theme: 'outline',
+              size: 'large',
+              type: 'standard',
+              text: 'signin_with',
+              width: 300
+            });
+            
+            console.log('✅ Google button rendered successfully');
+          } catch (error) {
+            console.error('❌ Failed to render Google button:', error);
+            // Show fallback button
+            if (fallbackButton) {
+              fallbackButton.style.display = 'block';
+            }
+          }
+        }
+      } else {
+        // Retry after a short delay
+        setTimeout(renderGoogleButton, 1000);
+      }
+    };
+
+    renderGoogleButton();
+  }, []);
+
   const handleForgotPassword = async (e) => {
     e.preventDefault();
     setError('');
@@ -87,15 +150,103 @@ const Login = ({ onLogin, switchToRegister }) => {
     setLoading(false);
   };
 
-  const handleGoogleLogin = () => {
-    // For now, show a message that this feature needs setup
-    setError('Google login requires OAuth setup. Please use email/password login for now.');
+  // Load Google Identity Services
+  useEffect(() => {
+    // Load Google Identity Services
+    if (!window.google) {
+      const script = document.createElement('script');
+      script.src = 'https://accounts.google.com/gsi/client';
+      script.async = true;
+      script.defer = true;
+      script.onload = () => {
+        console.log('✅ Google Identity Services loaded successfully');
+      };
+      script.onerror = (error) => {
+        console.error('❌ Failed to load Google Identity Services:', error);
+      };
+      document.head.appendChild(script);
+    }
+
+
+  }, []);
+
+  const handleGoogleLogin = async () => {
+    try {
+      setLoading(true);
+      setError('');
+
+      console.log('🔍 Checking Google services...');
+      if (!window.google) {
+        console.error('❌ Google services not available');
+        setError('Google services not loaded. Please refresh the page and try again. If the issue persists, check your internet connection.');
+        setLoading(false);
+        return;
+      }
+
+      console.log('✅ Google services available, initializing...');
+      // Initialize Google Identity Services
+      window.google.accounts.id.initialize({
+        client_id: '1272896031-jn5nlf6b7dc3b0qk0als90mfy2sfhm5d.apps.googleusercontent.com', // Your actual Google Client ID
+        callback: async (response) => {
+          try {
+            console.log('🔍 Google login callback received:', response);
+            if (!response.credential) {
+              throw new Error('No credential received from Google');
+            }
+
+            // Send the Google ID token to your backend
+            console.log('📤 Sending Google token to backend...');
+            const loginResponse = await axios.post(`${config.API_BASE_URL}/auth/google-login`, {
+              idToken: response.credential
+            });
+
+            console.log('✅ Backend response:', loginResponse.data);
+            if (loginResponse.data.token) {
+              localStorage.setItem('token', loginResponse.data.token);
+              localStorage.setItem('user', JSON.stringify(loginResponse.data.user));
+              onLogin(loginResponse.data.user);
+            }
+          } catch (err) {
+            console.error('❌ Google login error:', err);
+            setError('Google login failed. Please try again or use email/password.');
+          }
+          setLoading(false);
+        }
+      });
+
+      // Try to render Google sign-in button instead of prompt
+      console.log('📱 Rendering Google sign-in button...');
+      try {
+        window.google.accounts.id.renderButton(
+          document.getElementById('google-signin-button'),
+          { 
+            theme: 'outline', 
+            size: 'large',
+            type: 'standard',
+            text: 'signin_with'
+          }
+        );
+        setLoading(false);
+      } catch (renderError) {
+        console.error('❌ Failed to render Google button:', renderError);
+        // Fallback to prompt
+        window.google.accounts.id.prompt((notification) => {
+          console.log('🔔 Google prompt notification:', notification);
+          if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+            console.log('⚠️ Google login prompt was not displayed or skipped');
+            setError('Google login setup incomplete. Please ensure you are added as a test user in Google Cloud Console.');
+            setLoading(false);
+          }
+        });
+      }
+    } catch (err) {
+      console.error('❌ Google login initialization error:', err);
+      setError('Google login unavailable. Please use email/password login.');
+      setLoading(false);
+    }
   };
 
-  const handleFacebookLogin = () => {
-    // For now, show a message that this feature needs setup
-    setError('Facebook login requires OAuth setup. Please use email/password login for now.');
-  };
+
 
   return (
     <div className="auth-container">
@@ -166,6 +317,11 @@ const Login = ({ onLogin, switchToRegister }) => {
             <div className="error-message">
               <span className="error-icon">⚠️</span>
               {error}
+              {error.includes('Google') && (
+                <div style={{ marginTop: '10px', fontSize: '14px', opacity: '0.8' }}>
+                  <strong>Quick Fix:</strong> Use email/password login while setting up Google OAuth.
+                </div>
+              )}
             </div>
           )}
 
@@ -191,11 +347,23 @@ const Login = ({ onLogin, switchToRegister }) => {
             </div>
             
             <div className="social-buttons">
+              {/* Google Sign-In Button Container */}
+              <div id="google-signin-button" style={{ 
+                width: '100%', 
+                marginBottom: '10px',
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center'
+              }}></div>
+              
+              {/* Fallback Manual Button */}
               <button 
                 type="button" 
                 className="google-login-button"
                 onClick={() => handleGoogleLogin()}
                 disabled={loading}
+                style={{ display: 'none' }}
+                id="google-fallback-button"
               >
                 <svg width="18" height="18" viewBox="0 0 24 24">
                   <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -204,18 +372,6 @@ const Login = ({ onLogin, switchToRegister }) => {
                   <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
                 </svg>
                 Sign in with Google
-              </button>
-
-              <button 
-                type="button" 
-                className="facebook-login-button"
-                onClick={() => handleFacebookLogin()}
-                disabled={loading}
-              >
-                <svg width="18" height="18" viewBox="0 0 24 24">
-                  <path fill="#1877F2" d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
-                </svg>
-                Continue with Facebook
               </button>
             </div>
           </div>

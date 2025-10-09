@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import config from '../config/index.js';
+import { NEGROS_PROVINCES, NEGROS_CITIES, NEGROS_BARANGAYS } from '../data/negrosLocations.js';
 
 const ALERT_TYPES = [
   { value: 'emergency', label: 'Emergency Alert', example: 'ROAD CLOSED - Accident Ahead' },
@@ -15,12 +16,12 @@ const ALERT_TYPES = [
   { value: 'other', label: 'Other', example: 'Other road hazard' }
 ];
 
-const SEVERITIES = ['high', 'medium', 'low'];
-
 const ReportForm = ({ onReport, onClose }) => {
   const [form, setForm] = useState({
     type: '',
-    severity: '',
+    province: '',
+    city: '',
+    barangay: '',
     description: '',
     image: null,
     location: null,
@@ -72,6 +73,12 @@ const ReportForm = ({ onReport, onClose }) => {
       
       setForm(f => ({ ...f, [name]: file }));
       console.log('✅ File successfully added to form state');
+    } else if (name === 'province') {
+      // Reset city and barangay when province changes
+      setForm(f => ({ ...f, province: value, city: '', barangay: '' }));
+    } else if (name === 'city') {
+      // Reset barangay when city changes
+      setForm(f => ({ ...f, city: value, barangay: '' }));
     } else {
       setForm(f => ({ ...f, [name]: files ? files[0] : value }));
     }
@@ -122,17 +129,29 @@ const ReportForm = ({ onReport, onClose }) => {
     
     const data = new FormData();
     data.append('type', form.type);
-    data.append('severity', form.severity);
+    data.append('province', form.province);
+    data.append('city', form.city);
+    data.append('barangay', form.barangay);
     data.append('description', form.description);
-    data.append('location[address]', `Coordinates: ${form.location.lat.toFixed(6)}, ${form.location.lng.toFixed(6)}`);
+    
+    // Create readable address from selected locations
+    const provinceLabel = NEGROS_PROVINCES.find(p => p.value === form.province)?.label;
+    const cityLabel = NEGROS_CITIES[form.province]?.find(c => c.value === form.city)?.label;
+    const barangayLabel = NEGROS_BARANGAYS[form.city]?.find(b => b.value === form.barangay)?.label;
+    const fullAddress = `${barangayLabel}, ${cityLabel}, ${provinceLabel}`;
+    
+    data.append('location[address]', fullAddress);
     data.append('location[coordinates][latitude]', form.location.lat);
     data.append('location[coordinates][longitude]', form.location.lng);
     data.append('images', form.image); // Note: using 'images' to match multer field name
     
     console.log('Submitting form data:', {
       type: form.type,
-      severity: form.severity,
+      province: form.province,
+      city: form.city,
+      barangay: form.barangay,
       description: form.description,
+      fullAddress: fullAddress,
       imageSize: form.image.size,
       imageType: form.image.type,
       location: form.location
@@ -151,7 +170,7 @@ const ReportForm = ({ onReport, onClose }) => {
       setSuccess('✅ Report submitted successfully! Your report has been sent for review and will be visible to other users once approved by our team.');
       
       // Clear the form
-      setForm({ type: '', severity: '', description: '', image: null, location: null });
+      setForm({ type: '', province: '', city: '', barangay: '', description: '', image: null, location: null });
       
       // Call the callback to refresh any parent components
       if (onReport) {
@@ -244,29 +263,79 @@ const ReportForm = ({ onReport, onClose }) => {
           </div>
         </div>
 
-        {/* Severity Selection */}
+        {/* Province Selection */}
         <div className="form-group">
           <label>
-            <span className="label-icon">⚡</span>
-            Severity Level
+            <span className="label-icon">🏝️</span>
+            Province
             <span className="label-required">*</span>
           </label>
-          <select name="severity" value={form.severity} onChange={handleChange} required>
-            <option value="">Select severity level...</option>
-            <option value="high">High - Immediate danger or road closure</option>
-            <option value="medium">Medium - Caution required, traffic impact</option>
-            <option value="low">Low - Minor issue, minimal impact</option>
+          <select name="province" value={form.province} onChange={handleChange} required>
+            <option value="">Select province...</option>
+            {NEGROS_PROVINCES.map(province => (
+              <option key={province.value} value={province.value}>
+                {province.label}
+              </option>
+            ))}
           </select>
-          <div className="severity-help">
-            <div className="severity-item">
-              <span className="severity-high">●</span> High: Accidents, blocked roads
-            </div>
-            <div className="severity-item">
-              <span className="severity-medium">●</span> Medium: Construction zones, debris
-            </div>
-            <div className="severity-item">
-              <span className="severity-low">●</span> Low: Potholes, minor issues
-            </div>
+          <div className="help-text">
+            Select the province in Negros Island where the incident is located.
+          </div>
+        </div>
+
+        {/* City Selection */}
+        <div className="form-group">
+          <label>
+            <span className="label-icon">🏙️</span>
+            City/Municipality
+            <span className="label-required">*</span>
+          </label>
+          <select 
+            name="city" 
+            value={form.city} 
+            onChange={handleChange} 
+            required
+            disabled={!form.province}
+          >
+            <option value="">
+              {form.province ? 'Select city/municipality...' : 'Please select a province first'}
+            </option>
+            {form.province && NEGROS_CITIES[form.province] && NEGROS_CITIES[form.province].map(city => (
+              <option key={city.value} value={city.value}>
+                {city.label}
+              </option>
+            ))}
+          </select>
+          <div className="help-text">
+            Select the city or municipality where the road incident is located.
+          </div>
+        </div>
+
+        {/* Barangay Selection */}
+        <div className="form-group">
+          <label>
+            <span className="label-icon">📍</span>
+            Barangay
+            <span className="label-required">*</span>
+          </label>
+          <select 
+            name="barangay" 
+            value={form.barangay} 
+            onChange={handleChange} 
+            required
+            disabled={!form.city}
+          >
+            <option value="">
+              {form.city ? 'Select barangay...' : 'Please select a city/municipality first'}
+            </option>
+            {form.city && NEGROS_BARANGAYS[form.city] && NEGROS_BARANGAYS[form.city].map(barangay => (
+              <option key={barangay.value} value={barangay.value}>
+                {barangay.label}
+              </option>
+            ))}
+          </select>
+          <div className="help-text">
+            Select the specific barangay where the incident occurred.
           </div>
         </div>
 
