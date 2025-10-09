@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import axios from 'axios';
 import config from '../config/index.js';
 import { NEGROS_PROVINCES, NEGROS_CITIES, NEGROS_BARANGAYS } from '../data/negrosLocations.js';
+import exifr from 'exifr';
 
 const ALERT_TYPES = [
   { value: 'emergency', label: 'Emergency Alert', example: 'ROAD CLOSED - Accident Ahead' },
@@ -45,6 +46,67 @@ const ReportForm = ({ onReport, onClose }) => {
     );
   };
 
+  // Extract GPS coordinates from image EXIF data
+  const extractGPSFromImage = async (file) => {
+    try {
+      console.log('📍 Attempting to extract GPS data from image...');
+      console.log('📍 File info:', { name: file.name, type: file.type, size: file.size });
+      
+      // Only attempt EXIF extraction for JPEG images (most likely to have GPS data)
+      if (!file.type.includes('jpeg') && !file.type.includes('jpg')) {
+        console.log('ℹ️ Skipping EXIF extraction - not a JPEG image');
+        return null;
+      }
+      
+      // Read EXIF data from the image
+      const exifData = await exifr.parse(file, {
+        gps: true,
+        pick: ['latitude', 'longitude', 'GPSLatitude', 'GPSLongitude', 'GPSLatitudeRef', 'GPSLongitudeRef', 'GPSAltitude', 'GPSTimeStamp', 'GPSDateStamp']
+      });
+      
+      console.log('📍 EXIF data extracted:', exifData);
+      
+      // Check if GPS coordinates exist in EXIF data
+      if (exifData && (exifData.latitude && exifData.longitude)) {
+        // Validate coordinates are reasonable (within world bounds)
+        if (exifData.latitude >= -90 && exifData.latitude <= 90 && 
+            exifData.longitude >= -180 && exifData.longitude <= 180) {
+          
+          console.log('✅ Valid GPS coordinates found in image EXIF data:', {
+            latitude: exifData.latitude,
+            longitude: exifData.longitude
+          });
+          
+          // Update location with GPS data from image
+          setForm(f => ({ ...f, location: {
+            lat: exifData.latitude,
+            lng: exifData.longitude,
+            source: 'image_exif' // Track the source of coordinates
+          }}));
+          
+          setSuccess('📍 Location automatically detected from photo GPS data!');
+          setError(''); // Clear any previous errors
+          
+          return {
+            lat: exifData.latitude,
+            lng: exifData.longitude,
+            source: 'image_exif'
+          };
+        } else {
+          console.log('❌ Invalid GPS coordinates in EXIF data');
+          return null;
+        }
+      } else {
+        console.log('ℹ️ No GPS data found in image EXIF');
+        return null;
+      }
+    } catch (error) {
+      console.error('❌ Error extracting GPS from image:', error);
+      // Don't show error to user as this is an optional feature
+      return null;
+    }
+  };
+
   const handleChange = (e) => {
     const { name, value, files } = e.target;
     
@@ -70,9 +132,18 @@ const ReportForm = ({ onReport, onClose }) => {
       
       // Clear any previous errors
       setError('');
+      setSuccess('');
       
       setForm(f => ({ ...f, [name]: file }));
       console.log('✅ File successfully added to form state');
+      
+      // Attempt to extract GPS data from the image
+      extractGPSFromImage(file).then(gpsData => {
+        if (!gpsData && !form.location) {
+          // If no GPS data in image and no location set, show manual location option
+          console.log('ℹ️ No GPS data in image. User can manually detect location.');
+        }
+      });
     } else if (name === 'province') {
       // Reset city and barangay when province changes
       setForm(f => ({ ...f, province: value, city: '', barangay: '' }));
@@ -419,28 +490,55 @@ const ReportForm = ({ onReport, onClose }) => {
               type="button" 
               className="location-button"
               onClick={getLocation} 
-              disabled={!!form.location}
+              disabled={submitting}
             >
               <span className="location-icon">
-                {form.location ? '✅' : '📍'}
+                {form.location && form.location.source !== 'image_exif' ? '✅' : '📍'}
               </span>
-              {form.location ? 'Location Detected' : 'Detect Current Location'}
+              {form.location && form.location.source !== 'image_exif' ? 'Current Location Detected' : 'Use Current Location'}
             </button>
+            
+            {form.location && form.location.source === 'image_exif' && (
+              <button 
+                type="button" 
+                className="location-button secondary"
+                onClick={() => {
+                  setForm(f => ({ ...f, location: null }));
+                  setSuccess('');
+                }}
+                disabled={submitting}
+                style={{ marginLeft: '10px', background: '#6b7280' }}
+              >
+                📍 Use Current Location Instead
+              </button>
+            )}
             
             {form.location && (
               <div className="location-display">
-                <span className="location-pin">📍</span>
+                <span className="location-pin">
+                  {form.location.source === 'image_exif' ? '�' : '�📍'}
+                </span>
                 <div>
-                  <div>Location confirmed</div>
+                  <div>
+                    {form.location.source === 'image_exif' 
+                      ? 'Location from photo GPS data' 
+                      : 'Location confirmed'
+                    }
+                  </div>
                   <div className="location-coordinates">
                     {form.location.lat.toFixed(6)}, {form.location.lng.toFixed(6)}
                   </div>
+                  {form.location.source === 'image_exif' && (
+                    <div className="location-source">
+                      📍 GPS coordinates extracted from image EXIF data
+                    </div>
+                  )}
                 </div>
               </div>
             )}
           </div>
           <div className="help-text">
-            We need your current location to accurately map the road condition. Your location will only be used for this report.
+            📍 Location will be automatically detected from photo GPS data if available, or you can manually detect your current location. Your location will only be used for this report.
           </div>
         </div>
 
