@@ -34,11 +34,13 @@ const ALERT_COLORS = {
 
 const NewsFeed = () => {
   const [reports, setReports] = useState([]);
+  const [filteredReports, setFilteredReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selectedReport, setSelectedReport] = useState(null);
   const [selectedReportUser, setSelectedReportUser] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     const fetchReports = async () => {
@@ -52,7 +54,9 @@ const NewsFeed = () => {
             sortOrder: 'desc'
           }
         });
-        setReports(response.data.data || []);
+        const reportsData = response.data.data || [];
+        setReports(reportsData);
+        setFilteredReports(reportsData);
       } catch (err) {
         setError('Failed to load reports');
         console.error('Error fetching reports:', err);
@@ -63,6 +67,44 @@ const NewsFeed = () => {
 
     fetchReports();
   }, []);
+
+  // Filter reports based on search query
+  const filterReports = (query) => {
+    if (!query.trim()) {
+      setFilteredReports(reports);
+      return;
+    }
+
+    const searchTerm = query.toLowerCase().trim();
+    const filtered = reports.filter(report => {
+      // Search in city, barangay, province, and address
+      const city = report.city?.toLowerCase() || '';
+      const barangay = report.barangay?.toLowerCase() || '';
+      const province = report.province?.toLowerCase() || '';
+      const address = report.location?.address?.toLowerCase() || '';
+      const description = report.description?.toLowerCase() || '';
+
+      return city.includes(searchTerm) || 
+             barangay.includes(searchTerm) || 
+             province.includes(searchTerm) ||
+             address.includes(searchTerm) ||
+             description.includes(searchTerm);
+    });
+
+    setFilteredReports(filtered);
+  };
+
+  // Handle search input changes
+  const handleSearchChange = (e) => {
+    const query = e.target.value;
+    setSearchQuery(query);
+    filterReports(query);
+  };
+
+  // Update filtered reports when reports change
+  useEffect(() => {
+    filterReports(searchQuery);
+  }, [reports, searchQuery]);
 
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -123,6 +165,56 @@ const NewsFeed = () => {
         Recent Road Alerts
       </h2>
       
+      {/* Search Bar */}
+      <div className="search-container">
+        <div className="search-input-wrapper">
+          <span className="search-icon">🔍</span>
+          <input
+            type="text"
+            className="search-input"
+            placeholder="Search by city, barangay, or location... (e.g., Kabankalan)"
+            value={searchQuery}
+            onChange={handleSearchChange}
+          />
+          {searchQuery && (
+            <button 
+              className="clear-search"
+              onClick={() => {
+                setSearchQuery('');
+                setFilteredReports(reports);
+              }}
+            >
+              ✕
+            </button>
+          )}
+        </div>
+        
+        {/* Quick Search Suggestions */}
+        {!searchQuery && (
+          <div className="search-suggestions">
+            <span className="suggestions-label">Popular searches:</span>
+            {['Kabankalan', 'Bacolod', 'Bago', 'Silay', 'Talisay'].map(city => (
+              <button
+                key={city}
+                className="suggestion-chip"
+                onClick={() => {
+                  setSearchQuery(city);
+                  filterReports(city);
+                }}
+              >
+                {city}
+              </button>
+            ))}
+          </div>
+        )}
+        
+        {searchQuery && (
+          <div className="search-results-info">
+            {filteredReports.length} report{filteredReports.length !== 1 ? 's' : ''} found for "{searchQuery}"
+          </div>
+        )}
+      </div>
+      
       {reports.length === 0 ? (
         <div style={{
           textAlign: 'center',
@@ -135,9 +227,26 @@ const NewsFeed = () => {
         }}>
           No reports available yet
         </div>
+      ) : filteredReports.length === 0 ? (
+        <div style={{
+          textAlign: 'center',
+          padding: '40px',
+          background: '#fff3cd',
+          borderRadius: '12px',
+          color: '#856404',
+          maxWidth: '600px',
+          margin: '0 auto',
+          border: '1px solid #ffeaa7'
+        }}>
+          <div style={{ fontSize: '24px', marginBottom: '10px' }}>🔍</div>
+          No reports found for "{searchQuery}"
+          <div style={{ fontSize: '14px', marginTop: '8px', color: '#6c757d' }}>
+            Try searching for cities like "Kabankalan", "Bacolod", or barangays
+          </div>
+        </div>
       ) : (
         <div className="news-feed-grid">
-          {reports.map((report) => {
+          {filteredReports.map((report) => {
             const alertStyle = ALERT_COLORS[report.type] || ALERT_COLORS.info;
             
             return (

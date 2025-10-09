@@ -941,6 +941,113 @@ main h1 {
   overflow-y: auto;
 }
 
+/* Search Container */
+.search-container {
+  padding: 0 16px;
+  margin-bottom: 24px;
+  max-width: 600px;
+  margin-left: 0;
+  margin-right: auto;
+}
+
+.search-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.search-input {
+  width: 100%;
+  padding: 14px 16px 14px 48px;
+  border: 2px solid #e5e7eb;
+  border-radius: 12px;
+  font-size: 16px;
+  background: #ffffff;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.search-icon {
+  position: absolute;
+  left: 16px;
+  font-size: 18px;
+  color: #6b7280;
+  z-index: 1;
+}
+
+.clear-search {
+  position: absolute;
+  right: 12px;
+  background: #f3f4f6;
+  border: none;
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #6b7280;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.clear-search:hover {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+.search-results-info {
+  text-align: center;
+  margin-top: 12px;
+  font-size: 14px;
+  color: #6b7280;
+  font-style: italic;
+}
+
+.search-suggestions {
+  text-align: center;
+  margin-top: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+}
+
+.suggestions-label {
+  font-size: 13px;
+  color: #6b7280;
+  margin-right: 8px;
+}
+
+.suggestion-chip {
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  border-radius: 20px;
+  padding: 6px 12px;
+  font-size: 13px;
+  color: #374151;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.suggestion-chip:hover {
+  background: #3b82f6;
+  color: white;
+  border-color: #3b82f6;
+  transform: translateY(-1px);
+}
+
 /* News Feed Grid */
 .news-feed-grid {
   display: grid;
@@ -1102,6 +1209,52 @@ main h1 {
   .news-feed h2 {
     font-size: 18px;
     margin-bottom: 15px;
+  }
+
+  .search-container {
+    padding: 0;
+    margin-bottom: 20px;
+  }
+
+  .search-input {
+    padding: 12px 16px 12px 44px;
+    font-size: 16px;
+    border-radius: 10px;
+  }
+
+  .search-icon {
+    left: 14px;
+    font-size: 16px;
+  }
+
+  .clear-search {
+    right: 10px;
+    width: 26px;
+    height: 26px;
+    font-size: 12px;
+  }
+
+  .search-results-info {
+    font-size: 13px;
+    margin-top: 10px;
+  }
+
+  .search-suggestions {
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 10px;
+  }
+
+  .suggestions-label {
+    font-size: 12px;
+    margin-right: 6px;
+    margin-bottom: 4px;
+    flex-basis: 100%;
+  }
+
+  .suggestion-chip {
+    font-size: 12px;
+    padding: 5px 10px;
   }
   
   .news-feed-grid {
