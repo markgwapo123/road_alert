@@ -564,7 +564,7 @@ body {
   padding: 15px 30px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   position: sticky;
   top: 0;
@@ -1619,7 +1619,6 @@ main h1 {
   
   .news-feed h2 {
     font-size: 18px;
-    margin-bottom: 15px;
   }
 
   .search-container {
@@ -1760,7 +1759,7 @@ main h1 {
   
   .news-feed h2 {
     font-size: 16px;
-    margin-bottom: 10px;
+
   }
   
   .news-feed-grid {
@@ -1844,7 +1843,6 @@ main h1 {
 
 .news-feed h2 {
   text-align: center;
-  margin-bottom: 20px;
   color: rgb(245, 238, 238)4e4;
   font-size: 24px;
   font-weight: 600;
@@ -1852,7 +1850,6 @@ main h1 {
 
 .news-feed-title {
   text-align: center;
-  margin-bottom: 20px;
   color: #1f2937;
   font-size: 24px;
   font-weight: 600;

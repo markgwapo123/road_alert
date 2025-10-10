@@ -63,36 +63,7 @@ const MyReports = ({ token }) => {
     }
   };
 
-  const deleteReport = async (reportId) => {
-    try {
-      console.log('Deleting report:', reportId);
-      
-      const response = await axios.delete(`${config.API_BASE_URL}/reports/my-reports/${reportId}`, {
-        headers: { 
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      if (response.data.success) {
-        // Remove the deleted report from the local state
-        setReports(prevReports => prevReports.filter(report => report._id !== reportId));
-        alert('Report deleted successfully!');
-      } else {
-        throw new Error(response.data.error || 'Failed to delete report');
-      }
-    } catch (err) {
-      console.error('Delete report error:', err);
-      const errorMessage = err.response?.data?.error || err.message || 'Failed to delete report';
-      alert(`Error deleting report: ${errorMessage}`);
-    }
-  };
 
-  const confirmDelete = (reportId, reportType) => {
-    if (window.confirm(`Are you sure you want to delete this ${reportType} report? This action cannot be undone.`)) {
-      deleteReport(reportId);
-    }
-  };
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -248,16 +219,7 @@ const MyReports = ({ token }) => {
                     </div>
                   )}
                   
-                  {/* Delete button */}
-                  <div className="report-actions">
-                    <button 
-                      className="delete-btn"
-                      onClick={() => confirmDelete(report._id, report.type || 'Unknown')}
-                      title="Delete this report"
-                    >
-                      🗑️ Delete Report
-                    </button>
-                  </div>
+
                 </div>
               </div>
             );
