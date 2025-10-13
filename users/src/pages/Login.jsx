@@ -391,15 +391,6 @@ const Login = ({ onLogin, switchToRegister }) => {
           </button>
         </div>
       </div>
-
-      <div className="auth-right">
-        <div className="auth-right-content">
-          <div className="device-mockup">
-            <img src="/mockup-laptop-phone.png" alt="RoadAlert Dashboard on laptop and phone" className="device-mockup-img" />
-          </div>
-          <h2 className="marketing-title">Introducing Incident Response</h2>
-        </div>
-      </div>
     </div>
   );
 };

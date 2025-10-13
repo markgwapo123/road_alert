@@ -243,24 +243,6 @@ const Register = ({ onRegister, switchToLogin }) => {
           </button>
         </div>
       </div>
-
-      <div className="auth-right">
-        <div className="marketing-content">
-          <h2 className="marketing-title">Join RoadAlert Community</h2>
-          <p className="marketing-subtitle">
-            Report road incidents and help make our roads safer for everyone. Join thousands of users 
-            who are already making a difference in their communities.
-          </p>
-        </div>
-        
-        <div className="device-mockup">
-          <img 
-            src="/mockup-laptop-phone.png" 
-            alt="RoadAlert on laptop and phone" 
-            className="mockup-image"
-          />
-        </div>
-      </div>
     </div>
   );
 };

@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">RoadAlert</string>
+    <string name="title_activity_main">RoadAlert</string>
+    <string name="package_name">com.roadalert.app</string>
+    <string name="custom_url_scheme">com.roadalert.app</string>
+</resources>
