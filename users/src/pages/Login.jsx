@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import config from '../config/index.js';
+import ErrorModal from '../components/ErrorModal';
 
 const Login = ({ onLogin, switchToRegister }) => {
   const [loginId, setLoginId] = useState(''); // can be email or username
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [forgotPasswordMode, setForgotPasswordMode] = useState(false);
@@ -20,6 +23,12 @@ const Login = ({ onLogin, switchToRegister }) => {
     setResetMessage('');
     setFormKey(Date.now());
   }, [forgotPasswordMode]);
+
+  // Helper function to show error modal
+  const showError = (message) => {
+    setErrorMessage(message);
+    setShowErrorModal(true);
+  };
 
   // Auto-render Google button when component mounts
   useEffect(() => {
@@ -51,7 +60,7 @@ const Login = ({ onLogin, switchToRegister }) => {
                   }
                 } catch (err) {
                   console.error('❌ Google auto-button login error:', err);
-                  setError('Google login failed. Please try again.');
+                  showError('Google login failed. Please try again or use email/password login.');
                 } finally {
                   setLoading(false);
                 }
@@ -92,7 +101,7 @@ const Login = ({ onLogin, switchToRegister }) => {
 
     // Validate email format
     if (!loginId || !loginId.includes('@gmail.com')) {
-      setError('Please enter a valid Gmail address.');
+      showError('Please enter a valid Gmail address.');
       setLoading(false);
       return;
     }
@@ -108,11 +117,11 @@ const Login = ({ onLogin, switchToRegister }) => {
       setForgotPasswordMode(false);
     } catch (err) {
       if (err.code === 'ECONNREFUSED' || (err.message && err.message.includes('Network Error'))) {
-        setError('Cannot connect to server. Please ensure the backend is running.');
+        showError('Cannot connect to server. Please ensure the backend is running.');
       } else if (err.response?.status === 404) {
-        setError('Email not found. Please check your email address or register first.');
+        showError('Email not found. Please check your email address or register first.');
       } else {
-        setError(err.response?.data?.error || 'Failed to send reset email. Please try again.');
+        showError(err.response?.data?.error || 'Failed to send reset email. Please try again.');
       }
     }
     setLoading(false);
@@ -124,7 +133,7 @@ const Login = ({ onLogin, switchToRegister }) => {
     setLoading(true);
     // Only allow Gmail addresses
     if (!loginId.includes('@gmail.com')) {
-      setError('Only Gmail addresses are allowed for login.');
+      showError('Only Gmail addresses are allowed for login.');
       setLoading(false);
       return;
     }
@@ -138,13 +147,13 @@ const Login = ({ onLogin, switchToRegister }) => {
       onLogin(res.data.token);
     } catch (err) {
       if (err.code === 'ECONNREFUSED' || (err.message && err.message.includes('Network Error'))) {
-        setError('Cannot connect to server. Please check your internet connection.');
+        showError('Cannot connect to server. Please check your internet connection.');
       } else if (err.response?.status === 401) {
-        setError('Invalid Gmail or password');
+        showError('Invalid Gmail or password. Please check your credentials and try again.');
       } else if (err.response?.status === 404) {
-        setError('User not found. Please register first.');
+        showError('User not found. Please register first.');
       } else {
-        setError(err.response?.data?.error || 'Login failed. Please try again.');
+        showError(err.response?.data?.error || 'Login failed. Please try again.');
       }
     }
     setLoading(false);
@@ -178,7 +187,7 @@ const Login = ({ onLogin, switchToRegister }) => {
       console.log('🔍 Checking Google services...');
       if (!window.google) {
         console.error('❌ Google services not available');
-        setError('Google services not loaded. Please refresh the page and try again. If the issue persists, check your internet connection.');
+        showError('Google services not loaded. Please refresh the page and try again. If the issue persists, check your internet connection.');
         setLoading(false);
         return;
       }
@@ -208,7 +217,7 @@ const Login = ({ onLogin, switchToRegister }) => {
             }
           } catch (err) {
             console.error('❌ Google login error:', err);
-            setError('Google login failed. Please try again or use email/password.');
+            showError('Google login failed. Please try again or use email/password.');
           }
           setLoading(false);
         }
@@ -234,14 +243,14 @@ const Login = ({ onLogin, switchToRegister }) => {
           console.log('🔔 Google prompt notification:', notification);
           if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
             console.log('⚠️ Google login prompt was not displayed or skipped');
-            setError('Google login setup incomplete. Please ensure you are added as a test user in Google Cloud Console.');
+            showError('Google login setup incomplete. Please ensure you are added as a test user in Google Cloud Console.');
             setLoading(false);
           }
         });
       }
     } catch (err) {
       console.error('❌ Google login initialization error:', err);
-      setError('Google login unavailable. Please use email/password login.');
+      showError('Google login unavailable. Please use email/password login.');
       setLoading(false);
     }
   };
@@ -321,18 +330,6 @@ const Login = ({ onLogin, switchToRegister }) => {
             )}
           </div>
 
-          {error && (
-            <div className="error-message">
-              <span className="error-icon">⚠️</span>
-              {error}
-              {error.includes('Google') && (
-                <div style={{ marginTop: '10px', fontSize: '14px', opacity: '0.8' }}>
-                  <strong>Quick Fix:</strong> Use email/password login while setting up Google OAuth.
-                </div>
-              )}
-            </div>
-          )}
-
           {resetMessage && (
             <div className="success-message">
               <span className="success-icon">✅</span>
@@ -386,11 +383,19 @@ const Login = ({ onLogin, switchToRegister }) => {
         )}
 
         <div className="new-user-section">
-          <button type="button" onClick={switchToRegister} className="new-user-button">
-            New User? Activate your account
-          </button>
+          <p className="new-user-text">
+            New user? <a href="#" onClick={(e) => { e.preventDefault(); switchToRegister(); }} className="new-user-link">Activate your account</a>
+          </p>
         </div>
       </div>
+
+      {/* Error Modal */}
+      <ErrorModal
+        isOpen={showErrorModal}
+        onClose={() => setShowErrorModal(false)}
+        message={errorMessage}
+        title="Login Error"
+      />
     </div>
   );
 };

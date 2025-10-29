@@ -10,6 +10,8 @@ import Dashboard from './components/Dashboard';
 import UserProfile from './components/UserProfile';
 import MyReports from './components/MyReports';
 import NotificationPage from './pages/NotificationPage';
+import ConfirmationModal from './components/ConfirmationModal';
+import LogoutConfirmModal from './components/LogoutConfirmModal';
 import './App.css';
 
 function App() {
@@ -21,6 +23,10 @@ function App() {
   const [currentView, setCurrentView] = useState('home');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [user, setUser] = useState(null);
+  const [showConfirmation, setShowConfirmation] = useState(false);
+  const [confirmationMessage, setConfirmationMessage] = useState('');
+  const [confirmationType, setConfirmationType] = useState('success');
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   // Fetch notifications and user data when token changes
   useEffect(() => {
@@ -126,12 +132,28 @@ function App() {
   const handleLogin = (jwt) => {
     localStorage.setItem('token', jwt);
     setToken(jwt);
+    setConfirmationMessage('Successfully logged in! 🎉');
+    setConfirmationType('success');
+    setShowConfirmation(true);
   };
 
-  const handleLogout = () => {
+  const handleLogoutClick = () => {
+    setShowLogoutConfirm(true);
+    setIsMobileMenuOpen(false); // Close mobile menu when logout modal opens
+  };
+
+  const handleLogoutConfirm = () => {
     localStorage.removeItem('token');
     setToken(null);
     setUser(null);
+    setShowLogoutConfirm(false);
+    setConfirmationMessage('Successfully logged out! 👋');
+    setConfirmationType('success');
+    setShowConfirmation(true);
+  };
+
+  const handleLogoutCancel = () => {
+    setShowLogoutConfirm(false);
   };
 
   const refreshUserData = () => {
@@ -182,17 +204,17 @@ function App() {
         </button>
         
         <button 
-          className="nav-btn add-btn"
-          onClick={() => setShowReport(true)}
-        >
-          <span className="nav-icon">✚</span>
-        </button>
-        
-        <button 
           className={`nav-btn ${currentView === 'myreports' ? 'active' : ''}`}
           onClick={() => handleNavigation('myreports')}
         >
           <span className="nav-icon">📊</span>
+        </button>
+        
+        <button 
+          className="nav-btn add-btn"
+          onClick={() => setShowReport(true)}
+        >
+          <span className="nav-icon">✚</span>
         </button>
         
         <button 
@@ -259,7 +281,7 @@ function App() {
                   
                   <button
                     className="mobile-menu-item logout-item"
-                    onClick={handleLogout}
+                    onClick={handleLogoutClick}
                   >
                     <span className="menu-icon">🚪</span>
                     <span>Logout</span>
@@ -466,7 +488,7 @@ function App() {
             </nav>
 
             <button
-              onClick={handleLogout}
+              onClick={handleLogoutClick}
               style={{
                 width: '100%',
                 padding: '12px 16px',
@@ -495,7 +517,7 @@ function App() {
             {currentView === 'profile' && (
               <ProfilePage 
                 token={token} 
-                onLogout={handleLogout}
+                onLogout={handleLogoutClick}
                 onUserUpdate={refreshUserData}
               />
             )}
@@ -512,6 +534,22 @@ function App() {
           </div>
         </div>
       </main>
+
+      {/* Logout Confirmation Modal */}
+      <LogoutConfirmModal
+        isOpen={showLogoutConfirm}
+        onClose={handleLogoutCancel}
+        onConfirm={handleLogoutConfirm}
+      />
+
+      {/* Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showConfirmation}
+        onClose={() => setShowConfirmation(false)}
+        message={confirmationMessage}
+        type={confirmationType}
+        autoCloseDelay={2000}
+      />
     </div>
   );
 }

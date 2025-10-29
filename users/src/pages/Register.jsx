@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import config from '../config/index.js';
+import ErrorModal from '../components/ErrorModal';
 
 const Register = ({ onRegister, switchToLogin }) => {
   const [email, setEmail] = useState('');
@@ -8,6 +9,8 @@ const Register = ({ onRegister, switchToLogin }) => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [username, setUsername] = useState('');
   const [error, setError] = useState('');
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -23,6 +26,12 @@ const Register = ({ onRegister, switchToLogin }) => {
     setError('');
     setFormKey(Date.now());
   }, []);
+
+  // Helper function to show error modal
+  const showError = (message) => {
+    setErrorMessage(message);
+    setShowErrorModal(true);
+  };
 
   // Password strength checker
   const checkPasswordStrength = (pass) => {
@@ -47,22 +56,22 @@ const Register = ({ onRegister, switchToLogin }) => {
 
     // Enhanced validation
     if (!username.trim()) {
-      setError('Please enter your username');
+      showError('Please enter your username');
       setLoading(false);
       return;
     }
     if (!email.trim()) {
-      setError('Please enter your email');
+      showError('Please enter your email');
       setLoading(false);
       return;
     }
     if (password.length < 6) {
-      setError('Password must be at least 6 characters long');
+      showError('Password must be at least 6 characters long');
       setLoading(false);
       return;
     }
     if (password !== confirmPassword) {
-      setError('Passwords do not match');
+      showError('Passwords do not match');
       setLoading(false);
       return;
     }
@@ -83,13 +92,13 @@ const Register = ({ onRegister, switchToLogin }) => {
     } catch (err) {
       console.error('Registration error:', err);
       if (err.code === 'ECONNREFUSED' || (err.message && err.message.includes('Network Error'))) {
-        setError('Cannot connect to server. Please check your internet connection.');
+        showError('Cannot connect to server. Please check your internet connection.');
       } else if (err.response?.status === 400) {
-        setError(err.response.data.error || 'Invalid registration data');
+        showError(err.response.data.error || 'Invalid registration data');
       } else if (err.response?.status === 409) {
-        setError('Username or email already exists. Please use a different one or sign in.');
+        showError('Username or email already exists. Please use a different one or sign in.');
       } else {
-        setError(err.response?.data?.error || 'Registration failed. Please try again.');
+        showError(err.response?.data?.error || 'Registration failed. Please try again.');
       }
     }
     setLoading(false);
@@ -225,24 +234,25 @@ const Register = ({ onRegister, switchToLogin }) => {
             )}
           </div>
 
-          {error && (
-            <div className="error-message">
-              <span className="error-icon">⚠️</span>
-              {error}
-            </div>
-          )}
-
           <button type="submit" disabled={loading} className="auth-button">
             {loading ? "CREATING ACCOUNT..." : "CREATE ACCOUNT"}
           </button>
         </form>
 
         <div className="new-user-section">
-          <button type="button" onClick={switchToLogin} className="new-user-button">
-            Already have an account? Sign in here
-          </button>
+          <p className="new-user-text">
+            Already have an account? <a href="#" onClick={(e) => { e.preventDefault(); switchToLogin(); }} className="new-user-link">Sign in here</a>
+          </p>
         </div>
       </div>
+
+      {/* Error Modal */}
+      <ErrorModal
+        isOpen={showErrorModal}
+        onClose={() => setShowErrorModal(false)}
+        message={errorMessage}
+        title="Registration Error"
+      />
     </div>
   );
 };

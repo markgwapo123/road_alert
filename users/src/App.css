@@ -333,23 +333,46 @@ body {
   border-top: none;
 }
 
+.new-user-text {
+  color: #666666;
+  font-size: 15px;
+  margin-bottom: 0;
+  font-weight: 400;
+}
+
+.new-user-link {
+  color: #dc143c;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.new-user-link:hover {
+  color: #b8122e;
+  text-decoration: underline;
+}
+
 .new-user-button {
-  background: #ffffff;
-    border: none;
-    color: #777777;
-    cursor: pointer;
-    font-size: 17px;
-    font-weight: 600;
-    text-decoration: none;
-    transition: all 0.2s ease;
-    padding: 12px 32px;
-    border-radius: 6px;
-    display: inline-block;
+  background: #dc143c;
+  border: none;
+  color: #ffffff;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  padding: 12px 32px;
+  border-radius: 8px;
+  display: inline-block;
+  width: 100%;
+  max-width: 300px;
 }
 
 .new-user-button:hover {
-  color: #d41e1e;
-  background: #ffffff;
+  background: #b8122e;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(220, 20, 60, 0.3);
 }
 
 /* Auth Right Panel */
@@ -456,6 +479,21 @@ body {
   .new-user-section {
     margin-top: 15px;
     margin-bottom: 20px;
+  }
+
+  .new-user-text {
+    font-size: 14px;
+    margin-bottom: 0;
+  }
+
+  .new-user-link {
+    font-size: 14px;
+  }
+
+  .new-user-button {
+    width: 90%;
+    max-width: 100%;
+    font-size: 15px;
   }
 
   .error-message,
@@ -3830,6 +3868,212 @@ main h1 {
   background: #f0f0f0;
 }
 
+/* Confirmation Modal Styles */
+.confirmation-modal {
+  background: white;
+  border-radius: 16px;
+  padding: 40px 30px;
+  max-width: 400px;
+  width: 90%;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  text-align: center;
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.confirmation-icon {
+  font-size: 60px;
+  margin-bottom: 20px;
+  animation: scaleIn 0.4s ease-out;
+}
+
+@keyframes scaleIn {
+  from {
+    transform: scale(0);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+
+.confirmation-message {
+  color: #333333;
+  font-size: 18px;
+  font-weight: 500;
+  margin-bottom: 25px;
+  line-height: 1.5;
+}
+
+.confirmation-close-btn {
+  background: #dc143c;
+  color: white;
+  border: none;
+  padding: 12px 40px;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 100px;
+}
+
+.confirmation-close-btn:hover {
+  background: #b8122e;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(220, 20, 60, 0.3);
+}
+
+.confirmation-close-btn:active {
+  transform: translateY(0);
+}
+
+/* Logout Confirmation Modal Styles */
+.logout-confirm-modal {
+  background: white;
+  border-radius: 16px;
+  padding: 40px 30px;
+  max-width: 420px;
+  width: 90%;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  text-align: center;
+  animation: slideIn 0.3s ease-out;
+}
+
+.logout-icon {
+  font-size: 60px;
+  margin-bottom: 20px;
+  animation: scaleIn 0.4s ease-out;
+}
+
+.logout-title {
+  color: #333333;
+  font-size: 24px;
+  font-weight: 700;
+  margin-bottom: 15px;
+}
+
+.logout-message {
+  color: #666666;
+  font-size: 16px;
+  line-height: 1.6;
+  margin-bottom: 30px;
+}
+
+.logout-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.logout-cancel-btn {
+  background: #ffffff;
+  color: #333333;
+  border: 2px solid #e5e7eb;
+  padding: 12px 32px;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 120px;
+}
+
+.logout-cancel-btn:hover {
+  background: #f9fafb;
+  border-color: #d1d5db;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.logout-confirm-btn {
+  background: #dc143c;
+  color: white;
+  border: none;
+  padding: 12px 32px;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 120px;
+}
+
+.logout-confirm-btn:hover {
+  background: #b8122e;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(220, 20, 60, 0.3);
+}
+
+.logout-cancel-btn:active,
+.logout-confirm-btn:active {
+  transform: translateY(0);
+}
+
+/* Error Modal Styles */
+.error-modal {
+  background: white;
+  border-radius: 16px;
+  padding: 40px 30px;
+  max-width: 420px;
+  width: 90%;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  text-align: center;
+  animation: slideIn 0.3s ease-out;
+}
+
+.error-modal-icon {
+  font-size: 60px;
+  margin-bottom: 20px;
+  animation: scaleIn 0.4s ease-out;
+}
+
+.error-modal-title {
+  color: #dc143c;
+  font-size: 24px;
+  font-weight: 700;
+  margin-bottom: 15px;
+}
+
+.error-modal-message {
+  color: #666666;
+  font-size: 16px;
+  line-height: 1.6;
+  margin-bottom: 30px;
+}
+
+.error-modal-close-btn {
+  background: #dc143c;
+  color: white;
+  border: none;
+  padding: 12px 40px;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 120px;
+}
+
+.error-modal-close-btn:hover {
+  background: #b8122e;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(220, 20, 60, 0.3);
+}
+
+.error-modal-close-btn:active {
+  transform: translateY(0);
+}
+
 /* My Reports Button - Inherits from navbar button styles above */
 
 /* Enhanced Mobile Responsiveness for All Components */
@@ -3986,6 +4230,83 @@ main h1 {
   .verification-modal .cancel-btn {
     width: 100%;
     min-height: 44px;
+    font-size: 16px;
+  }
+  
+  /* Confirmation Modal */
+  .confirmation-modal {
+    margin: 20px;
+    padding: 30px 20px;
+    max-width: 90%;
+  }
+  
+  .confirmation-icon {
+    font-size: 50px;
+  }
+  
+  .confirmation-message {
+    font-size: 16px;
+  }
+  
+  .confirmation-close-btn {
+    width: 100%;
+    min-height: 48px;
+    font-size: 16px;
+  }
+  
+  /* Logout Confirmation Modal */
+  .logout-confirm-modal {
+    margin: 20px;
+    padding: 30px 20px;
+    max-width: 90%;
+  }
+  
+  .logout-icon {
+    font-size: 50px;
+  }
+  
+  .logout-title {
+    font-size: 20px;
+  }
+  
+  .logout-message {
+    font-size: 15px;
+  }
+  
+  .logout-actions {
+    flex-direction: column;
+    gap: 12px;
+  }
+  
+  .logout-cancel-btn,
+  .logout-confirm-btn {
+    width: 100%;
+    min-height: 48px;
+    font-size: 16px;
+  }
+  
+  /* Error Modal */
+  .error-modal {
+    margin: 20px;
+    padding: 30px 20px;
+    max-width: 90%;
+  }
+  
+  .error-modal-icon {
+    font-size: 50px;
+  }
+  
+  .error-modal-title {
+    font-size: 20px;
+  }
+  
+  .error-modal-message {
+    font-size: 15px;
+  }
+  
+  .error-modal-close-btn {
+    width: 100%;
+    min-height: 48px;
     font-size: 16px;
   }
   
