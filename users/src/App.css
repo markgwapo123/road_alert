@@ -8158,3 +8158,344 @@ main h1 {
     font-size: 14px;
   }
 }
+
+/* Reminder/Onboarding Page Styles */
+.reminder-page {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: #ffffff;
+  z-index: 2000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow-y: auto;
+}
+
+.reminder-container {
+  width: 100%;
+  max-width: 450px;
+  padding: 40px 30px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.reminder-content {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.reminder-image {
+  margin-bottom: 30px;
+  width: 100%;
+  max-width: 280px;
+}
+
+.reminder-image .mockup-img {
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.1));
+}
+
+.reminder-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 40px;
+}
+
+.reminder-logo .location-icon {
+  font-size: 32px;
+}
+
+.reminder-title {
+  font-size: 32px;
+  font-weight: 700;
+  margin: 0;
+  letter-spacing: -0.5px;
+}
+
+.reminder-title .brand-name {
+  color: #dc143c;
+}
+
+.reminder-title .brand-suffix {
+  color: #333333;
+}
+
+.reminder-features {
+  width: 100%;
+  margin-bottom: 40px;
+}
+
+.feature-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 28px;
+  padding: 0 10px;
+}
+
+.feature-icon {
+  font-size: 28px;
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff5f5;
+  border-radius: 50%;
+}
+
+.feature-text {
+  flex: 1;
+}
+
+.feature-text h3 {
+  font-size: 18px;
+  font-weight: 600;
+  color: #333333;
+  margin-bottom: 6px;
+}
+
+.feature-text p {
+  font-size: 15px;
+  color: #666666;
+  line-height: 1.5;
+}
+
+.reminder-next-btn {
+  width: 100%;
+  background: #dc143c;
+  color: white;
+  border: none;
+  padding: 16px;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-bottom: 16px;
+  letter-spacing: 0.5px;
+}
+
+.reminder-next-btn:hover {
+  background: #b8122e;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(220, 20, 60, 0.3);
+}
+
+.reminder-next-btn:active {
+  transform: translateY(0);
+}
+
+.reminder-skip-btn {
+  background: transparent;
+  color: #999999;
+  border: none;
+  padding: 12px;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.reminder-skip-btn:hover {
+  color: #666666;
+  text-decoration: underline;
+}
+
+/* Mobile Responsive for Reminder Page */
+@media (max-width: 768px) {
+  .reminder-container {
+    padding: 30px 20px;
+  }
+
+  .reminder-image {
+    max-width: 220px;
+    margin-bottom: 25px;
+  }
+
+  .reminder-logo .location-icon {
+    font-size: 28px;
+  }
+
+  .reminder-title {
+    font-size: 28px;
+  }
+
+  .reminder-features {
+    margin-bottom: 35px;
+  }
+
+  .feature-item {
+    margin-bottom: 24px;
+    padding: 0;
+  }
+
+  .feature-icon {
+    font-size: 24px;
+    width: 36px;
+    height: 36px;
+  }
+
+  .feature-text h3 {
+    font-size: 16px;
+  }
+
+  .feature-text p {
+    font-size: 14px;
+  }
+
+  .reminder-next-btn {
+    padding: 14px;
+    font-size: 15px;
+  }
+}
+
+/* Location Permission Modal Styles */
+.location-permission-modal {
+  background: white;
+  border-radius: 16px;
+  padding: 40px 30px;
+  max-width: 450px;
+  width: 90%;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  text-align: center;
+  animation: slideIn 0.3s ease-out;
+}
+
+.location-icon-large {
+  font-size: 80px;
+  margin-bottom: 20px;
+  animation: scaleIn 0.4s ease-out;
+}
+
+.location-permission-title {
+  color: #333333;
+  font-size: 26px;
+  font-weight: 700;
+  margin-bottom: 16px;
+}
+
+.location-permission-message {
+  color: #666666;
+  font-size: 16px;
+  line-height: 1.6;
+  margin-bottom: 30px;
+}
+
+.location-permission-features {
+  text-align: left;
+  margin-bottom: 30px;
+  padding: 0 20px;
+}
+
+.permission-feature {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+  color: #333333;
+  font-size: 15px;
+}
+
+.permission-feature .feature-check {
+  color: #22c55e;
+  font-weight: 700;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.location-permission-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.location-allow-btn {
+  background: #dc143c;
+  color: white;
+  border: none;
+  padding: 14px 32px;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 100%;
+}
+
+.location-allow-btn:hover:not(:disabled) {
+  background: #b8122e;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(220, 20, 60, 0.3);
+}
+
+.location-allow-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.location-allow-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.location-deny-btn {
+  background: transparent;
+  color: #999999;
+  border: none;
+  padding: 12px;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.location-deny-btn:hover {
+  color: #666666;
+  text-decoration: underline;
+}
+
+/* Mobile Responsive for Location Permission Modal */
+@media (max-width: 768px) {
+  .location-permission-modal {
+    padding: 30px 20px;
+    max-width: 90%;
+  }
+
+  .location-icon-large {
+    font-size: 60px;
+    margin-bottom: 16px;
+  }
+
+  .location-permission-title {
+    font-size: 22px;
+  }
+
+  .location-permission-message {
+    font-size: 15px;
+  }
+
+  .location-permission-features {
+    padding: 0 10px;
+  }
+
+  .permission-feature {
+    font-size: 14px;
+    margin-bottom: 12px;
+  }
+
+  .location-allow-btn {
+    padding: 14px 24px;
+    font-size: 15px;
+  }
+}
