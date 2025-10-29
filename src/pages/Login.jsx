@@ -1,12 +1,16 @@
 import { useState } from 'react'
 import { MapPinIcon } from '@heroicons/react/24/outline'
 import axios from 'axios'
+import AdminConfirmModal from '../components/AdminConfirmModal'
 
 const Login = () => {
   const [credentials, setCredentials] = useState({
     username: 'admin', // Pre-filled for testing
     password: 'admin123' // Pre-filled for testing
   })
+  const [showModal, setShowModal] = useState(false)
+  const [modalMessage, setModalMessage] = useState('')
+  const [modalType, setModalType] = useState('success')
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -19,13 +23,22 @@ const Login = () => {
       if (response.data && response.data.token) {
         // Store token as adminToken for axios interceptor
         localStorage.setItem('adminToken', response.data.token)
-        alert('Login successful!')
-        window.location.href = '/reports' // or your admin dashboard route
+        setModalMessage('Login successful!')
+        setModalType('success')
+        setShowModal(true)
+        // Redirect after modal is shown
+        setTimeout(() => {
+          window.location.href = '/reports' // or your admin dashboard route
+        }, 1500)
       } else {
-        alert('Login failed: No token received')
+        setModalMessage('Login failed: No token received')
+        setModalType('error')
+        setShowModal(true)
       }
     } catch (error) {
-      alert('Login failed: ' + (error.response?.data?.error || error.message))
+      setModalMessage('Login failed: ' + (error.response?.data?.error || error.message))
+      setModalType('error')
+      setShowModal(true)
     }
   }
 
@@ -87,6 +100,14 @@ const Login = () => {
           </div>
         </form>
       </div>
+
+      {/* Confirmation Modal */}
+      <AdminConfirmModal
+        isOpen={showModal}
+        onClose={() => setShowModal(false)}
+        message={modalMessage}
+        type={modalType}
+      />
     </div>
   )
 }

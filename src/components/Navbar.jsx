@@ -1,10 +1,12 @@
 import { Link, useLocation } from 'react-router-dom'
 import { MapPinIcon, ChartBarIcon, DocumentTextIcon, UserIcon, ChevronDownIcon, CogIcon, KeyIcon, UserPlusIcon, ArrowRightOnRectangleIcon, UsersIcon } from '@heroicons/react/24/outline'
 import { useState } from 'react'
+import AdminLogoutConfirmModal from './AdminLogoutConfirmModal'
 
 const Navbar = () => {
   const location = useLocation()
   const [showAdminDropdown, setShowAdminDropdown] = useState(false)
+  const [showLogoutModal, setShowLogoutModal] = useState(false)
   
   const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: ChartBarIcon },
@@ -13,8 +15,14 @@ const Navbar = () => {
     { name: 'Map View', href: '/map', icon: MapPinIcon },
   ]
 
-  const handleLogout = () => {
+  const handleLogoutClick = () => {
+    setShowAdminDropdown(false)
+    setShowLogoutModal(true)
+  }
+
+  const handleLogoutConfirm = () => {
     localStorage.removeItem('adminToken')
+    setShowLogoutModal(false)
     window.location.href = '/login'
   }
 
@@ -117,7 +125,7 @@ const Navbar = () => {
                   </Link>
                   <hr className="my-1" />
                   <button
-                    onClick={handleLogout}
+                    onClick={handleLogoutClick}
                     className="flex items-center w-full px-4 py-2 text-sm text-red-700 hover:bg-red-50 transition-colors"
                   >
                     <ArrowRightOnRectangleIcon className="h-4 w-4 mr-3" />
@@ -129,6 +137,13 @@ const Navbar = () => {
           </div>
         </div>
       </div>
+
+      {/* Logout Confirmation Modal */}
+      <AdminLogoutConfirmModal
+        isOpen={showLogoutModal}
+        onClose={() => setShowLogoutModal(false)}
+        onConfirm={handleLogoutConfirm}
+      />
     </nav>
   )
 }
