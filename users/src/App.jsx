@@ -4,7 +4,6 @@ import config from './config/index.js';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import ProfilePage from './pages/ProfilePage';
-import ReminderPage from './pages/ReminderPage';
 import ReportForm from './components/ReportForm';
 import NewsFeed from './components/NewsFeed';
 import Dashboard from './components/Dashboard';
@@ -13,7 +12,6 @@ import MyReports from './components/MyReports';
 import NotificationPage from './pages/NotificationPage';
 import ConfirmationModal from './components/ConfirmationModal';
 import LogoutConfirmModal from './components/LogoutConfirmModal';
-import LocationPermissionModal from './components/LocationPermissionModal';
 import './App.css';
 
 function App() {
@@ -29,9 +27,6 @@ function App() {
   const [confirmationMessage, setConfirmationMessage] = useState('');
   const [confirmationType, setConfirmationType] = useState('success');
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-  const [showReminder, setShowReminder] = useState(false);
-  const [showLocationPermission, setShowLocationPermission] = useState(false);
-  const [isInitialLogin, setIsInitialLogin] = useState(false);
 
   // Fetch notifications and user data when token changes
   useEffect(() => {
@@ -137,7 +132,6 @@ function App() {
   const handleLogin = (jwt) => {
     localStorage.setItem('token', jwt);
     setToken(jwt);
-    setIsInitialLogin(true); // Mark as initial login
     setConfirmationMessage('Successfully logged in! 🎉');
     setConfirmationType('success');
     setShowConfirmation(true);
@@ -150,13 +144,9 @@ function App() {
 
   const handleLogoutConfirm = () => {
     localStorage.removeItem('token');
-    localStorage.removeItem('hasSeenReminder'); // Clear reminder flag on logout
-    localStorage.removeItem('locationPermissionGranted'); // Clear location permission on logout
     setToken(null);
     setUser(null);
     setShowLogoutConfirm(false);
-    setShowReminder(false); // Reset reminder state
-    setShowLocationPermission(false); // Reset location permission state
     setConfirmationMessage('Successfully logged out! 👋');
     setConfirmationType('success');
     setShowConfirmation(true);
@@ -164,29 +154,6 @@ function App() {
 
   const handleLogoutCancel = () => {
     setShowLogoutConfirm(false);
-  };
-
-  const handleReminderComplete = () => {
-    localStorage.setItem('hasSeenReminder', 'true');
-    setShowReminder(false);
-  };
-
-  const handleLocationPermissionAllow = () => {
-    setShowLocationPermission(false);
-    // Check if user has seen the reminder
-    const hasSeenReminder = localStorage.getItem('hasSeenReminder');
-    if (!hasSeenReminder) {
-      setShowReminder(true);
-    }
-  };
-
-  const handleLocationPermissionDeny = () => {
-    setShowLocationPermission(false);
-    // Still show reminder even if location is denied
-    const hasSeenReminder = localStorage.getItem('hasSeenReminder');
-    if (!hasSeenReminder) {
-      setShowReminder(true);
-    }
   };
 
   const refreshUserData = () => {
@@ -215,22 +182,6 @@ function App() {
       return <Register onRegister={handleRegister} switchToLogin={() => setShowRegister(false)} />;
     }
     return <Login onLogin={handleLogin} switchToRegister={() => setShowRegister(true)} />;
-  }
-
-  // Show location permission modal first if not granted
-  if (showLocationPermission) {
-    return (
-      <LocationPermissionModal
-        isOpen={showLocationPermission}
-        onAllow={handleLocationPermissionAllow}
-        onDeny={handleLocationPermissionDeny}
-      />
-    );
-  }
-
-  // Show reminder page if user hasn't seen it yet
-  if (showReminder) {
-    return <ReminderPage onNext={handleReminderComplete} />;
   }
 
   return (
@@ -594,21 +545,7 @@ function App() {
       {/* Confirmation Modal */}
       <ConfirmationModal
         isOpen={showConfirmation}
-        onClose={() => {
-          setShowConfirmation(false);
-          // After login confirmation modal closes, show location permission if needed
-          if (isInitialLogin) {
-            const locationPermissionGranted = localStorage.getItem('locationPermissionGranted');
-            const hasSeenReminder = localStorage.getItem('hasSeenReminder');
-            
-            if (!locationPermissionGranted) {
-              setShowLocationPermission(true);
-            } else if (!hasSeenReminder) {
-              setShowReminder(true);
-            }
-            setIsInitialLogin(false);
-          }
-        }}
+        onClose={() => setShowConfirmation(false)}
         message={confirmationMessage}
         type={confirmationType}
         autoCloseDelay={2000}
