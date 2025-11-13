@@ -306,7 +306,7 @@ const ReportsManagement = () => {
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <p className="text-sm font-bold text-gray-800">Images ({report.images.length})</p>
-                      <button className="text-xs font-medium text-blue-600 hover:text-blue-800">View All</button>
+                      {/* <button className="text-xs font-medium text-blue-600 hover:text-blue-800">View All</button> */}
                     </div>
                     <div className="flex space-x-2 overflow-x-auto">
                       {report.images.slice(0, 3).map((image, index) => {
