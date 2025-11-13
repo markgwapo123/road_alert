@@ -91,6 +91,72 @@ const NotificationPage = ({ notifications, unreadCount, onMarkAsRead, onMarkAllA
 
   const filteredNotifications = getFilteredNotifications();
 
+  const [selectedNotif, setSelectedNotif] = useState(null);
+  // locallyRead persists IDs in localStorage so read state survives a page refresh
+  const LOCAL_STORAGE_KEY = 'locallyReadNotifications';
+  const loadLocalReadSet = () => {
+    try {
+      const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
+      if (!raw) return new Set();
+      const arr = JSON.parse(raw);
+      return new Set(Array.isArray(arr) ? arr : []);
+    } catch (e) {
+      return new Set();
+    }
+  };
+
+  const saveLocalReadSet = (set) => {
+    try {
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(Array.from(set)));
+    } catch (e) {
+      // ignore
+    }
+  };
+
+  const [locallyRead, setLocallyRead] = useState(() => loadLocalReadSet());
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+
+  const openModal = (notif) => {
+    setSelectedNotif(notif);
+    setIsModalOpen(true);
+  };
+
+  const closeModal = async () => {
+    try {
+      if (selectedNotif && !selectedNotif.read) {
+        // mark locally as read so the dot hides for this specific notification
+        setLocallyRead(prev => {
+          const next = new Set(prev);
+          next.add(selectedNotif._id);
+          saveLocalReadSet(next);
+          return next;
+        });
+        await onMarkAsRead(selectedNotif._id);
+      }
+    } catch (err) {
+      console.error('Error marking as read on modal close:', err);
+    }
+    setIsModalOpen(false);
+    setSelectedNotif(null);
+    // refresh to sync with server
+    onRefresh();
+  };
+
+  // keep locallyRead in sync: if server reports a notification read, remove it from locallyRead
+  useEffect(() => {
+    if (locallyRead.size === 0) return;
+    setLocallyRead(prev => {
+      const next = new Set(prev);
+      for (const id of Array.from(prev)) {
+        const serverNotif = notifications.find(n => n._id === id);
+        if (serverNotif && serverNotif.read) next.delete(id);
+      }
+      if (next.size !== prev.size) saveLocalReadSet(next);
+      return next;
+    });
+  }, [notifications]);
+
   return (
     <div className="notification-page">
       <div className="notification-page-header">
@@ -165,13 +231,15 @@ const NotificationPage = ({ notifications, unreadCount, onMarkAsRead, onMarkAllA
           </div>
         ) : (
           <div className="notifications-grid">
-            {filteredNotifications.map(notif => (
+            {filteredNotifications.map((notif) => {
+              const isUnread = !notif.read && !locallyRead.has(notif._id);
+              return (
               <div 
                 key={notif._id} 
-                className={`notification-card ${!notif.read ? 'unread' : 'read'}`}
+                className={`notification-card ${isUnread ? 'unread' : 'read'}`}
                 data-type={notif.type}
                 data-title={notif.title}
-                onClick={() => onMarkAsRead(notif._id)}
+                onClick={() => openModal(notif)}
               >
                 <div className="notification-card-header">
                   <div className="notification-icon">
@@ -185,7 +253,7 @@ const NotificationPage = ({ notifications, unreadCount, onMarkAsRead, onMarkAllA
                       {getRelativeTime(notif.createdAt)}
                     </span>
                   </div>
-                  {!notif.read && (
+                  {isUnread && (
                     <div className="unread-indicator">
                       <span className="unread-dot"></span>
                     </div>
@@ -201,15 +269,34 @@ const NotificationPage = ({ notifications, unreadCount, onMarkAsRead, onMarkAllA
                   <span className="full-time">
                     {new Date(notif.createdAt).toLocaleString()}
                   </span>
-                  {!notif.read && (
+                  {isUnread && (
                     <span className="read-action">Click to mark as read</span>
                   )}
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
+
+      {isModalOpen && selectedNotif && (
+        <div className="notif-modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) closeModal(); }}>
+          <div className="notif-modal">
+            <div className="notif-modal-header">
+              <h3>{selectedNotif.title}</h3>
+              <button className="notif-modal-close" onClick={closeModal}>✕</button>
+            </div>
+            <div className="notif-modal-body">
+              <p className="notif-modal-time">{new Date(selectedNotif.createdAt).toLocaleString()}</p>
+              <p className="notif-modal-message">{selectedNotif.message}</p>
+            </div>
+            <div className="notif-modal-footer">
+              <button className="btn btn-primary" onClick={closeModal}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

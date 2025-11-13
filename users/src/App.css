@@ -1258,6 +1258,36 @@ body {
   color: #dc2626 !important;
 }
 
+/* Notification modal styles */
+.notif-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1200;
+}
+.notif-modal {
+  background: #ffffff;
+  border-radius: 12px;
+  width: 92%;
+  max-width: 640px;
+  padding: 20px;
+  box-shadow: 0 12px 30px rgba(0,0,0,0.2);
+}
+.notif-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.notif-modal-header h3 { margin: 0; font-size: 1.125rem; }
+.notif-modal-close { background: transparent; border: none; font-size: 1.125rem; cursor: pointer; }
+.notif-modal-body { color: #374151; line-height: 1.6; margin-bottom: 12px; }
+.notif-modal-time { color: #6b7280; font-size: 0.9rem; margin-bottom: 8px; }
+.notif-modal-footer { text-align: right; }
+
 /* Responsive design for notification page */
 @media (max-width: 768px) {
   .notification-page {
