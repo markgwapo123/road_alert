@@ -82,7 +82,10 @@ const Register = ({ onRegister, switchToLogin }) => {
         email: email.trim(),
         password
       }, {
-        timeout: 5000
+        timeout: 10000, // Increased timeout for mobile networks
+        headers: {
+          'Content-Type': 'application/json'
+        }
       });
       if (res.data.token) {
         onRegister(res.data.token);
@@ -91,12 +94,18 @@ const Register = ({ onRegister, switchToLogin }) => {
       }
     } catch (err) {
       console.error('Registration error:', err);
-      if (err.code === 'ECONNREFUSED' || (err.message && err.message.includes('Network Error'))) {
-        showError('Cannot connect to server. Please check your internet connection.');
+      
+      // Better error handling for mobile devices
+      if (err.code === 'ECONNABORTED') {
+        showError('Request timeout. Please check your connection and try again.');
+      } else if (err.code === 'ECONNREFUSED' || err.code === 'NETWORK_ERROR' || (err.message && err.message.includes('Network Error'))) {
+        showError('Cannot connect to server. Please check your internet connection and try again.');
       } else if (err.response?.status === 400) {
-        showError(err.response.data.error || 'Invalid registration data');
+        showError(err.response.data.error || 'Invalid registration data. Please check your input.');
       } else if (err.response?.status === 409) {
         showError('Username or email already exists. Please use a different one or sign in.');
+      } else if (err.response?.status === 500) {
+        showError('Server error. Please try again in a moment.');
       } else {
         showError(err.response?.data?.error || 'Registration failed. Please try again.');
       }
