@@ -1,7 +1,25 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import axios from 'axios';
 import config from '../config/index.js';
 import ErrorModal from '../components/ErrorModal';
+
+// Configure axios for better mobile support
+const apiClient = axios.create({
+  baseURL: config.API_BASE_URL,
+  timeout: 15000,
+  headers: {
+    'Content-Type': 'application/json'
+  }
+});
+
+// Add response interceptor for better error handling
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    console.error('API Error:', error.response || error.message);
+    return Promise.reject(error);
+  }
+);
 
 const Register = ({ onRegister, switchToLogin }) => {
   const [email, setEmail] = useState('');
@@ -77,15 +95,10 @@ const Register = ({ onRegister, switchToLogin }) => {
     }
 
     try {
-      const res = await axios.post(`${config.API_BASE_URL}/auth/register`, {
+      const res = await apiClient.post('/auth/register', {
         username: username.trim(),
         email: email.trim(),
         password
-      }, {
-        timeout: 10000, // Increased timeout for mobile networks
-        headers: {
-          'Content-Type': 'application/json'
-        }
       });
       if (res.data.token) {
         onRegister(res.data.token);

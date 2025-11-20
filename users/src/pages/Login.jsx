@@ -3,6 +3,39 @@ import axios from 'axios';
 import config from '../config/index.js';
 import ErrorModal from '../components/ErrorModal';
 
+// Configure axios for better mobile support
+const apiClient = axios.create({
+  baseURL: config.API_BASE_URL,
+  timeout: 15000,
+  headers: {
+    'Content-Type': 'application/json'
+  }
+});
+
+// Add request interceptor
+apiClient.interceptors.request.use(
+  (config) => {
+    console.log('Making request to:', config.url);
+    return config;
+  },
+  (error) => {
+    console.error('Request error:', error);
+    return Promise.reject(error);
+  }
+);
+
+// Add response interceptor
+apiClient.interceptors.response.use(
+  (response) => {
+    console.log('Response received:', response.status, response.data);
+    return response;
+  },
+  (error) => {
+    console.error('Response error:', error.response || error.message);
+    return Promise.reject(error);
+  }
+);
+
 const Login = ({ onLogin, switchToRegister }) => {
   const [loginId, setLoginId] = useState(''); // can be email or username
   const [password, setPassword] = useState('');
@@ -44,10 +77,8 @@ const Login = ({ onLogin, switchToRegister }) => {
     }
 
     try {
-      const res = await axios.post(`${config.API_BASE_URL}/auth/forgot-password`, {
+      const res = await apiClient.post('/auth/forgot-password', {
         email: loginId.trim()
-      }, {
-        timeout: 5000
       });
       
       setResetMessage('Password reset instructions have been sent to your email.');
@@ -75,26 +106,61 @@ const Login = ({ onLogin, switchToRegister }) => {
       setLoading(false);
       return;
     }
-    try {
-      const res = await axios.post(`${config.API_BASE_URL}/auth/login`, {
-        email: loginId.trim(),
-        password
-      }, {
-        timeout: 5000
-      });
-      onLogin(res.data.token);
-    } catch (err) {
-      if (err.code === 'ECONNREFUSED' || (err.message && err.message.includes('Network Error'))) {
-        showError('Cannot connect to server. Please check your internet connection.');
-      } else if (err.response?.status === 401) {
-        showError('Invalid Gmail or password. Please check your credentials and try again.');
-      } else if (err.response?.status === 404) {
-        showError('User not found. Please register first.');
-      } else {
-        showError(err.response?.data?.error || 'Login failed. Please try again.');
-      }
+
+    // Validate inputs
+    if (!loginId.trim() || !password.trim()) {
+      showError('Please enter both email and password.');
+      setLoading(false);
+      return;
     }
-    setLoading(false);
+
+    try {
+      console.log('Attempting login with:', { email: loginId.trim() });
+      
+      const res = await apiClient.post('/auth/login', {
+        email: loginId.trim(),
+        password: password
+      });
+
+      console.log('Login response:', res.status, res.data);
+
+      if (res.data && res.data.success && res.data.token) {
+        console.log('Login successful');
+        onLogin(res.data.token);
+      } else {
+        console.error('Login failed - invalid response format');
+        showError(res.data?.error || 'Login failed. Please try again.');
+      }
+    } catch (err) {
+      console.error('Login error details:', err);
+      
+      if (err.code === 'ECONNABORTED') {
+        showError('Request timeout. Please check your connection and try again.');
+      } else if (err.code === 'ECONNREFUSED' || err.code === 'NETWORK_ERROR' || (err.message && err.message.includes('Network Error'))) {
+        showError('Cannot connect to server. Please check your internet connection.');
+      } else if (err.response) {
+        // Server responded with error status
+        const status = err.response.status;
+        const errorMsg = err.response.data?.error || err.response.data?.message;
+        
+        if (status === 401) {
+          showError('Invalid Gmail or password. Please check your credentials and try again.');
+        } else if (status === 404) {
+          showError('User not found. Please register first by clicking "Activate your account" below.');
+        } else if (status === 400) {
+          showError(errorMsg || 'Invalid login data. Please check your input.');
+        } else if (status === 500) {
+          showError('Server error. Please try again in a moment.');
+        } else {
+          showError(errorMsg || 'Login failed. Please try again.');
+        }
+      } else {
+        // Network or other error
+        showError('Connection error. Please check your internet and try again.');
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
