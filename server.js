@@ -47,7 +47,8 @@ app.use(cors({
       'https://users-jxp7nml0r-markstephens-projects.vercel.app',
       'https://users-cvqp1tert-markstephens-projects.vercel.app',
       'https://users-q7dnjnpys-markstephens-projects.vercel.app',
-      'https://users-kfas5lx69-markstephens-projects.vercel.app'
+      'https://users-kfas5lx69-markstephens-projects.vercel.app',
+      'https://users-drgmed9d1-markstephens-projects.vercel.app'
     ];
     
     // Add environment variable origins if they exist
