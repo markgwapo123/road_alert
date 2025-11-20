@@ -32,14 +32,25 @@ app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" } // Allow cross-origin resource requests
 }));
 app.use(cors({
-  origin: [
-    'http://localhost:5173', 
-    'http://localhost:5174', 
-    'http://localhost:3000',
-    'https://users-jghcwsdtc-markstephens-projects.vercel.app',
-    'https://users-fy4yb74qd-markstephens-projects.vercel.app',
-    'https://road-alert-users.vercel.app' // In case you want a custom domain
-  ],
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    const allowedOrigins = [
+      'http://localhost:5173', 
+      'http://localhost:5174', 
+      'http://localhost:3000'
+    ];
+    
+    // Allow any Vercel deployment from your project
+    const isVercelProject = origin.includes('markstephens-projects.vercel.app');
+    
+    if (allowedOrigins.includes(origin) || isVercelProject) {
+      return callback(null, true);
+    } else {
+      return callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization']
