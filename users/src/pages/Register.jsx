@@ -6,7 +6,7 @@ import ErrorModal from '../components/ErrorModal';
 // Configure axios for better mobile support
 const apiClient = axios.create({
   baseURL: config.API_BASE_URL,
-  timeout: 15000,
+  timeout: 30000, // Increased to 30 seconds for better reliability
   headers: {
     'Content-Type': 'application/json'
   }
