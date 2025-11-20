@@ -1258,36 +1258,6 @@ body {
   color: #dc2626 !important;
 }
 
-/* Notification modal styles */
-.notif-modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.45);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1200;
-}
-.notif-modal {
-  background: #ffffff;
-  border-radius: 12px;
-  width: 92%;
-  max-width: 640px;
-  padding: 20px;
-  box-shadow: 0 12px 30px rgba(0,0,0,0.2);
-}
-.notif-modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 12px;
-}
-.notif-modal-header h3 { margin: 0; font-size: 1.125rem; }
-.notif-modal-close { background: transparent; border: none; font-size: 1.125rem; cursor: pointer; }
-.notif-modal-body { color: #374151; line-height: 1.6; margin-bottom: 12px; }
-.notif-modal-time { color: #6b7280; font-size: 0.9rem; margin-bottom: 8px; }
-.notif-modal-footer { text-align: right; }
-
 /* Responsive design for notification page */
 @media (max-width: 768px) {
   .notification-page {
@@ -4684,10 +4654,321 @@ main h1 {
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
+  transition: all 0.2s ease;
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+/* Camera Interface Styles */
+.camera-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 15px;
+}
+
+.camera-start-button {
+  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+  color: white;
+  border: none;
+  padding: 16px 24px;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 4px 14px 0 rgba(59, 130, 246, 0.3);
+  min-width: 200px;
+  justify-content: center;
+}
+
+.camera-start-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px 0 rgba(59, 130, 246, 0.4);
+}
+
+.camera-start-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.camera-interface {
+  width: 100%;
+  background: #000;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.camera-viewfinder {
+  position: relative;
+  width: 100%;
+  height: 300px;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.camera-viewfinder video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.camera-controls {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.8);
+}
+
+.camera-btn {
+  padding: 12px 20px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
   transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 120px;
+  justify-content: center;
+}
+
+.capture-btn {
+  background: #10b981;
+  color: white;
+}
+
+.capture-btn:hover {
+  background: #059669;
+  transform: translateY(-1px);
+}
+
+.cancel-btn {
+  background: #ef4444;
+  color: white;
+}
+
+.cancel-btn:hover {
+  background: #dc2626;
+  transform: translateY(-1px);
+}
+
+.photo-preview {
+  width: 100%;
+  border: 2px solid #e5e7eb;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #f9fafb;
+}
+
+.preview-image {
+  width: 100%;
+  height: 300px;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.preview-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.photo-controls {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  padding: 16px;
+  background: #f9fafb;
+  border-top: 1px solid #e5e7eb;
+}
+
+.photo-btn {
+  padding: 10px 16px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 100px;
+  justify-content: center;
+}
+
+.retake-btn {
+  background: #3b82f6;
+  color: white;
+}
+
+.retake-btn:hover:not(:disabled) {
+  background: #2563eb;
+}
+
+.remove-btn {
+  background: #ef4444;
+  color: white;
+}
+
+.remove-btn:hover:not(:disabled) {
+  background: #dc2626;
+}
+
+.photo-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.camera-icon,
+.btn-icon {
+  font-size: 18px;
+}
+
+/* Processing Indicator Styles */
+.processing-indicator {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px;
+  background: linear-gradient(135deg, #f3f4f6, #e5e7eb);
+  border-radius: 12px;
+  border: 2px solid #3b82f6;
+  margin: 10px 0;
+}
+
+.processing-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #e5e7eb;
+  border-left: 4px solid #3b82f6;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.processing-text {
+  flex: 1;
+  color: #374151;
+}
+
+.processing-text strong {
+  display: block;
+  margin-bottom: 4px;
+  color: #1f2937;
+}
+
+.processing-text small {
+  color: #6b7280;
+}
+
+/* Privacy Protection Stats */
+.privacy-stats {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+  border: 1px solid #bbf7d0;
+  border-radius: 8px;
+  margin: 8px 0;
+}
+
+.privacy-icon {
+  font-size: 24px;
+  color: #16a34a;
+}
+
+.privacy-info {
+  flex: 1;
+  color: #166534;
+}
+
+.privacy-info strong {
+  display: block;
+  margin-bottom: 4px;
+  color: #14532d;
+  font-weight: 600;
+}
+
+.privacy-info div {
+  font-size: 14px;
+  margin-bottom: 2px;
+}
+
+.privacy-info small {
+  color: #15803d;
+  font-size: 12px;
+  opacity: 0.8;
+}
+
+/* Mobile responsiveness for camera interface */
+@media (max-width: 768px) {
+  .camera-viewfinder {
+    height: 250px;
+  }
+  
+  .camera-controls {
+    gap: 12px;
+    padding: 12px;
+  }
+  
+  .camera-btn {
+    padding: 10px 16px;
+    font-size: 13px;
+    min-width: 100px;
+  }
+  
+  .photo-controls {
+    gap: 10px;
+    padding: 12px;
+  }
+  
+  .photo-btn {
+    padding: 8px 12px;
+    font-size: 13px;
+    min-width: 80px;
+  }
+  
+  .camera-start-button {
+    padding: 14px 20px;
+    font-size: 15px;
+    min-width: 180px;
+  }
+  
+  .processing-indicator {
+    flex-direction: column;
+    text-align: center;
+    gap: 12px;
+  }
+  
+  .privacy-stats {
+    flex-direction: column;
+    text-align: center;
+    gap: 8px;
+  }
+  
+  .privacy-icon {
+    font-size: 20px;
+  }
 }
 
 .form-actions .submit-btn:hover:not(:disabled) {

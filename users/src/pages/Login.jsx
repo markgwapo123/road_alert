@@ -131,6 +131,7 @@ const Login = ({ onLogin, switchToRegister }) => {
     e.preventDefault();
     setError('');
     setLoading(true);
+    
     // Only allow Gmail addresses
     if (!loginId.includes('@gmail.com')) {
       showError('Only Gmail addresses are allowed for login.');

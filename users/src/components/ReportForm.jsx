@@ -3,6 +3,7 @@ import axios from 'axios';
 import config from '../config/index.js';
 import { NEGROS_PROVINCES, NEGROS_CITIES, NEGROS_BARANGAYS } from '../data/negrosLocations.js';
 import exifr from 'exifr';
+import imageProcessor from '../utils/imageProcessing.js';
 
 const ALERT_TYPES = [
   { value: 'emergency', label: 'Emergency Alert', example: 'ROAD CLOSED - Accident Ahead' },
@@ -30,6 +31,25 @@ const ReportForm = ({ onReport, onClose }) => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  
+  // Camera capture state
+  const [showCamera, setShowCamera] = useState(false);
+  const [stream, setStream] = useState(null);
+  const [capturedImage, setCapturedImage] = useState(null);
+  const [processing, setProcessing] = useState(false);
+  const [processedImage, setProcessedImage] = useState(null);
+  const [blurStats, setBlurStats] = useState(null);
+  const videoRef = React.useRef(null);
+  const canvasRef = React.useRef(null);
+
+  // Cleanup camera stream on component unmount
+  React.useEffect(() => {
+    return () => {
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, [stream]);
 
   // Get geolocation
   const getLocation = () => {
@@ -44,6 +64,122 @@ const ReportForm = ({ onReport, onClose }) => {
       }})),
       err => setError('Failed to get location')
     );
+  };
+
+  // Camera functions
+  const startCamera = async () => {
+    try {
+      const mediaStream = await navigator.mediaDevices.getUserMedia({ 
+        video: { 
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
+          facingMode: 'environment' // Use back camera on mobile
+        } 
+      });
+      setStream(mediaStream);
+      setShowCamera(true);
+      setError('');
+      
+      // Set video stream once video element is ready
+      if (videoRef.current) {
+        videoRef.current.srcObject = mediaStream;
+      }
+    } catch (err) {
+      console.error('Error accessing camera:', err);
+      if (err.name === 'NotAllowedError') {
+        setError('Camera access denied. Please allow camera permissions and try again.');
+      } else if (err.name === 'NotFoundError') {
+        setError('No camera found on this device.');
+      } else {
+        setError('Unable to access camera. Please try again.');
+      }
+    }
+  };
+
+  const stopCamera = () => {
+    if (stream) {
+      stream.getTracks().forEach(track => track.stop());
+      setStream(null);
+    }
+    setShowCamera(false);
+  };
+
+  const capturePhoto = async () => {
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    
+    if (video && canvas) {
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(video, 0, 0);
+      
+      // Set initial captured image
+      setCapturedImage(canvas.toDataURL('image/jpeg', 0.8));
+      stopCamera();
+      
+      // Start processing the image for privacy protection
+      setProcessing(true);
+      setSuccess('📷 Photo captured! Processing for privacy protection...');
+      
+      try {
+        // Apply face and license plate blurring
+        const stats = await imageProcessor.processImage(canvas, {
+          blurFaces: true,
+          blurPlates: true
+        });
+        
+        // Get the processed image
+        const processedDataUrl = canvas.toDataURL('image/jpeg', 0.8);
+        setProcessedImage(processedDataUrl);
+        setBlurStats(stats);
+        
+        // Convert processed image to blob and create file
+        canvas.toBlob((blob) => {
+          if (blob) {
+            const file = new File([blob], `camera_capture_${Date.now()}.jpg`, { type: 'image/jpeg' });
+            setForm(f => ({ ...f, image: file }));
+            
+            const blurMessage = [];
+            if (stats.facesBlurred > 0) blurMessage.push(`${stats.facesBlurred} face(s) blurred`);
+            if (stats.platesBlurred > 0) blurMessage.push(`${stats.platesBlurred} license plate(s) blurred`);
+            
+            setSuccess(`✅ Photo processed successfully! ${blurMessage.length > 0 ? blurMessage.join(', ') + ' for privacy protection.' : 'No sensitive content detected.'}`);
+          }
+        }, 'image/jpeg', 0.8);
+        
+      } catch (error) {
+        console.error('Image processing failed:', error);
+        // Fallback: use original image if processing fails
+        canvas.toBlob((blob) => {
+          if (blob) {
+            const file = new File([blob], `camera_capture_${Date.now()}.jpg`, { type: 'image/jpeg' });
+            setForm(f => ({ ...f, image: file }));
+            setSuccess('📷 Photo captured! (Privacy processing unavailable)');
+          }
+        }, 'image/jpeg', 0.8);
+      } finally {
+        setProcessing(false);
+      }
+    }
+  };
+
+  const retakePhoto = () => {
+    setCapturedImage(null);
+    setProcessedImage(null);
+    setBlurStats(null);
+    setForm(f => ({ ...f, image: null }));
+    setSuccess('');
+    startCamera();
+  };
+
+  const removePhoto = () => {
+    setCapturedImage(null);
+    setProcessedImage(null);
+    setBlurStats(null);
+    setForm(f => ({ ...f, image: null }));
+    setSuccess('');
   };
 
   // Extract GPS coordinates from image EXIF data
@@ -108,50 +244,16 @@ const ReportForm = ({ onReport, onClose }) => {
   };
 
   const handleChange = (e) => {
-    const { name, value, files } = e.target;
+    const { name, value } = e.target;
     
-    if (name === 'image' && files && files[0]) {
-      const file = files[0];
-      console.log('📷 File selected:', {
-        name: file.name,
-        size: file.size,
-        type: file.type,
-        lastModified: new Date(file.lastModified).toLocaleString()
-      });
-      
-      // Validate file immediately
-      if (file.size > 5 * 1024 * 1024) {
-        setError('❌ File is too large. Please select an image smaller than 5MB.');
-        return;
-      }
-      
-      if (!file.type.startsWith('image/')) {
-        setError('❌ Please select a valid image file (JPEG, PNG, GIF, etc.).');
-        return;
-      }
-      
-      // Clear any previous errors
-      setError('');
-      setSuccess('');
-      
-      setForm(f => ({ ...f, [name]: file }));
-      console.log('✅ File successfully added to form state');
-      
-      // Attempt to extract GPS data from the image
-      extractGPSFromImage(file).then(gpsData => {
-        if (!gpsData && !form.location) {
-          // If no GPS data in image and no location set, show manual location option
-          console.log('ℹ️ No GPS data in image. User can manually detect location.');
-        }
-      });
-    } else if (name === 'province') {
+    if (name === 'province') {
       // Reset city and barangay when province changes
       setForm(f => ({ ...f, province: value, city: '', barangay: '' }));
     } else if (name === 'city') {
       // Reset barangay when city changes
       setForm(f => ({ ...f, city: value, barangay: '' }));
     } else {
-      setForm(f => ({ ...f, [name]: files ? files[0] : value }));
+      setForm(f => ({ ...f, [name]: value }));
     }
   };
 
@@ -429,54 +531,139 @@ const ReportForm = ({ onReport, onClose }) => {
           </div>
         </div>
 
-        {/* Image Upload */}
+        {/* Live Camera Capture */}
         <div className="form-group">
           <label>
             <span className="label-icon">📷</span>
             Photo Evidence
             <span className="label-required">*</span>
           </label>
-          <div className="file-input-wrapper">
-            <div className={`file-input-custom ${form.image ? 'file-selected' : ''}`}>
-              <input 
-                name="image" 
-                type="file" 
-                accept="image/*" 
-                onChange={handleChange} 
-                required
-                style={{ display: 'none' }}
-                id="image-input"
-              />
-              <label htmlFor="image-input" style={{ cursor: 'pointer', display: 'block', width: '100%' }}>
-                <span className="upload-icon">
-                  {form.image ? '✅' : '📷'}
-                </span>
-                {form.image ? `Selected: ${form.image.name}` : 'Click to choose photo to upload'}
-              </label>
-            </div>
-          </div>
-          {form.image && (
-            <div className="file-info">
-              <span>📸</span>
-              File: {form.image.name} ({Math.round(form.image.size / 1024)} KB)
+          
+          {!showCamera && !capturedImage && (
+            <div className="camera-section">
               <button 
                 type="button" 
-                onClick={() => {
-                  setForm(f => ({ ...f, image: null }));
-                  document.getElementById('image-input').value = '';
-                }}
-                style={{ marginLeft: '10px', background: '#dc3545', color: 'white', border: 'none', borderRadius: '3px', padding: '2px 6px', cursor: 'pointer' }}
+                className="camera-start-button"
+                onClick={startCamera}
+                disabled={submitting}
               >
-                ✕ Remove
+                <span className="camera-icon">📷</span>
+                Take Photo with Camera
               </button>
+              <div className="help-text">
+                Click to open your camera and take a live photo of the road condition.
+                <br />
+                <small><strong>Privacy Protection:</strong> Faces and license plates will be automatically blurred for security.</small>
+              </div>
             </div>
           )}
+          
+          {processing && (
+            <div className="processing-indicator">
+              <div className="processing-spinner"></div>
+              <div className="processing-text">
+                <strong>Processing image for privacy protection...</strong>
+                <br />
+                <small>Detecting and blurring faces and license plates</small>
+              </div>
+            </div>
+          )}
+          
+          {showCamera && !processing && (
+            <div className="camera-interface">
+              <div className="camera-viewfinder">
+                <video 
+                  ref={videoRef}
+                  autoPlay 
+                  playsInline
+                  muted
+                  onLoadedMetadata={() => {
+                    if (videoRef.current && stream) {
+                      videoRef.current.srcObject = stream;
+                    }
+                  }}
+                />
+              </div>
+              <div className="camera-controls">
+                <button 
+                  type="button" 
+                  className="camera-btn capture-btn"
+                  onClick={capturePhoto}
+                  disabled={processing}
+                >
+                  <span className="btn-icon">📸</span>
+                  Capture
+                </button>
+                <button 
+                  type="button" 
+                  className="camera-btn cancel-btn"
+                  onClick={stopCamera}
+                  disabled={processing}
+                >
+                  <span className="btn-icon">❌</span>
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+          
+          {(capturedImage || processedImage) && !showCamera && (
+            <div className="photo-preview">
+              <div className="preview-image">
+                <img src={processedImage || capturedImage} alt="Captured and processed photo" />
+              </div>
+              
+              {blurStats && (
+                <div className="privacy-stats">
+                  <div className="privacy-icon">🔒</div>
+                  <div className="privacy-info">
+                    <strong>Privacy Protection Applied</strong>
+                    {blurStats.facesBlurred > 0 && <div>✓ {blurStats.facesBlurred} face(s) blurred</div>}
+                    {blurStats.platesBlurred > 0 && <div>✓ {blurStats.platesBlurred} license plate(s) blurred</div>}
+                    {blurStats.facesBlurred === 0 && blurStats.platesBlurred === 0 && <div>✓ No sensitive content detected</div>}
+                    <small>Processing time: {blurStats.processingTime}ms</small>
+                  </div>
+                </div>
+              )}
+              
+              <div className="photo-controls">
+                <button 
+                  type="button" 
+                  className="photo-btn retake-btn"
+                  onClick={retakePhoto}
+                  disabled={submitting || processing}
+                >
+                  <span className="btn-icon">📷</span>
+                  Retake Photo
+                </button>
+                <button 
+                  type="button" 
+                  className="photo-btn remove-btn"
+                  onClick={removePhoto}
+                  disabled={submitting || processing}
+                >
+                  <span className="btn-icon">🗑️</span>
+                  Remove Photo
+                </button>
+              </div>
+              {form.image && (
+                <div className="file-info">
+                  <span>📸</span>
+                  Photo captured: {form.image.name} ({Math.round(form.image.size / 1024)} KB)
+                </div>
+              )}
+            </div>
+          )}
+          
           <div className="help-text">
-            A clear photo helps verify the report and provides visual context. Please ensure the image shows the road condition clearly.
+            <strong>Live Camera Capture:</strong> Take a real-time photo to provide clear visual evidence of the road condition.
             <br />
-            <small>Supported formats: JPG, PNG, GIF. Max size: 5MB</small>
+            <small>Make sure your device camera is working and you have good lighting for the best results.</small>
           </div>
         </div>
+        
+        {/* Hidden canvas for image processing */}
+        <canvas ref={canvasRef} style={{ display: 'none' }} />
 
         {/* Location Detection */}
         <div className="form-group">
