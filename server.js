@@ -39,15 +39,29 @@ app.use(cors({
     const allowedOrigins = [
       'http://localhost:5173', 
       'http://localhost:5174', 
-      'http://localhost:3000'
+      'http://localhost:3000',
+      // Explicitly add current Vercel URLs
+      'https://users-7vqxl2qvr-markstephens-projects.vercel.app',
+      'https://users-jghcwsdtc-markstephens-projects.vercel.app',
+      'https://users-fy4yb74qd-markstephens-projects.vercel.app'
     ];
     
-    // Allow any Vercel deployment from your project
+    // Add environment variable origins if they exist
+    if (process.env.ALLOWED_ORIGINS) {
+      const envOrigins = process.env.ALLOWED_ORIGINS.split(',').map(url => url.trim());
+      allowedOrigins.push(...envOrigins);
+      console.log('Environment origins added:', envOrigins);
+    }
+    
+    console.log('CORS check - Origin:', origin, 'Allowed:', allowedOrigins.includes(origin));
+    
+    // Allow any Vercel deployment from your project as fallback
     const isVercelProject = origin.includes('markstephens-projects.vercel.app');
     
     if (allowedOrigins.includes(origin) || isVercelProject) {
       return callback(null, true);
     } else {
+      console.log('CORS blocked origin:', origin);
       return callback(new Error('Not allowed by CORS'));
     }
   },
