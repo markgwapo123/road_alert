@@ -6,9 +6,18 @@ import ErrorModal from '../components/ErrorModal';
 // Configure axios for better mobile support
 const apiClient = axios.create({
   baseURL: config.API_BASE_URL,
-  timeout: 30000, // Increased to 30 seconds for better reliability
+  timeout: 5000, // 5 seconds timeout
   headers: {
-    'Content-Type': 'application/json'
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+    // Add headers for mobile compatibility
+    'Cache-Control': 'no-cache',
+    'Pragma': 'no-cache'
+  },
+  // Retry configuration for mobile networks
+  maxRedirects: 3,
+  validateStatus: function (status) {
+    return status < 500; // Resolve only if status is less than 500
   }
 });
 
@@ -95,6 +104,41 @@ const Login = ({ onLogin, switchToRegister }) => {
     setLoading(false);
   };
 
+  // Helper function with retry logic for mobile networks
+  const makeRequestWithRetry = async (requestFn, maxRetries = 2) => {
+    let lastError;
+    
+    for (let attempt = 1; attempt <= maxRetries + 1; attempt++) {
+      try {
+        console.log(`Attempt ${attempt} of ${maxRetries + 1}`);
+        return await requestFn();
+      } catch (error) {
+        lastError = error;
+        
+        // Don't retry on authentication errors
+        if (error.response?.status === 401 || error.response?.status === 404) {
+          throw error;
+        }
+        
+        // Retry on network/timeout errors
+        if (attempt <= maxRetries && (
+          error.code === 'ECONNABORTED' || 
+          error.code === 'ECONNREFUSED' || 
+          error.code === 'NETWORK_ERROR' ||
+          !error.response
+        )) {
+          console.log(`Retrying in ${attempt * 2} seconds...`);
+          await new Promise(resolve => setTimeout(resolve, attempt * 2000));
+          continue;
+        }
+        
+        throw error;
+      }
+    }
+    
+    throw lastError;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -117,9 +161,11 @@ const Login = ({ onLogin, switchToRegister }) => {
     try {
       console.log('Attempting login with:', { email: loginId.trim() });
       
-      const res = await apiClient.post('/auth/login', {
-        email: loginId.trim(),
-        password: password
+      const res = await makeRequestWithRetry(async () => {
+        return await apiClient.post('/auth/login', {
+          email: loginId.trim(),
+          password: password
+        });
       });
 
       console.log('Login response:', res.status, res.data);
