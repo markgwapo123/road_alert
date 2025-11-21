@@ -1,8 +1,9 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import axios from 'axios';
 import config from '../config/index.js';
-import { ALERT_TYPES, NEGROS_PROVINCES, NEGROS_CITIES, NEGROS_BARANGAYS } from '../data/negrosLocations.js';
+import { NEGROS_PROVINCES, NEGROS_CITIES, NEGROS_BARANGAYS } from '../data/negrosLocations.js';
 import exifr from 'exifr';
+import imageProcessor from '../utils/imageProcessing.js';
 
 const ALERT_TYPES = [
   { value: 'emergency', label: 'Emergency Alert', example: 'ROAD CLOSED - Accident Ahead' },
@@ -34,6 +35,10 @@ const ReportForm = ({ onReport, onClose }) => {
   // Camera capture state
   const [showCamera, setShowCamera] = useState(false);
   const [stream, setStream] = useState(null);
+  const [capturedImage, setCapturedImage] = useState(null);
+  const [processing, setProcessing] = useState(false);
+  const [processedImage, setProcessedImage] = useState(null);
+  const [blurStats, setBlurStats] = useState(null);
   const videoRef = React.useRef(null);
   const canvasRef = React.useRef(null);
 
@@ -61,188 +66,186 @@ const ReportForm = ({ onReport, onClose }) => {
     );
   };
 
-  // Camera functions with enhanced mobile support
+  // Camera functions
   const startCamera = async () => {
     try {
       setError('');
-      setSuccess('📷 Starting camera...');
+      setSuccess('Starting camera...');
       
-      // Check if mediaDevices is supported
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        setError('❌ Camera not supported on this device or browser.');
-        return;
-      }
-      
-      // Try different camera configurations for better mobile compatibility
-      const constraints = [
-        // First try: High quality with environment camera
-        { 
-          video: { 
-            width: { ideal: 1920, max: 1920 },
-            height: { ideal: 1080, max: 1080 },
-            facingMode: 'environment'
-          } 
+      const constraints = {
+        video: {
+          width: { ideal: 1920, max: 1920 },
+          height: { ideal: 1080, max: 1080 },
+          facingMode: { ideal: 'environment' }, // Prefer back camera
+          frameRate: { ideal: 30, max: 30 }
         },
-        // Fallback: Medium quality with environment camera
-        { 
-          video: { 
-            width: { ideal: 1280, max: 1280 },
-            height: { ideal: 720, max: 720 },
-            facingMode: 'environment'
-          } 
-        },
-        // Fallback: Any camera available
-        { 
-          video: { 
-            width: { ideal: 640, max: 1280 },
-            height: { ideal: 480, max: 720 }
-          } 
-        },
-        // Last resort: Basic video
-        { video: true }
-      ];
-      
-      let mediaStream = null;
-      let lastError = null;
-      
-      // Try each constraint until one works
-      for (const constraint of constraints) {
-        try {
-          console.log('📷 Trying camera constraint:', constraint);
-          mediaStream = await navigator.mediaDevices.getUserMedia(constraint);
-          console.log('✅ Camera started successfully with constraint:', constraint);
-          break;
-        } catch (err) {
-          console.warn('⚠️ Camera constraint failed:', constraint, err.message);
-          lastError = err;
-          continue;
-        }
-      }
-      
-      if (!mediaStream) {
-        throw lastError || new Error('All camera configurations failed');
-      }
-      
+        audio: false
+      };
+
+      const mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
       setStream(mediaStream);
       setShowCamera(true);
+      setSuccess('Camera ready! Frame your shot and tap capture.');
       
-      // Set video stream with proper event handling
-      if (videoRef.current) {
-        videoRef.current.srcObject = mediaStream;
-        
-        // Wait for video to load and play
-        videoRef.current.addEventListener('loadedmetadata', () => {
-          console.log('📷 Video metadata loaded');
-          videoRef.current.play().then(() => {
-            console.log('📷 Video started playing');
-            setSuccess('📷 Camera ready! Point at the road condition and tap Capture.');
-          }).catch(err => {
-            console.error('Video play failed:', err);
-            setError('❌ Video playback failed. Please try again.');
+      // Wait for video element to be ready, then set stream
+      setTimeout(() => {
+        if (videoRef.current && mediaStream) {
+          videoRef.current.srcObject = mediaStream;
+          videoRef.current.play().catch(err => {
+            console.warn('Auto-play failed:', err);
           });
-        });
-        
-        videoRef.current.addEventListener('error', (e) => {
-          console.error('Video error:', e);
-          setError('❌ Video error. Please try restarting camera.');
-        });
-      }
+        }
+      }, 100);
       
     } catch (err) {
-      console.error('❌ Camera error:', err);
-      
-      // Provide specific error messages
+      console.error('Error accessing camera:', err);
       if (err.name === 'NotAllowedError') {
-        setError('❌ Camera access denied. Please allow camera permissions in your browser settings and try again.');
+        setError('Camera access denied. Please allow camera permissions and try again.');
       } else if (err.name === 'NotFoundError') {
-        setError('❌ No camera found on this device.');
-      } else if (err.name === 'NotSupportedError') {
-        setError('❌ Camera not supported on this device or browser.');
+        setError('No camera found on this device.');
       } else if (err.name === 'OverconstrainedError') {
-        setError('❌ Camera resolution not supported. Try a different device.');
+        setError('Camera resolution not supported. Trying with lower quality...');
+        // Fallback with basic constraints
+        try {
+          const basicStream = await navigator.mediaDevices.getUserMedia({ 
+            video: { facingMode: 'environment' }, 
+            audio: false 
+          });
+          setStream(basicStream);
+          setShowCamera(true);
+          setSuccess('Camera ready with basic quality!');
+          setTimeout(() => {
+            if (videoRef.current && basicStream) {
+              videoRef.current.srcObject = basicStream;
+              videoRef.current.play().catch(e => console.warn('Play failed:', e));
+            }
+          }, 100);
+        } catch (fallbackErr) {
+          setError('Unable to access camera with any settings.');
+        }
       } else {
-        setError(`❌ Camera error: ${err.message}. Try refreshing the page or using a different device.`);
+        setError('Unable to access camera. Please try again.');
       }
     }
   };
 
   const stopCamera = () => {
-    try {
-      if (stream) {
-        stream.getTracks().forEach(track => {
-          track.stop();
-          console.log('📷 Camera track stopped:', track.kind);
-        });
-        setStream(null);
-      }
-      if (videoRef.current) {
-        videoRef.current.srcObject = null;
-      }
-      setShowCamera(false);
-      setSuccess('');
-      console.log('📷 Camera stopped successfully');
-    } catch (err) {
-      console.error('Error stopping camera:', err);
+    if (stream) {
+      stream.getTracks().forEach(track => track.stop());
+      setStream(null);
     }
+    setShowCamera(false);
   };
 
   const capturePhoto = async () => {
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    
+    if (!video || !canvas) {
+      setError('Camera not ready. Please try again.');
+      return;
+    }
+
+    // Wait for video to be fully loaded
+    if (video.readyState < 2) {
+      setError('Video not ready. Please wait a moment and try again.');
+      return;
+    }
+
+    // Set canvas dimensions to match video
+    const videoWidth = video.videoWidth || video.clientWidth || 640;
+    const videoHeight = video.videoHeight || video.clientHeight || 480;
+    
+    canvas.width = videoWidth;
+    canvas.height = videoHeight;
+    
+    const ctx = canvas.getContext('2d');
+    
     try {
-      const video = videoRef.current;
-      const canvas = canvasRef.current;
+      // Clear canvas first
+      ctx.clearRect(0, 0, videoWidth, videoHeight);
       
-      if (!video || !canvas) {
-        setError('❌ Camera interface not ready. Please try again.');
-        return;
-      }
-      
-      // Check if video is ready and has valid dimensions
-      if (video.readyState < 2) {
-        setError('❌ Camera still loading. Please wait a moment and try again.');
-        return;
-      }
-      
-      const videoWidth = video.videoWidth || 640;
-      const videoHeight = video.videoHeight || 480;
-      
-      if (videoWidth === 0 || videoHeight === 0) {
-        setError('❌ Camera stream not ready. Please wait and try again.');
-        return;
-      }
-      
-      canvas.width = videoWidth;
-      canvas.height = videoHeight;
-      
-      const ctx = canvas.getContext('2d');
+      // Draw video frame to canvas
       ctx.drawImage(video, 0, 0, videoWidth, videoHeight);
       
-      // Convert to file
-      canvas.toBlob((blob) => {
-        if (blob) {
-          const file = new File([blob], `camera_capture_${Date.now()}.jpg`, { 
-            type: 'image/jpeg' 
-          });
-          setForm(f => ({ ...f, image: file }));
-          setSuccess('📷 Photo captured successfully!');
-          stopCamera();
-        } else {
-          setError('❌ Failed to create image file. Please try again.');
-        }
-      }, 'image/jpeg', 0.8);
+      // Get image data URL
+      const dataURL = canvas.toDataURL('image/jpeg', 0.8);
       
-    } catch (err) {
-      console.error('❌ Capture error:', err);
-      setError('❌ Failed to capture photo. Please try again.');
+      // Verify image was captured (not just black/empty)
+      const imageData = ctx.getImageData(0, 0, videoWidth, videoHeight);
+      const isBlank = imageData.data.every(pixel => pixel === 0);
+      
+      if (isBlank) {
+        setError('Failed to capture image. Please ensure camera is working and try again.');
+        return;
+      }
+      
+      // Set initial captured image
+      setCapturedImage(dataURL);
+      stopCamera();
+      
+      // Start processing the image for privacy protection
+      setProcessing(true);
+      setSuccess('📷 Photo captured! Processing for privacy protection...');
+      
+      try {
+        // Apply face and license plate blurring
+        const stats = await imageProcessor.processImage(canvas, {
+          blurFaces: true,
+          blurPlates: true
+        });
+        
+        // Get the processed image
+        const processedDataUrl = canvas.toDataURL('image/jpeg', 0.8);
+        setProcessedImage(processedDataUrl);
+        setBlurStats(stats);
+        
+        // Convert processed image to blob and create file
+        canvas.toBlob((blob) => {
+          if (blob) {
+            const file = new File([blob], `camera_capture_${Date.now()}.jpg`, { type: 'image/jpeg' });
+            setForm(f => ({ ...f, image: file }));
+            
+            const blurMessage = [];
+            if (stats.facesBlurred > 0) blurMessage.push(`${stats.facesBlurred} face(s) blurred`);
+            if (stats.platesBlurred > 0) blurMessage.push(`${stats.platesBlurred} license plate(s) blurred`);
+            
+            setSuccess(`✅ Photo processed successfully! ${blurMessage.length > 0 ? blurMessage.join(', ') + ' for privacy protection.' : 'No sensitive content detected.'}`);
+          }
+        }, 'image/jpeg', 0.8);
+        
+      } catch (error) {
+        console.error('Image processing failed:', error);
+        // Fallback: use original image if processing fails
+        canvas.toBlob((blob) => {
+          if (blob) {
+            const file = new File([blob], `camera_capture_${Date.now()}.jpg`, { type: 'image/jpeg' });
+            setForm(f => ({ ...f, image: file }));
+            setSuccess('📷 Photo captured! (Privacy processing unavailable)');
+          }
+        }, 'image/jpeg', 0.8);
+      } finally {
+        setProcessing(false);
+      }
+    } catch (error) {
+      console.error('Error capturing photo:', error);
+      setError('Failed to capture photo. Please try again.');
     }
   };
 
   const retakePhoto = () => {
+    setCapturedImage(null);
+    setProcessedImage(null);
+    setBlurStats(null);
     setForm(f => ({ ...f, image: null }));
     setSuccess('');
     startCamera();
   };
 
   const removePhoto = () => {
+    setCapturedImage(null);
+    setProcessedImage(null);
+    setBlurStats(null);
     setForm(f => ({ ...f, image: null }));
     setSuccess('');
   };
@@ -617,11 +620,24 @@ const ReportForm = ({ onReport, onClose }) => {
               </button>
               <div className="help-text">
                 Click to open your camera and take a live photo of the road condition.
+                <br />
+                <small><strong>Privacy Protection:</strong> Faces and license plates will be automatically blurred for security.</small>
               </div>
             </div>
           )}
           
-          {showCamera && (
+          {processing && (
+            <div className="processing-indicator">
+              <div className="processing-spinner"></div>
+              <div className="processing-text">
+                <strong>Processing image for privacy protection...</strong>
+                <br />
+                <small>Detecting and blurring faces and license plates</small>
+              </div>
+            </div>
+          )}
+          
+          {showCamera && !processing && (
             <div className="camera-interface">
               <div className="camera-viewfinder">
                 <video 
@@ -629,29 +645,12 @@ const ReportForm = ({ onReport, onClose }) => {
                   autoPlay 
                   playsInline
                   muted
-                  webkit-playsinline="true"
                   style={{
                     width: '100%',
                     height: '300px',
                     objectFit: 'cover',
                     backgroundColor: '#000',
                     borderRadius: '8px'
-                  }}
-                  onLoadedMetadata={() => {
-                    console.log('📷 Video metadata loaded');
-                    if (videoRef.current && stream) {
-                      videoRef.current.srcObject = stream;
-                      videoRef.current.play().catch(err => {
-                        console.error('Video play failed:', err);
-                      });
-                    }
-                  }}
-                  onCanPlay={() => {
-                    console.log('📷 Video can play');
-                  }}
-                  onError={(e) => {
-                    console.error('📷 Video error:', e);
-                    setError('❌ Video playback error. Please try again.');
                   }}
                 />
               </div>
@@ -660,6 +659,16 @@ const ReportForm = ({ onReport, onClose }) => {
                   type="button" 
                   className="camera-btn capture-btn"
                   onClick={capturePhoto}
+                  disabled={processing}
+                  style={{
+                    backgroundColor: '#28a745',
+                    color: 'white',
+                    border: 'none',
+                    padding: '12px 20px',
+                    borderRadius: '6px',
+                    fontSize: '16px',
+                    margin: '5px'
+                  }}
                 >
                   <span className="btn-icon">📸</span>
                   Capture
@@ -668,87 +677,49 @@ const ReportForm = ({ onReport, onClose }) => {
                   type="button" 
                   className="camera-btn cancel-btn"
                   onClick={stopCamera}
+                  disabled={processing}
+                  style={{
+                    backgroundColor: '#dc3545',
+                    color: 'white',
+                    border: 'none',
+                    padding: '12px 20px',
+                    borderRadius: '6px',
+                    fontSize: '16px',
+                    margin: '5px'
+                  }}
                 >
                   <span className="btn-icon">❌</span>
                   Cancel
-                </button>
-                
-                {/* Debug button for troubleshooting */}
-                <button 
-                  type="button" 
-                  className="camera-btn debug-btn"
-                  onClick={() => {
-                    const video = videoRef.current;
-                    if (video) {
-                      const debugInfo = {
-                        readyState: video.readyState,
-                        videoWidth: video.videoWidth,
-                        videoHeight: video.videoHeight,
-                        paused: video.paused,
-                        srcObject: !!video.srcObject,
-                        currentTime: video.currentTime,
-                        networkState: video.networkState
-                      };
-                      console.log('📷 Camera Debug Info:', debugInfo);
-                      setSuccess(`Debug: Ready=${debugInfo.readyState}, Size=${debugInfo.videoWidth}x${debugInfo.videoHeight}, Playing=${!debugInfo.paused}`);
-                    }
-                  }}
-                  style={{ fontSize: '12px', padding: '8px 12px', backgroundColor: '#f39c12' }}
-                >
-                  🔍 Debug
-                </button>
-                
-                {/* Force capture for testing */}
-                <button 
-                  type="button" 
-                  className="camera-btn force-btn"
-                  onClick={() => {
-                    try {
-                      const video = videoRef.current;
-                      const canvas = canvasRef.current;
-                      
-                      if (video && canvas) {
-                        canvas.width = 640;
-                        canvas.height = 480;
-                        const ctx = canvas.getContext('2d');
-                        ctx.drawImage(video, 0, 0, 640, 480);
-                        
-                        canvas.toBlob((blob) => {
-                          if (blob) {
-                            const file = new File([blob], `force_capture_${Date.now()}.jpg`, { 
-                              type: 'image/jpeg' 
-                            });
-                            setForm(f => ({ ...f, image: file }));
-                            setSuccess('📷 Force capture successful!');
-                            stopCamera();
-                          }
-                        }, 'image/jpeg', 0.8);
-                      }
-                    } catch (err) {
-                      setError('❌ Force capture failed: ' + err.message);
-                    }
-                  }}
-                  style={{ fontSize: '12px', padding: '8px 12px', backgroundColor: '#e74c3c' }}
-                >
-                  🚀 Force Capture
-                </button>
                 </button>
               </div>
             </div>
           )}
           
-          {form.image && !showCamera && (
+          {(capturedImage || processedImage) && !showCamera && (
             <div className="photo-preview">
               <div className="preview-image">
-                <img src={URL.createObjectURL(form.image)} alt="Captured photo" />
+                <img src={processedImage || capturedImage} alt="Captured and processed photo" />
               </div>
+              
+              {blurStats && (
+                <div className="privacy-stats">
+                  <div className="privacy-icon">🔒</div>
+                  <div className="privacy-info">
+                    <strong>Privacy Protection Applied</strong>
+                    {blurStats.facesBlurred > 0 && <div>✓ {blurStats.facesBlurred} face(s) blurred</div>}
+                    {blurStats.platesBlurred > 0 && <div>✓ {blurStats.platesBlurred} license plate(s) blurred</div>}
+                    {blurStats.facesBlurred === 0 && blurStats.platesBlurred === 0 && <div>✓ No sensitive content detected</div>}
+                    <small>Processing time: {blurStats.processingTime}ms</small>
+                  </div>
+                </div>
+              )}
               
               <div className="photo-controls">
                 <button 
                   type="button" 
                   className="photo-btn retake-btn"
                   onClick={retakePhoto}
-                  disabled={submitting}
+                  disabled={submitting || processing}
                 >
                   <span className="btn-icon">📷</span>
                   Retake Photo
@@ -757,7 +728,7 @@ const ReportForm = ({ onReport, onClose }) => {
                   type="button" 
                   className="photo-btn remove-btn"
                   onClick={removePhoto}
-                  disabled={submitting}
+                  disabled={submitting || processing}
                 >
                   <span className="btn-icon">🗑️</span>
                   Remove Photo
@@ -779,7 +750,7 @@ const ReportForm = ({ onReport, onClose }) => {
           </div>
         </div>
         
-        {/* Hidden canvas for camera capture */}
+        {/* Hidden canvas for image processing */}
         <canvas ref={canvasRef} style={{ display: 'none' }} />
 
         {/* Location Detection */}
@@ -867,7 +838,7 @@ const ReportForm = ({ onReport, onClose }) => {
         
         {submitting && (
           <div style={{ textAlign: 'center', marginTop: '10px', color: '#666', fontSize: '14px' }}>
-            📤 Uploading your report...
+            📤 Uploading image and processing your report...
           </div>
         )}
       </form>
