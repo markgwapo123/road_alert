@@ -1,322 +1,163 @@
-const express = require('express');const express = require('express');
+const express = require('express');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const User = require('../models/User');
+const Admin = require('../models/Admin');
+const auth = require('../middleware/auth');
 
-const bcrypt = require('bcryptjs');const bcrypt = require('bcryptjs');
+const router = express.Router();
 
-const jwt = require('jsonwebtoken');const jwt = require('jsonwebtoken');
+// @route   POST /api/auth/register
+// @desc    Register a new user
+// @access  Public
+router.post('/register', async (req, res) => {
+    try {
+        const { username, email, password } = req.body;
 
-const User = require('../models/User');const User = require('../models/User');
+        // Validate input
+        if (!username || !email || !password) {
+            return res.status(400).json({ error: 'Please enter all fields' });
+        }
 
-const Admin = require('../models/Admin');const Admin = require('../models/Admin');
+        // Check for existing user by email or username
+        let user = await User.findOne({ $or: [{ email }, { username }] });
+        if (user) {
+            return res.status(400).json({ error: 'Username or email already exists' });
+        }
 
-const auth = require('../middleware/auth');const auth = require('../middleware/auth');
+        // Create new user
+        user = new User({
+            username,
+            email,
+            password,
+        });
 
+        // Password will be hashed automatically by the User model pre-save hook
+        await user.save();
 
+        res.status(201).json({ success: true, message: 'User registered successfully' });
 
-const router = express.Router();const router = express.Router();
-
-
-
-// @route   POST /api/auth/register// @route   POST /api/auth/register
-
-// @desc    Register a new user// @desc    Register a new user
-
-// @access  Public// @access  Public
-
-router.post('/register', async (req, res) => {router.post('/register', async (req, res) => {
-
-    try {    try {
-
-        const { username, email, password } = req.body;        const { username, email, password } = req.body;
-
-
-
-        // Validate input        // Validate input
-
-        if (!username || !email || !password) {        if (!username || !email || !password) {
-
-            return res.status(400).json({ error: 'Please enter all fields' });            return res.status(400).json({ error: 'Please enter all fields' });
-
-        }        }
-
-
-
-        // Check for existing user by email or username        // Check for existing user by email or username
-
-        let user = await User.findOne({ $or: [{ email }, { username }] });        let user = await User.findOne({ $or: [{ email }, { username }] });
-
-        if (user) {        if (user) {
-
-            return res.status(400).json({ error: 'Username or email already exists' });            return res.status(400).json({ error: 'Username or email already exists' });
-
-        }        }
-
-
-
-        // Create new user        // Create new user
-
-        user = new User({        user = new User({
-
-            username,            username,
-
-            email,            email,
-
-            password,            password,
-
-        });        });
-
-
-
-        // Password will be hashed automatically by the User model pre-save hook        // Password will be hashed automatically by the User model pre-save hook
-
-        await user.save();        await user.save();
-
-
-
-        res.status(201).json({ success: true, message: 'User registered successfully' });        res.status(201).json({ success: true, message: 'User registered successfully' });
-
-
-
-    } catch (error) {    } catch (error) {
-
-        console.error('Register error:', error);        console.error('Register error:', error);
-
-        if (error.code === 11000) {        if (error.code === 11000) {
-
-            // Duplicate key error            // Duplicate key error
-
-            return res.status(400).json({ error: 'Username or email already exists' });            return res.status(400).json({ error: 'Username or email already exists' });
-
-        }        }
-
-        res.status(500).json({ error: error.message || 'Server error during registration' });        // Log the error details for debugging
-
-    }        if (error.errors) {
-
-});            Object.keys(error.errors).forEach(key => {
-
+    } catch (error) {
+        console.error('Register error:', error);
+        if (error.code === 11000) {
+            // Duplicate key error
+            return res.status(400).json({ error: 'Username or email already exists' });
+        }
+        // Log the error details for debugging
+        if (error.errors) {
+            Object.keys(error.errors).forEach(key => {
                 console.error(`Validation error for ${key}:`, error.errors[key].message);
-
-// @route   POST /api/auth/login            });
-
-// @desc    User or Admin login        }
-
-// @access  Public        res.status(500).json({ error: error.message || 'Server error during registration' });
-
-router.post('/login', async (req, res) => {    }
-
-  try {});
-
-    const { email, username, password } = req.body;
+            });
+        }
+        res.status(500).json({ error: error.message || 'Server error during registration' });
+    }
+});
 
 // @route   POST /api/auth/login
-
-    // Validate input// @desc    User or Admin login
-
-    if ((!email && !username) || !password) {// @access  Public
-
-      return res.status(400).json({router.post('/login', async (req, res) => {
-
-        error: 'Email/Username and password are required'  try {
-
-      });    const { email, username, password } = req.body;
-
-    }
+// @desc    User or Admin login
+// @access  Public
+router.post('/login', async (req, res) => {
+  try {
+    const { email, username, password } = req.body;
 
     // Validate input
-
-    // Try user login (by email or username)    if ((!email && !username) || !password) {
-
-    let user = null;      return res.status(400).json({
-
-    if (email) {        error: 'Email/Username and password are required'
-
-      user = await User.findOne({ email });      });
-
-    } else if (username) {    }
-
-      user = await User.findOne({ username });
-
-    }    // Try user login (by email or username)
-
-        let user = null;
-
-    if (user) {    if (email) {
-
-      const isMatch = await user.comparePassword(password);      user = await User.findOne({ email });
-
-      if (!isMatch) {    } else if (username) {
-
-        return res.status(401).json({ error: 'Invalid credentials' });      user = await User.findOne({ username });
-
-      }    }    if (user) {
-
-            const isMatch = await user.comparePassword(password);
-
-      // Update last login for user tracking      if (!isMatch) {
-
-      await user.updateLastLogin();        return res.status(401).json({ error: 'Invalid credentials' });
-
-            }
-
-      // Create a JWT for the user      // Update last login for user tracking
-
-      const token = jwt.sign(      await user.updateLastLogin();
-
-        { id: user._id, username: user.username, email: user.email },      // Create a JWT for the user
-
-        process.env.JWT_SECRET || 'your_jwt_secret',      const token = jwt.sign(
-
-        { expiresIn: '7d' }        { id: user._id, username: user.username, email: user.email },
-
-      );        process.env.JWT_SECRET || 'your_jwt_secret',
-
-              { expiresIn: '7d' }
-
-      return res.json({      );
-
-        success: true,      return res.json({
-
-        token,        success: true,
-
-        user: {        token,
-
-          id: user._id,        user: {
-
-          username: user.username,          id: user._id,
-
-          email: user.email,          username: user.username,
-
-          lastLogin: user.lastLogin          email: user.email,
-
-        }          lastLogin: user.lastLogin
-
-      });        }
-
-    }      });
-
+    if ((!email && !username) || !password) {
+      return res.status(400).json({
+        error: 'Email/Username and password are required'
+      });
     }
 
-    // Try admin login if user not found
+    // Try user login (by email or username)
+    let user = null;
+    if (email) {
+      user = await User.findOne({ email });
+    } else if (username) {
+      user = await User.findOne({ username });
+    }    if (user) {
+      const isMatch = await user.comparePassword(password);
+      if (!isMatch) {
+        return res.status(401).json({ error: 'Invalid credentials' });
+      }
+      // Update last login for user tracking
+      await user.updateLastLogin();
+      // Create a JWT for the user
+      const token = jwt.sign(
+        { id: user._id, username: user.username, email: user.email },
+        process.env.JWT_SECRET || 'your_jwt_secret',
+        { expiresIn: '7d' }
+      );
+      return res.json({
+        success: true,
+        token,
+        user: {
+          id: user._id,
+          username: user.username,
+          email: user.email,
+          lastLogin: user.lastLogin
+        }
+      });
+    }
 
-    const admin = await Admin.findOne({     // Check if the user is an admin
+    // Check if the user is an admin
+    let admin = await Admin.findOne({ username });
+    if (admin) {
+      // Check if admin is active
+      if (!admin.isActive) {
+        return res.status(401).json({
+          error: 'Account is deactivated'
+        });
+      }
 
-      $or: email ? [{ email }] : [{ username }]     let admin = await Admin.findOne({ username });
+      // Check password
+      const isMatch = await admin.comparePassword(password);
+      if (!isMatch) {
+        return res.status(401).json({
+          error: 'Invalid credentials'
+        });
+      }
 
-    });    if (admin) {
+      // Update last login
+      await admin.updateLastLogin();
 
-          // Check if admin is active
-
-    if (admin) {      if (!admin.isActive) {
-
-      const isMatch = await admin.comparePassword(password);        return res.status(401).json({
-
-      if (!isMatch) {          error: 'Account is deactivated'
-
-        return res.status(401).json({ error: 'Invalid credentials' });        });
-
-      }      }
-
-      
-
-      // Create a JWT for the admin      // Check password
-
-      const token = jwt.sign(      const isMatch = await admin.comparePassword(password);
-
-        {       if (!isMatch) {
-
-          id: admin._id,         return res.status(401).json({
-
-          username: admin.username,           error: 'Invalid credentials'
-
-          email: admin.email,        });
-
-          role: 'admin'      }
-
+      // Create JWT token
+      const token = jwt.sign(
+        { 
+          id: admin._id, 
+          username: admin.username,
+          role: admin.role 
         },
-
-        process.env.JWT_SECRET || 'your_jwt_secret',      // Update last login
-
-        { expiresIn: '7d' }      await admin.updateLastLogin();
-
+        process.env.JWT_SECRET,
+        { expiresIn: process.env.JWT_EXPIRE }
       );
 
-            // Create JWT token
-
-      return res.json({      const token = jwt.sign(
-
-        success: true,        { 
-
-        token,          id: admin._id, 
-
-        admin: {          username: admin.username,
-
-          id: admin._id,          role: admin.role 
-
-          username: admin.username,        },
-
-          email: admin.email,        process.env.JWT_SECRET,
-
-          role: 'admin'        { expiresIn: process.env.JWT_EXPIRE }
-
-        }      );
-
-      });
-
-    }      return res.json({
-
+      return res.json({
         success: true,
-
-    // No user or admin found        token,
-
-    return res.status(401).json({ error: 'Invalid credentials' });        admin: {
-
+        token,
+        admin: {
           id: admin._id,
-
-  } catch (error) {          username: admin.username,
-
-    console.error('Login error:', error);          role: admin.role,
-
-    res.status(500).json({ error: 'Server error during login' });          email: admin.email,
-
-  }          lastLogin: admin.lastLogin
-
-});        }
-
+          username: admin.username,
+          role: admin.role,
+          email: admin.email,
+          lastLogin: admin.lastLogin
+        }
       });
+    }
 
-// @route   GET /api/auth/verify    }
+    return res.status(401).json({
+      error: 'Invalid credentials'
+    });
 
-// @desc    Verify JWT token
-
-// @access  Private    return res.status(401).json({
-
-router.get('/verify', auth, async (req, res) => {      error: 'Invalid credentials'
-
-  try {    });
-
-    // req.user is populated by auth middleware
-
-    res.json({  } catch (error) {
-
-      success: true,    console.error('Login error:', error);
-
-      user: req.user    res.status(500).json({
-
-    });      error: 'Server error during login'
-
-  } catch (error) {    });
-
-    console.error('Verify error:', error);  }
-
-    res.status(500).json({ error: 'Server error during verification' });});
-
+  } catch (error) {
+    console.error('Login error:', error);
+    res.status(500).json({
+      error: 'Server error during login'
+    });
   }
+});
 
-});// @route   GET /api/auth/verify
-
+// @route   GET /api/auth/verify
 // @desc    Verify token and get admin info
-
-module.exports = router;// @access  Private
+// @access  Private
 router.get('/verify', auth, async (req, res) => {
   try {
     const admin = await Admin.findById(req.admin.id).select('-password');
