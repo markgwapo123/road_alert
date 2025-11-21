@@ -48,7 +48,11 @@ app.use(cors({
       'https://users-cvqp1tert-markstephens-projects.vercel.app',
       'https://users-q7dnjnpys-markstephens-projects.vercel.app',
       'https://users-kfas5lx69-markstephens-projects.vercel.app',
-      'https://users-drgmed9d1-markstephens-projects.vercel.app'
+      'https://users-drgmed9d1-markstephens-projects.vercel.app',
+      'https://users-epko664na-markstephens-projects.vercel.app',
+      'https://users-er1jexai3-markstephens-projects.vercel.app',
+      'https://users-egp20axt2-markstephens-projects.vercel.app',
+      'https://users-5uuux7jz6-markstephens-projects.vercel.app'
     ];
     
     // Add environment variable origins if they exist
@@ -137,6 +141,7 @@ app.get('/', (req, res) => {
     message: '🚀 RoadAlert Backend API',
     status: 'Running',
     version: '1.0.0',
+    timestamp: new Date().toISOString(),
     endpoints: {
       auth: '/api/auth',
       reports: '/api/reports',
@@ -149,28 +154,38 @@ app.get('/', (req, res) => {
   });
 });
 
-// Routes
-app.get('/', (req, res) => {
-  res.json({
-    message: 'RoadAlert Backend API',
-    status: 'Running',
-    version: '1.0.0',
-    timestamp: new Date().toISOString()
-  });
-});
-
-app.use('/api/auth', require('./routes/auth'));
-app.use('/api/reports', require('./routes/reports'));
-app.use('/api/admin', require('./routes/admin'));
-app.use('/api/users', require('./routes/users'));
-app.use('/api/notifications', require('./routes/notifications'));
+// API Routes
+try {
+  app.use('/api/auth', require('./routes/auth'));
+  app.use('/api/reports', require('./routes/reports'));
+  app.use('/api/admin', require('./routes/admin'));
+  app.use('/api/users', require('./routes/users'));
+  app.use('/api/notifications', require('./routes/notifications'));
+  console.log('✅ All API routes loaded successfully');
+} catch (error) {
+  console.error('❌ Error loading routes:', error.message);
+}
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'OK',
     timestamp: new Date().toISOString(),
-    uptime: process.uptime()
+    uptime: process.uptime(),
+    environment: process.env.NODE_ENV || 'development',
+    port: PORT
+  });
+});
+
+// Debug endpoint to test API
+app.get('/api/debug', (req, res) => {
+  res.json({
+    message: 'API is working!',
+    timestamp: new Date().toISOString(),
+    headers: req.headers,
+    method: req.method,
+    path: req.path,
+    query: req.query
   });
 });
 
@@ -270,10 +285,23 @@ const initializeDatabase = async () => {
   }
 };
 
-initializeDatabase();
+// Start server
+const startServer = () => {
+  app.listen(PORT, () => {
+    console.log(`🚀 RoadAlert Backend Server running on port ${PORT}`);
+    console.log(`📍 Environment: ${process.env.NODE_ENV}`);
+    console.log(`🌐 Server URL: http://localhost:${PORT}`);
+    console.log(`� API Base: http://localhost:${PORT}/api`);
+    console.log(`🏥 Health Check: http://localhost:${PORT}/api/health`);
+    console.log(`🐛 Debug Endpoint: http://localhost:${PORT}/api/debug`);
+  });
+};
 
-app.listen(PORT, () => {
-  console.log(`🚀 RoadAlert Backend Server running on port ${PORT}`);
-  console.log(`📍 Environment: ${process.env.NODE_ENV}`);
-  console.log(`🗄️  Database: ${process.env.MONGODB_URI}`);
+// Initialize everything
+initializeDatabase().then(() => {
+  startServer();
+}).catch((error) => {
+  console.error('Failed to initialize database:', error.message);
+  console.log('Starting server without database...');
+  startServer();
 });
