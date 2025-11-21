@@ -34,10 +34,6 @@ const ReportForm = ({ onReport, onClose }) => {
   // Camera capture state
   const [showCamera, setShowCamera] = useState(false);
   const [stream, setStream] = useState(null);
-  const [capturedImage, setCapturedImage] = useState(null);
-  const [processing, setProcessing] = useState(false);
-  const [processedImage, setProcessedImage] = useState(null);
-  const [blurStats, setBlurStats] = useState(null);
   const videoRef = React.useRef(null);
   const canvasRef = React.useRef(null);
 
@@ -247,16 +243,6 @@ const ReportForm = ({ onReport, onClose }) => {
   };
 
   const removePhoto = () => {
-    setForm(f => ({ ...f, image: null }));
-    setSuccess('');
-  };
-    startCamera();
-  };
-
-  const removePhoto = () => {
-    setCapturedImage(null);
-    setProcessedImage(null);
-    setBlurStats(null);
     setForm(f => ({ ...f, image: null }));
     setSuccess('');
   };
@@ -631,24 +617,11 @@ const ReportForm = ({ onReport, onClose }) => {
               </button>
               <div className="help-text">
                 Click to open your camera and take a live photo of the road condition.
-                <br />
-                <small><strong>Privacy Protection:</strong> Faces and license plates will be automatically blurred for security.</small>
               </div>
             </div>
           )}
           
-          {processing && (
-            <div className="processing-indicator">
-              <div className="processing-spinner"></div>
-              <div className="processing-text">
-                <strong>Processing image for privacy protection...</strong>
-                <br />
-                <small>Detecting and blurring faces and license plates</small>
-              </div>
-            </div>
-          )}
-          
-          {showCamera && !processing && (
+          {showCamera && (
             <div className="camera-interface">
               <div className="camera-viewfinder">
                 <video 
@@ -687,7 +660,6 @@ const ReportForm = ({ onReport, onClose }) => {
                   type="button" 
                   className="camera-btn capture-btn"
                   onClick={capturePhoto}
-                  disabled={processing}
                 >
                   <span className="btn-icon">📸</span>
                   Capture
@@ -696,7 +668,6 @@ const ReportForm = ({ onReport, onClose }) => {
                   type="button" 
                   className="camera-btn cancel-btn"
                   onClick={stopCamera}
-                  disabled={processing}
                 >
                   <span className="btn-icon">❌</span>
                   Cancel
@@ -766,31 +737,18 @@ const ReportForm = ({ onReport, onClose }) => {
             </div>
           )}
           
-          {(capturedImage || processedImage) && !showCamera && (
+          {form.image && !showCamera && (
             <div className="photo-preview">
               <div className="preview-image">
-                <img src={processedImage || capturedImage} alt="Captured and processed photo" />
+                <img src={URL.createObjectURL(form.image)} alt="Captured photo" />
               </div>
-              
-              {blurStats && (
-                <div className="privacy-stats">
-                  <div className="privacy-icon">🔒</div>
-                  <div className="privacy-info">
-                    <strong>Privacy Protection Applied</strong>
-                    {blurStats.facesBlurred > 0 && <div>✓ {blurStats.facesBlurred} face(s) blurred</div>}
-                    {blurStats.platesBlurred > 0 && <div>✓ {blurStats.platesBlurred} license plate(s) blurred</div>}
-                    {blurStats.facesBlurred === 0 && blurStats.platesBlurred === 0 && <div>✓ No sensitive content detected</div>}
-                    <small>Processing time: {blurStats.processingTime}ms</small>
-                  </div>
-                </div>
-              )}
               
               <div className="photo-controls">
                 <button 
                   type="button" 
                   className="photo-btn retake-btn"
                   onClick={retakePhoto}
-                  disabled={submitting || processing}
+                  disabled={submitting}
                 >
                   <span className="btn-icon">📷</span>
                   Retake Photo
@@ -799,7 +757,7 @@ const ReportForm = ({ onReport, onClose }) => {
                   type="button" 
                   className="photo-btn remove-btn"
                   onClick={removePhoto}
-                  disabled={submitting || processing}
+                  disabled={submitting}
                 >
                   <span className="btn-icon">🗑️</span>
                   Remove Photo
@@ -821,7 +779,7 @@ const ReportForm = ({ onReport, onClose }) => {
           </div>
         </div>
         
-        {/* Hidden canvas for image processing */}
+        {/* Hidden canvas for camera capture */}
         <canvas ref={canvasRef} style={{ display: 'none' }} />
 
         {/* Location Detection */}
@@ -909,7 +867,7 @@ const ReportForm = ({ onReport, onClose }) => {
         
         {submitting && (
           <div style={{ textAlign: 'center', marginTop: '10px', color: '#666', fontSize: '14px' }}>
-            📤 Uploading image and processing your report...
+            📤 Uploading your report...
           </div>
         )}
       </form>
