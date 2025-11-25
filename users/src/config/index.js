@@ -2,11 +2,14 @@
 const isCapacitor = window.Capacitor !== undefined;
 const isWeb = !isCapacitor;
 
-// For mobile app, use your computer's IP address
-// For web, use localhost
-const BASE_URL = isCapacitor 
+// Production and development URLs
+const PRODUCTION_API_URL = import.meta.env.VITE_API_URL || 'https://roadalert-backend.onrender.com';
+const DEVELOPMENT_API_URL = isCapacitor 
   ? 'http://192.168.1.150:3001' 
   : 'http://localhost:3001';
+
+// Use production URL in production, development URL otherwise
+const BASE_URL = import.meta.env.PROD ? PRODUCTION_API_URL : DEVELOPMENT_API_URL;
 
 const config = {
   API_BASE_URL: `${BASE_URL}/api`,
