@@ -221,6 +221,34 @@ router.delete('/admin/post/:id', auth, canCreateNews, async (req, res) => {
   }
 });
 
+// @route   GET /api/news/admin/post/:id/details
+// @desc    Get detailed news post with viewers list (admin only)
+// @access  Private (admin with create_news_posts permission)
+router.get('/admin/post/:id/details', auth, canCreateNews, async (req, res) => {
+  try {
+    const newsPost = await NewsPost.findById(req.params.id)
+      .populate('author', 'username role')
+      .populate('viewedBy.user', 'username email name createdAt');
+
+    if (!newsPost) {
+      return res.status(404).json({
+        error: 'News post not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      newsPost
+    });
+
+  } catch (error) {
+    console.error('Get detailed news post error:', error);
+    res.status(500).json({
+      error: 'Server error while fetching news post details'
+    });
+  }
+});
+
 // =============== PUBLIC ROUTES FOR USER APP ===============
 
 // @route   GET /api/news/public/posts
@@ -285,11 +313,21 @@ router.post('/public/post/:id/view', async (req, res) => {
       });
     }
 
+    const previousViews = newsPost.views;
+    const wasAlreadyViewed = userId ? 
+      newsPost.viewedBy.some(view => view.user && view.user.toString() === userId.toString()) : 
+      false;
+
     await newsPost.addView(userId);
+
+    const viewIncremented = newsPost.views > previousViews;
 
     res.json({
       message: 'View recorded',
-      views: newsPost.views
+      views: newsPost.views,
+      viewIncremented,
+      wasAlreadyViewed,
+      userId: userId || null
     });
 
   } catch (error) {

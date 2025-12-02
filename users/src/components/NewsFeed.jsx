@@ -33,7 +33,7 @@ const ALERT_COLORS = {
   }
 };
 
-const NewsFeed = () => {
+const NewsFeed = ({ user }) => {
   const [reports, setReports] = useState([]);
   const [newsPosts, setNewsPosts] = useState([]);
   const [filteredReports, setFilteredReports] = useState([]);
@@ -205,9 +205,10 @@ const NewsFeed = () => {
     setSelectedNewsPost(post);
     setIsNewsModalOpen(true);
     
-    // Track post view
+    // Track post view with user ID for unique counting
     try {
-      await axios.post(`${config.API_BASE_URL}/news/public/post/${post._id}/view`);
+      const payload = user ? { userId: user._id } : {};
+      await axios.post(`${config.API_BASE_URL}/news/public/post/${post._id}/view`, payload);
     } catch (err) {
       console.error('Error tracking post view:', err);
     }

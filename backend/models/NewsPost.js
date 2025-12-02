@@ -110,7 +110,7 @@ newsPostSchema.virtual('isExpired').get(function() {
 
 // Method to increment view count
 newsPostSchema.methods.addView = function(userId = null) {
-  this.views += 1;
+  let shouldIncrementView = false;
   
   if (userId) {
     // Check if user already viewed this post
@@ -123,7 +123,15 @@ newsPostSchema.methods.addView = function(userId = null) {
         user: userId,
         viewedAt: new Date()
       });
+      shouldIncrementView = true; // Only increment for new user views
     }
+  } else {
+    // If no userId provided, still increment (for anonymous views)
+    shouldIncrementView = true;
+  }
+  
+  if (shouldIncrementView) {
+    this.views += 1;
   }
   
   return this.save();

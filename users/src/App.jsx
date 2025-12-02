@@ -512,7 +512,7 @@ function App() {
 
           {/* Main Content Area */}
           <div className="main-content">
-            {currentView === 'home' && <NewsFeed />}
+            {currentView === 'home' && <NewsFeed user={user} />}
             {currentView === 'myreports' && <MyReports token={token} />}
             {currentView === 'profile' && (
               <ProfilePage 

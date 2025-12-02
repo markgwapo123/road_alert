@@ -7,6 +7,10 @@ const NewsManagement = () => {
   const [newsPosts, setNewsPosts] = useState([])
   const [loading, setLoading] = useState(false)
   const [showCreateModal, setShowCreateModal] = useState(false)
+  const [showDetailsModal, setShowDetailsModal] = useState(false)
+  const [selectedPost, setSelectedPost] = useState(null)
+  const [postViewers, setPostViewers] = useState([])
+  const [loadingDetails, setLoadingDetails] = useState(false)
   const [editingPost, setEditingPost] = useState(null)
   const [newPost, setNewPost] = useState({
     title: '',
@@ -62,6 +66,32 @@ const NewsManagement = () => {
     } finally {
       setLoading(false)
     }
+  }
+
+  const fetchPostDetails = async (postId) => {
+    setLoadingDetails(true)
+    try {
+      const token = localStorage.getItem('adminToken')
+      const response = await axios.get(`${config.API_BASE_URL}/news/admin/post/${postId}/details`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      console.log('Post details response:', response.data) // Debug log
+      setSelectedPost(response.data.newsPost)
+      setPostViewers(response.data.newsPost.viewedBy || [])
+      console.log('Viewers data:', response.data.newsPost.viewedBy) // Debug log
+      setShowDetailsModal(true)
+    } catch (err) {
+      setError('Failed to load post details')
+      console.error('Error fetching post details:', err)
+    } finally {
+      setLoadingDetails(false)
+    }
+  }
+
+  const closeDetailsModal = () => {
+    setShowDetailsModal(false)
+    setSelectedPost(null)
+    setPostViewers([])
   }
 
   const handleCreatePost = async (e) => {
@@ -344,7 +374,11 @@ const NewsManagement = () => {
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {newsPosts.map((post) => (
-                    <tr key={post._id} className="hover:bg-gray-50">
+                    <tr 
+                      key={post._id} 
+                      className="hover:bg-gray-50 cursor-pointer transition-colors"
+                      onClick={() => fetchPostDetails(post._id)}
+                    >
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div>
                           <div className="text-sm font-medium text-gray-900 mb-1 flex items-center">
@@ -389,25 +423,35 @@ const NewsManagement = () => {
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        <div className="flex items-center">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            fetchPostDetails(post._id);
+                          }}
+                          className="flex items-center hover:text-blue-600 transition-colors cursor-pointer disabled:opacity-50"
+                          disabled={loadingDetails}
+                        >
                           <EyeIcon className="w-4 h-4 mr-1" />
-                          {post.views} views
-                        </div>
-                        <div className="text-xs text-gray-400">
-                          {post.targetAudience}
-                        </div>
+                          {loadingDetails ? 'Loading...' : `${post.views} views`}
+                        </button>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <div className="flex gap-2">
                           <button
-                            onClick={() => startEdit(post)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              startEdit(post);
+                            }}
                             className="inline-flex items-center px-3 py-1 text-xs bg-blue-100 text-blue-800 rounded-md hover:bg-blue-200"
                           >
                             <PencilIcon className="w-4 h-4 mr-1" />
                             Edit
                           </button>
                           <button
-                            onClick={() => deletePost(post._id)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              deletePost(post._id);
+                            }}
                             className="inline-flex items-center px-3 py-1 text-xs bg-red-100 text-red-800 rounded-md hover:bg-red-200"
                           >
                             <TrashIcon className="w-4 h-4 mr-1" />
@@ -694,6 +738,168 @@ const NewsManagement = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Post Details Modal */}
+      {showDetailsModal && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-20 mx-auto p-5 border w-11/12 max-w-4xl shadow-lg rounded-md bg-white">
+            <div className="mt-3">
+              {/* Loading State */}
+              {loadingDetails ? (
+                <div className="text-center py-12">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+                  <p className="mt-4 text-gray-600">Loading post details...</p>
+                </div>
+              ) : selectedPost ? (
+                <div>
+                  {/* Header */}
+                  <div className="flex justify-between items-start mb-4">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <h3 className="text-xl font-bold text-gray-900">
+                          {selectedPost.title}
+                        </h3>
+                        <span className="text-sm text-gray-500">
+                          (Click anywhere on post row to view details)
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-4 text-sm text-gray-600">
+                        <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                          selectedPost.priority === 'urgent' ? 'bg-red-100 text-red-800' :
+                          selectedPost.priority === 'high' ? 'bg-orange-100 text-orange-800' :
+                          selectedPost.priority === 'normal' ? 'bg-blue-100 text-blue-800' :
+                          'bg-green-100 text-green-800'
+                        }`}>
+                          {selectedPost.priority.toUpperCase()} PRIORITY
+                        </span>
+                        <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs font-medium">
+                          {selectedPost.type.replace('_', ' ').toUpperCase()}
+                        </span>
+                        <span className="text-gray-500">
+                          📝 By: <span className="font-medium">{selectedPost.authorName}</span>
+                        </span>
+                        <span className="text-gray-500">
+                          📅 {new Date(selectedPost.publishDate).toLocaleDateString()}
+                        </span>
+                      </div>
+                    </div>
+                    <button
+                      onClick={closeDetailsModal}
+                      className="text-gray-400 hover:text-gray-600 ml-4"
+                    >
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+                      </svg>
+                    </button>
+                  </div>
+
+                  {/* Content */}
+                  <div className="mb-6">
+                    <h4 className="text-sm font-medium text-gray-900 mb-2">Content:</h4>
+                    <p className="text-gray-700 whitespace-pre-wrap">{selectedPost.content}</p>
+                  </div>
+
+                  {/* Attachments */}
+                  {selectedPost.attachments && selectedPost.attachments.length > 0 && (
+                    <div className="mb-6">
+                      <h4 className="text-sm font-medium text-gray-900 mb-2 text-center">
+                        Attachments ({selectedPost.attachments.length}):
+                      </h4>
+                      <div className="flex justify-center items-center">
+                        {selectedPost.attachments.map((attachment, index) => (
+                          <div key={index} className="border rounded-lg overflow-hidden flex items-center justify-center bg-gray-50 max-w-md mx-auto">
+                            {attachment.type === 'image' ? (
+                              <img
+                                src={`${config.BACKEND_URL}${attachment.url}`}
+                                alt="News attachment"
+                                className="max-w-full h-auto object-contain mx-auto"
+                                style={{ maxHeight: '400px' }}
+                                onError={(e) => {
+                                  console.log('Image failed to load:', `${config.BACKEND_URL}${attachment.url}`)
+                                  e.target.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23f3f4f6"/><text x="50" y="50" font-family="Arial" font-size="12" text-anchor="middle" dy=".35em" fill="%236b7280">Image not found</text></svg>'
+                                }}
+                                onLoad={() => {
+                                  console.log('Image loaded successfully:', `${config.BACKEND_URL}${attachment.url}`)
+                                }}
+                              />
+                            ) : (
+                              <div className="h-32 bg-gray-100 flex items-center justify-center">
+                                <span className="text-4xl">🎥</span>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Viewers Section */}
+                  <div className="mb-6">
+                    <h4 className="text-sm font-medium text-gray-900 mb-3">
+                      Users Who Viewed This Post ({postViewers.length}):
+                    </h4>
+                    {/* Debug info */}
+                    {console.log('Current postViewers:', postViewers)}
+                    <div className="max-h-60 overflow-y-auto border rounded-lg">
+                        {postViewers.length > 0 ? (
+                          <div className="divide-y divide-gray-200">
+                            {postViewers.map((viewer, index) => (
+                              <div key={index} className="p-3 flex items-center justify-between">
+                                <div>
+                                  <div className="font-medium text-sm">
+                                    {viewer.user?.name || viewer.user?.username || 'Unknown User'}
+                                  </div>
+                                  {viewer.user?.email && (
+                                    <div className="text-xs text-gray-500">{viewer.user.email}</div>
+                                  )}
+                                </div>
+                                <div className="text-xs text-gray-500">
+                                  {new Date(viewer.viewedAt).toLocaleDateString()} at{' '}
+                                  {new Date(viewer.viewedAt).toLocaleTimeString()}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="p-4 text-center text-gray-500 text-sm">
+                            No users have viewed this post yet.
+                          </div>
+                        )}
+                      </div>
+                  </div>
+
+                  {/* Tags */}
+                  {selectedPost.tags && selectedPost.tags.length > 0 && (
+                    <div className="mt-6">
+                      <h4 className="text-sm font-medium text-gray-900 mb-2">Tags:</h4>
+                      <div className="flex flex-wrap gap-2">
+                        {selectedPost.tags.map((tag, index) => (
+                          <span
+                            key={index}
+                            className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full"
+                          >
+                            #{tag}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-gray-500">Failed to load post details</p>
+                  <button
+                    onClick={closeDetailsModal}
+                    className="mt-2 text-blue-600 hover:text-blue-800"
+                  >
+                    Close
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}

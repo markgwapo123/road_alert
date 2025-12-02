@@ -259,26 +259,7 @@ const NewsPostModal = ({ post, isOpen, onClose }) => {
                             `;
                           }}
                         />
-                        <div style={{
-                          padding: '12px',
-                          borderTop: '1px solid #e5e7eb'
-                        }}>
-                          <div style={{
-                            fontSize: '14px',
-                            fontWeight: 'medium',
-                            color: '#374151',
-                            marginBottom: '4px',
-                            wordBreak: 'break-word'
-                          }}>
-                            {attachment.originalName}
-                          </div>
-                          <div style={{
-                            fontSize: '12px',
-                            color: '#6b7280'
-                          }}>
-                            {formatFileSize(attachment.size)}
-                          </div>
-                        </div>
+
                       </div>
                     ) : (
                       <div>
@@ -297,26 +278,7 @@ const NewsPostModal = ({ post, isOpen, onClose }) => {
                             Video File
                           </span>
                         </div>
-                        <div style={{
-                          padding: '12px',
-                          borderTop: '1px solid #e5e7eb'
-                        }}>
-                          <div style={{
-                            fontSize: '14px',
-                            fontWeight: 'medium',
-                            color: '#374151',
-                            marginBottom: '4px',
-                            wordBreak: 'break-word'
-                          }}>
-                            {attachment.originalName}
-                          </div>
-                          <div style={{
-                            fontSize: '12px',
-                            color: '#6b7280'
-                          }}>
-                            {formatFileSize(attachment.size)} • Video
-                          </div>
-                        </div>
+
                       </div>
                     )}
                   </div>
