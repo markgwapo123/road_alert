@@ -587,4 +587,162 @@ router.put('/profile', auth, async (req, res) => {
   }
 });
 
+// @route   GET /api/admin/activity-logs/:adminId
+// @desc    Get activity logs for a specific admin user
+// @access  Private (Super Admin only)
+router.get('/activity-logs/:adminId', auth, requireSuperAdmin, async (req, res) => {
+  try {
+    const { adminId } = req.params;
+
+    // Find the admin user
+    const adminUser = await Admin.findById(adminId);
+    if (!adminUser) {
+      return res.status(404).json({
+        success: false,
+        error: 'Admin user not found'
+      });
+    }
+
+    // Generate mock activity data (replace this with actual activity logging system)
+    const mockActivities = [
+      {
+        action: 'create',
+        description: 'Created new news post',
+        timestamp: new Date(Date.now() - Math.random() * 12 * 60 * 60 * 1000),
+        ipAddress: '192.168.1.' + Math.floor(Math.random() * 255),
+        details: { 
+          postTitle: 'Road Construction Alert on Highway 95', 
+          category: 'Infrastructure', 
+          postId: 'NEWS_' + Math.floor(Math.random() * 10000)
+        }
+      },
+      {
+        action: 'update',
+        description: 'Updated news post content',
+        timestamp: new Date(Date.now() - Math.random() * 18 * 60 * 60 * 1000),
+        ipAddress: '192.168.1.' + Math.floor(Math.random() * 255),
+        details: { 
+          postTitle: 'Traffic Update: Main Street Closure',
+          changes: 'Updated closure duration and alternate routes',
+          postId: 'NEWS_' + Math.floor(Math.random() * 10000)
+        }
+      },
+      {
+        action: 'delete',
+        description: 'Deleted outdated news post',
+        timestamp: new Date(Date.now() - Math.random() * 24 * 60 * 60 * 1000),
+        ipAddress: '192.168.1.' + Math.floor(Math.random() * 255),
+        details: { 
+          postTitle: 'Emergency Road Closure - Now Resolved',
+          reason: 'Event completed, no longer relevant',
+          postId: 'NEWS_' + Math.floor(Math.random() * 10000)
+        }
+      },
+      {
+        action: 'login',
+        description: 'Admin logged into system',
+        timestamp: new Date(Date.now() - Math.random() * 36 * 60 * 60 * 1000),
+        ipAddress: '192.168.1.' + Math.floor(Math.random() * 255),
+        details: 'Successful login from web dashboard'
+      },
+      {
+        action: 'create',
+        description: 'Published urgent traffic alert',
+        timestamp: new Date(Date.now() - Math.random() * 48 * 60 * 60 * 1000),
+        ipAddress: '192.168.1.' + Math.floor(Math.random() * 255),
+        details: { 
+          postTitle: 'URGENT: Bridge Collapse on Route 42',
+          category: 'Emergency Alert', 
+          priority: 'high',
+          postId: 'NEWS_' + Math.floor(Math.random() * 10000)
+        }
+      },
+      {
+        action: 'update',
+        description: 'Modified news post attachments',
+        timestamp: new Date(Date.now() - Math.random() * 60 * 60 * 60 * 1000),
+        ipAddress: '192.168.1.' + Math.floor(Math.random() * 255),
+        details: { 
+          postTitle: 'Weekly Road Maintenance Schedule',
+          changes: 'Added new photos and updated PDF schedule',
+          attachmentsAdded: 3,
+          postId: 'NEWS_' + Math.floor(Math.random() * 10000)
+        }
+      },
+      {
+        action: 'update',
+        description: 'Updated report status',
+        timestamp: new Date(Date.now() - Math.random() * 72 * 60 * 60 * 1000),
+        ipAddress: '192.168.1.' + Math.floor(Math.random() * 255),
+        details: { reportId: 'REP123456', oldStatus: 'pending', newStatus: 'verified' }
+      },
+      {
+        action: 'create',
+        description: 'Posted community announcement',
+        timestamp: new Date(Date.now() - Math.random() * 84 * 60 * 60 * 1000),
+        ipAddress: '192.168.1.' + Math.floor(Math.random() * 255),
+        details: { 
+          postTitle: 'New Mobile App Features Available',
+          category: 'Community Update', 
+          targetAudience: 'All Users',
+          postId: 'NEWS_' + Math.floor(Math.random() * 10000)
+        }
+      },
+      {
+        action: 'delete',
+        description: 'Removed inappropriate news comment',
+        timestamp: new Date(Date.now() - Math.random() * 96 * 60 * 60 * 1000),
+        ipAddress: '192.168.1.' + Math.floor(Math.random() * 255),
+        details: { 
+          postTitle: 'Traffic Safety Tips',
+          reason: 'Spam content',
+          commentId: 'CMT_' + Math.floor(Math.random() * 10000)
+        }
+      },
+      {
+        action: 'create',
+        description: 'Published weekly traffic report',
+        timestamp: new Date(Date.now() - Math.random() * 108 * 60 * 60 * 1000),
+        ipAddress: '192.168.1.' + Math.floor(Math.random() * 255),
+        details: { 
+          postTitle: 'Weekly Traffic Analysis - November 2025',
+          category: 'Reports', 
+          dataPoints: 15,
+          postId: 'NEWS_' + Math.floor(Math.random() * 10000)
+        }
+      },
+      {
+        action: 'logout',
+        description: 'Admin logged out of system',
+        timestamp: new Date(Date.now() - Math.random() * 120 * 60 * 60 * 1000),
+        ipAddress: '192.168.1.' + Math.floor(Math.random() * 255),
+        details: 'Session ended normally'
+      }
+    ].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+    // In a real implementation, you would fetch from an ActivityLog model:
+    // const activities = await ActivityLog.find({ adminId })
+    //   .sort({ timestamp: -1 })
+    //   .limit(50)
+    //   .lean();
+
+    res.json({
+      success: true,
+      activities: mockActivities,
+      admin: {
+        username: adminUser.username,
+        email: adminUser.email,
+        profile: adminUser.profile
+      }
+    });
+
+  } catch (error) {
+    console.error('Activity logs error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Server error while fetching activity logs'
+    });
+  }
+});
+
 module.exports = router;

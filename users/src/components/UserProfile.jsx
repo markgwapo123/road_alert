@@ -96,7 +96,9 @@ const UserProfile = ({ onLogout }) => {
         
         <div className="detail-item">
           <span className="detail-label">👥 Account Type</span>
-          <span className="detail-value">{user.type === 'admin' ? 'Administrator' : 'User'}</span>
+          <span className="detail-value" style={{ color: user.role === 'admin_user' ? 'white' : 'inherit' }}>
+            {user.role === 'admin_user' ? 'User-Admin' : user.type === 'admin' ? 'Administrator' : 'User'}
+          </span>
         </div>
 
         {/* Show verification data if user is verified */}

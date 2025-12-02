@@ -840,16 +840,23 @@ const NewsManagement = () => {
                   <div className="mb-6">
                     <h4 className="text-sm font-medium text-gray-900 mb-3">
                       Users Who Viewed This Post ({postViewers.length}):
+                      {postViewers.length > 3 && (
+                        <span className="text-xs text-gray-500 ml-2">(Scroll to see more)</span>
+                      )}
                     </h4>
                     {/* Debug info */}
                     {console.log('Current postViewers:', postViewers)}
-                    <div className="max-h-60 overflow-y-auto border rounded-lg">
+                    <div className={`border rounded-lg ${
+                      postViewers.length > 3 
+                        ? 'max-h-48 overflow-y-auto' 
+                        : 'overflow-hidden'
+                    }`}>
                         {postViewers.length > 0 ? (
                           <div className="divide-y divide-gray-200">
                             {postViewers.map((viewer, index) => (
                               <div key={index} className="p-3 flex items-center justify-between">
                                 <div>
-                                  <div className="font-medium text-sm">
+                                  <div className="font-medium text-sm text-black">
                                     {viewer.user?.name || viewer.user?.username || 'Unknown User'}
                                   </div>
                                   {viewer.user?.email && (

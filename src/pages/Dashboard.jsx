@@ -83,6 +83,19 @@ const Dashboard = () => {
     }
 
     fetchDashboardData()
+    
+    // Debug: Check current admin token
+    const token = localStorage.getItem('adminToken')
+    if (token) {
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]))
+        console.log('🔐 Current admin token payload:', payload)
+      } catch (e) {
+        console.error('❌ Failed to decode token:', e)
+      }
+    } else {
+      console.log('❌ No admin token found')
+    }
   }, [])
 
   const StatCard = ({ title, value, icon: Icon, color, onClick }) => (
@@ -450,51 +463,6 @@ const Dashboard = () => {
                     </div>
                   </div>
 
-                  {/* Images - Moved under Quick Info */}
-                  {selectedReport.images && selectedReport.images.length > 0 && (
-                    <div className="bg-white border border-gray-200 rounded-lg p-4">
-                      <h4 className="text-sm font-bold text-gray-800 mb-3">Images ({selectedReport.images.length})</h4>
-                      <div className="flex flex-wrap gap-3">
-                        {selectedReport.images.slice(0, 3).map((image, index) => {
-                          const filename = image?.filename || image;
-                          const imageUrl = `${config.BACKEND_URL}/uploads/${filename}`;
-                          console.log('🖼️ Loading image URL:', imageUrl);
-                          return (
-                            <div key={index} className="relative group cursor-pointer rounded-lg overflow-hidden border border-gray-200 bg-white" onClick={() => openImageModal(imageUrl)}>
-                              <img
-                                src={imageUrl}
-                                alt={`Report image ${index + 1}`}
-                                className="w-32 h-32 object-cover transition-transform hover:scale-105"
-                                onLoad={(e) => {
-                                  console.log('✅ Thumbnail loaded successfully:', imageUrl);
-                                }}
-                                onError={(e) => { 
-                                  console.error('❌ Thumbnail failed to load:', imageUrl);
-                                  e.target.src = `data:image/svg+xml;utf8,${encodeURIComponent(`
-                                    <svg xmlns='http://www.w3.org/2000/svg' width='128' height='128'>
-                                      <rect width='128' height='128' fill='%23f3f4f6' stroke='%23d1d5db' stroke-width='1'/>
-                                      <text x='64' y='64' text-anchor='middle' dy='0.3em' fill='%236b7280' font-size='16'>No Image</text>
-                                    </svg>
-                                  `)}`;
-                                }}
-                              />
-                              {/* Hover overlay */}
-                              <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all duration-200 flex items-center justify-center">
-                                <svg className="h-6 w-6 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
-                                </svg>
-                              </div>
-                            </div>
-                          );
-                        })}
-                        {selectedReport.images.length > 3 && (
-                          <div className="w-32 h-32 bg-gray-100 rounded-lg border border-gray-200 flex items-center justify-center cursor-pointer hover:bg-gray-200 transition-colors">
-                            <span className="text-sm font-medium text-gray-600">+{selectedReport.images.length - 3} more</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
                 </div>
               </div>
 
@@ -504,18 +472,54 @@ const Dashboard = () => {
                   <h5 className="text-sm font-bold text-gray-800 mb-3">Actions Required</h5>
                   <div className="grid grid-cols-2 gap-3">
                     <button
-                      onClick={() => {
-                        closeModal()
-                        window.location.href = '/reports'
+                      onClick={async () => {
+                        try {
+                          console.log('Attempting to verify report:', selectedReport._id || selectedReport.id)
+                          const reportId = selectedReport._id || selectedReport.id
+                          if (!reportId) {
+                            throw new Error('Report ID is missing')
+                          }
+                          
+                          const response = await reportsAPI.verifyReport(reportId)
+                          console.log('Verification response:', response.data)
+                          
+                          // Update the report status in local state
+                          setSelectedReport({ ...selectedReport, status: 'verified' })
+                          // Refresh the stats
+                          fetchStats()
+                          closeModal()
+                        } catch (error) {
+                          console.error('Failed to verify report:', error)
+                          console.error('Error response:', error.response?.data)
+                          alert(`Failed to verify report: ${error.response?.data?.error || error.message}`)
+                        }
                       }}
                       className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors font-medium text-sm"
                     >
-                      ✓ Accept Report
+                      ✓ Verified Report
                     </button>
                     <button
-                      onClick={() => {
-                        closeModal()
-                        window.location.href = '/reports'
+                      onClick={async () => {
+                        try {
+                          console.log('Attempting to reject report:', selectedReport._id || selectedReport.id)
+                          const reportId = selectedReport._id || selectedReport.id
+                          if (!reportId) {
+                            throw new Error('Report ID is missing')
+                          }
+                          
+                          const response = await reportsAPI.rejectReport(reportId)
+                          console.log('Rejection response:', response.data)
+                          
+                          // Update the report status in local state
+                          setSelectedReport({ ...selectedReport, status: 'rejected' })
+                          // Refresh the stats
+                          fetchStats()
+                          closeModal()
+                        } catch (error) {
+                          console.error('Failed to reject report:', error)
+                          console.error('Error response:', error.response?.data)
+                          alert(`Failed to reject report: ${error.response?.data?.error || error.message}`)
+                        }
                       }}
                       className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors font-medium text-sm"
                     >

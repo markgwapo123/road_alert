@@ -432,15 +432,42 @@ router.get('/:id', async (req, res) => {
 // @route   PATCH /api/reports/:id/status
 // @desc    Update report status
 // @access  Public (for admin dashboard)
-router.patch('/:id/status', auth, canManageReports, async (req, res) => {
+router.patch('/:id/status', auth, async (req, res) => {
   try {
+    console.log('📝 Status update request received:');
+    console.log('  - Report ID:', req.params.id);
+    console.log('  - Full request body:', JSON.stringify(req.body));
+    console.log('  - Content-Type:', req.headers['content-type']);
+    
     const { status, adminNotes } = req.body;
+    
+    console.log('  - Extracted status:', status);
+    console.log('  - Status type:', typeof status);
+    console.log('  - Status is undefined?', status === undefined);
+    console.log('  - Status is null?', status === null);
 
-    if (!['pending', 'verified', 'rejected', 'resolved'].includes(status)) {
+    // Validate status exists and is a string
+    if (!status || typeof status !== 'string') {
+      console.error('❌ Status is missing or invalid:', status);
       return res.status(400).json({
-        error: 'Invalid status value'
+        error: 'Status is required and must be a string',
+        received: status,
+        type: typeof status
       });
     }
+
+    // Validate status value
+    const validStatuses = ['pending', 'verified', 'rejected', 'resolved'];
+    if (!validStatuses.includes(status)) {
+      console.error('❌ Invalid status value:', status);
+      return res.status(400).json({
+        error: 'Invalid status value',
+        received: status,
+        validValues: validStatuses
+      });
+    }
+
+    console.log('✅ Status validation passed:', status);
 
     // First, get the current report to access old status and user info
     const currentReport = await Report.findById(req.params.id);

@@ -55,28 +55,46 @@ const ReportsManagement = () => {
   }
   const handleAccept = async (reportId) => {
     try {
-      console.log('Accepting report:', reportId)
-      await reportsAPI.verifyReport(reportId)
-      console.log('Report accepted successfully')
+      console.log('🔧 Accepting report:', reportId)
+      
+      // Validate report ID
+      if (!reportId) {
+        throw new Error('Report ID is missing')
+      }
+      
+      console.log('🔧 Making API call to verify report...')
+      const response = await reportsAPI.verifyReport(reportId)
+      console.log('✅ Report verification response:', response.data)
+      
       // Refresh the reports list
       await fetchReports()
-      alert('Report accepted successfully!')
+      alert('Report verified successfully!')
     } catch (error) {
-      console.error('Failed to accept report:', error)
-      alert('Failed to accept report: ' + (error.response?.data?.error || error.message))
+      console.error('❌ Failed to verify report:', error)
+      console.error('❌ Error details:', error.response?.data)
+      alert('Failed to verify report: ' + (error.response?.data?.error || error.message))
     }
   }
 
   const handleReject = async (reportId) => {
     try {
-      console.log('Rejecting report:', reportId)
-      await reportsAPI.rejectReport(reportId)
-      console.log('Report rejected successfully')
+      console.log('🔧 Rejecting report:', reportId)
+      
+      // Validate report ID
+      if (!reportId) {
+        throw new Error('Report ID is missing')
+      }
+      
+      console.log('🔧 Making API call to reject report...')
+      const response = await reportsAPI.rejectReport(reportId)
+      console.log('✅ Report rejection response:', response.data)
+      
       // Refresh the reports list
       await fetchReports()
       alert('Report rejected successfully!')
     } catch (error) {
-      console.error('Failed to reject report:', error)
+      console.error('❌ Failed to reject report:', error)
+      console.error('❌ Error details:', error.response?.data)
       alert('Failed to reject report: ' + (error.response?.data?.error || error.message))
     }
   }
@@ -306,35 +324,24 @@ const ReportsManagement = () => {
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <p className="text-sm font-bold text-gray-800">Images ({report.images.length})</p>
-                      {/* <button className="text-xs font-medium text-blue-600 hover:text-blue-800">View All</button> */}
                     </div>
-                    <div className="flex space-x-2 overflow-x-auto">
-                      {report.images.slice(0, 3).map((image, index) => {
-                        const filename = image?.filename || image;
-                        const imageUrl = `${config.BACKEND_URL}/uploads/${filename}`;
-                        return (
-                          <div key={index} className="flex-shrink-0">
-                            <img
-                              src={imageUrl}
-                              alt={`Report image ${index + 1}`}
-                              className="h-16 w-16 object-cover rounded-lg border border-gray-200"
-                              onError={(e) => {
-                                e.target.src = `data:image/svg+xml;utf8,${encodeURIComponent(`
-                                  <svg xmlns='http://www.w3.org/2000/svg' width='64' height='64'>
-                                    <rect width='64' height='64' fill='%23f3f4f6'/>
-                                    <text x='32' y='32' text-anchor='middle' dy='0.3em' fill='%236b7280' font-size='10'>IMG</text>
-                                  </svg>
-                                `)}`;
-                              }}
-                            />
-                          </div>
-                        );
-                      })}
-                      {report.images.length > 3 && (
-                        <div className="flex-shrink-0 h-16 w-16 bg-gray-100 rounded-lg border border-gray-200 flex items-center justify-center">
-                          <span className="text-xs font-bold text-gray-700">+{report.images.length - 3}</span>
-                        </div>
-                      )}
+                    <div className="h-32 bg-gray-100 rounded-lg overflow-hidden border border-gray-200 flex items-center justify-center">
+                      <img
+                        src={`${config.BACKEND_URL}/uploads/${report.images[0]?.filename || report.images[0]}`}
+                        alt="Report image"
+                        className="max-w-full max-h-full object-contain cursor-pointer"
+                        onClick={() => {
+                          window.open(`${config.BACKEND_URL}/uploads/${report.images[0]?.filename || report.images[0]}`, '_blank');
+                        }}
+                        onError={(e) => {
+                          e.target.src = `data:image/svg+xml;utf8,${encodeURIComponent(`
+                            <svg xmlns='http://www.w3.org/2000/svg' width='128' height='128'>
+                              <rect width='128' height='128' fill='%23f3f4f6'/>
+                              <text x='64' y='64' text-anchor='middle' dy='0.3em' fill='%236b7280' font-size='14'>Image not available</text>
+                            </svg>
+                          `)}`;
+                        }}
+                      />
                     </div>
                   </div>
                 )}
@@ -365,21 +372,24 @@ const ReportsManagement = () => {
                     <div className="grid grid-cols-3 gap-2">
                       <button
                         onClick={() => handleAccept(report._id)}
-                        className="px-3 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 focus:ring-2 focus:ring-green-500 focus:ring-offset-1 transition-colors font-medium text-center"
+                        className="px-3 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 focus:ring-2 focus:ring-green-500 focus:ring-offset-1 transition-colors font-medium text-center flex flex-col items-center justify-center"
                       >
-                        ✓ Accept
+                        <span className="text-base mb-1">✓</span>
+                        <span className="text-xs">Verified</span>
                       </button>
                       <button
                         onClick={() => handleReject(report._id)}
-                        className="px-3 py-2 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 focus:ring-2 focus:ring-red-500 focus:ring-offset-1 transition-colors font-medium text-center"
+                        className="px-3 py-2 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 focus:ring-2 focus:ring-red-500 focus:ring-offset-1 transition-colors font-medium text-center flex flex-col items-center justify-center"
                       >
-                        ✗ Reject
+                        <span className="text-base mb-1">✗</span>
+                        <span className="text-xs">Reject</span>
                       </button>
                       <button
                         onClick={() => handleDelete(report._id)}
-                        className="px-3 py-2 bg-gray-600 text-white text-sm rounded-lg hover:bg-gray-700 focus:ring-2 focus:ring-gray-500 focus:ring-offset-1 transition-colors font-medium text-center"
+                        className="px-3 py-2 bg-gray-600 text-white text-sm rounded-lg hover:bg-gray-700 focus:ring-2 focus:ring-gray-500 focus:ring-offset-1 transition-colors font-medium text-center flex flex-col items-center justify-center"
                       >
-                        🗑️ Delete
+                        <span className="text-base mb-1">🗑️</span>
+                        <span className="text-xs">Delete</span>
                       </button>
                     </div>
                   </div>

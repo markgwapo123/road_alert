@@ -49,280 +49,218 @@ const ReportDetailModal = ({ report, isOpen, onClose, reportUser }) => {
       accident: '💥',
       traffic: '🚦'
     };
-    return icons[type] || 'ℹ️';
+    return icons[type] || '📍';
   };
 
-  const getUserInitials = (user) => {
-    if (!user) return '?';
-    
-    if (user.profile?.firstName && user.profile?.lastName) {
-      return `${user.profile.firstName[0]}${user.profile.lastName[0]}`.toUpperCase();
+  const handleBackdropClick = (e) => {
+    if (e.target === e.currentTarget) {
+      onClose();
     }
-    
-    if (user.username) {
-      return user.username.slice(0, 2).toUpperCase();
-    }
-    
-    return '?';
+  };
+
+  const copyToClipboard = (text) => {
+    navigator.clipboard.writeText(text).then(() => {
+      console.log('Copied to clipboard:', text);
+    }).catch(err => {
+      console.error('Failed to copy: ', err);
+    });
   };
 
   return (
     <div 
-      className="modal-overlay" 
-      onClick={onClose}
+      onClick={handleBackdropClick}
       style={{
         position: 'fixed',
         top: 0,
         left: 0,
         right: 0,
         bottom: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.7)',
+        backgroundColor: 'rgba(0, 0, 0, 0.75)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: 1000,
-        padding: '20px'
+        padding: '20px',
       }}
     >
-      <div 
-        className="modal-content"
-        onClick={(e) => e.stopPropagation()}
+      <div
         style={{
           backgroundColor: 'white',
-          borderRadius: '16px',
-          maxWidth: '600px',
+          borderRadius: '12px',
           width: '100%',
+          maxWidth: '600px',
           maxHeight: '90vh',
           overflow: 'auto',
-          boxShadow: '0 25px 50px rgba(0, 0, 0, 0.3)',
-          position: 'relative'
+          position: 'relative',
+          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
         }}
+        onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div style={{
-          padding: '24px',
-          borderBottom: '1px solid #e5e7eb',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          background: 'linear-gradient(135deg, #1f2937 0%, #374151 100%)',
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
           color: 'white',
-          borderRadius: '16px 16px 0 0'
+          padding: '24px',
+          borderRadius: '12px 12px 0 0',
+          position: 'relative'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <span style={{ fontSize: '28px' }}>{getTypeIcon(report.type)}</span>
-            <h2 style={{ 
-              margin: 0, 
-              fontSize: '24px', 
-              fontWeight: '700',
-              textTransform: 'capitalize'
-            }}>
-              {report.type.replace('_', ' ')} Alert
-            </h2>
-          </div>
           <button
             onClick={onClose}
             style={{
-              background: 'rgba(255, 255, 255, 0.1)',
+              position: 'absolute',
+              top: '16px',
+              right: '16px',
+              background: 'rgba(255, 255, 255, 0.2)',
               border: 'none',
-              color: 'white',
-              fontSize: '24px',
-              width: '40px',
-              height: '40px',
               borderRadius: '50%',
-              cursor: 'pointer',
+              width: '32px',
+              height: '32px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              transition: 'all 0.2s'
+              color: 'white',
+              fontSize: '18px',
+              cursor: 'pointer',
+              transition: 'background-color 0.2s'
             }}
-            onMouseOver={(e) => e.target.style.background = 'rgba(255, 255, 255, 0.2)'}
-            onMouseOut={(e) => e.target.style.background = 'rgba(255, 255, 255, 0.1)'}
+            onMouseOver={(e) => e.target.style.backgroundColor = 'rgba(255, 255, 255, 0.3)'}
+            onMouseOut={(e) => e.target.style.backgroundColor = 'rgba(255, 255, 255, 0.2)'}
           >
             ×
           </button>
-        </div>
-
-        {/* User Profile Section */}
-        <div style={{
-          padding: '20px 24px',
-          borderBottom: '1px solid #f3f4f6',
-          background: '#f9fafb'
-        }}>
-          <h3 style={{ 
-            margin: '0 0 12px 0', 
-            color: '#1f2937', 
-            fontSize: '16px', 
-            fontWeight: '600' 
-          }}>
-            Reported by
-          </h3>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <div style={{
-              width: '48px',
-              height: '48px',
-              borderRadius: '50%',
-              background: 'linear-gradient(135deg, #3b82f6, #1d4ed8)',
-              color: 'white',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '16px',
+          
+          <div style={{ display: 'flex', alignItems: 'center', marginBottom: '12px' }}>
+            <span style={{ fontSize: '24px', marginRight: '8px' }}>
+              {getTypeIcon(report.type)}
+            </span>
+            <h2 style={{ 
+              margin: 0, 
+              fontSize: '20px', 
               fontWeight: '600',
-              border: '3px solid white',
-              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
-              overflow: 'hidden'
+              textTransform: 'capitalize'
             }}>
-              {reportUser?.profile?.profileImage ? (
-                <img 
-                  src={`${config.BACKEND_URL}${reportUser.profile.profileImage}`}
-                  alt={`${reportUser?.username || 'User'}'s profile`}
-                  style={{
-                    width: '100%',
-                    height: '100%',
-                    objectFit: 'cover'
-                  }}
-                />
-              ) : (
-                getUserInitials(reportUser)
-              )}
-            </div>
-            <div>
-              <div style={{ 
-                fontWeight: '600', 
-                color: '#1f2937', 
-                fontSize: '16px' 
-              }}>
-                {reportUser?.profile?.firstName && reportUser?.profile?.lastName 
-                  ? `${reportUser.profile.firstName} ${reportUser.profile.lastName}`
-                  : reportUser?.username || 'Anonymous User'}
-              </div>
-              <div style={{ 
-                color: '#6b7280', 
-                fontSize: '14px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px'
-              }}>
-                {/* Verification status removed per feature change */}
-                <>
-                  <span style={{ color: '#3b82f6' }}>●</span>
-                  Member
-                </>
-              </div>
-            </div>
+              {report.type} Report
+            </h2>
           </div>
+          
+          <p style={{ margin: 0, fontSize: '14px', opacity: 0.9 }}>
+            Report #{report._id?.slice(-6) || 'N/A'}
+          </p>
         </div>
 
         {/* Content */}
         <div style={{ padding: '24px' }}>
-          {/* Status and Severity Badges */}
+          
+          {/* Status and Priority */}
           <div style={{ 
             display: 'flex', 
             gap: '12px', 
             marginBottom: '20px',
             flexWrap: 'wrap'
           }}>
-            <span style={{
-              background: getStatusColor(report.status),
-              color: 'white',
-              padding: '6px 12px',
+            <div style={{
+              backgroundColor: getStatusColor(report.status) + '20',
+              color: getStatusColor(report.status),
+              padding: '8px 16px',
               borderRadius: '20px',
-              fontSize: '12px',
+              fontSize: '14px',
               fontWeight: '600',
               textTransform: 'uppercase',
-              letterSpacing: '0.5px'
+              border: `2px solid ${getStatusColor(report.status)}40`
             }}>
-              {report.status}
-            </span>
-            <span style={{
-              background: getSeverityColor(report.severity),
-              color: 'white',
-              padding: '6px 12px',
+              {report.status || 'PENDING'}
+            </div>
+            <div style={{
+              backgroundColor: getSeverityColor(report.severity) + '20',
+              color: getSeverityColor(report.severity),
+              padding: '8px 16px',
               borderRadius: '20px',
-              fontSize: '12px',
+              fontSize: '14px',
               fontWeight: '600',
               textTransform: 'uppercase',
-              letterSpacing: '0.5px'
+              border: `2px solid ${getSeverityColor(report.severity)}40`
             }}>
-              {report.severity} Severity
-            </span>
+              {report.severity || 'MEDIUM'} PRIORITY
+            </div>
           </div>
 
-          {/* Description */}
-          <div style={{ marginBottom: '20px' }}>
-            <h3 style={{ 
-              margin: '0 0 8px 0', 
-              color: '#1f2937', 
-              fontSize: '16px', 
-              fontWeight: '600' 
+          {/* Reporter Info */}
+          {reportUser && (
+            <div style={{
+              background: '#f8fafc',
+              border: '1px solid #e2e8f0',
+              borderRadius: '8px',
+              padding: '16px',
+              marginBottom: '20px'
             }}>
-              Description
-            </h3>
-            <p style={{ 
-              margin: 0, 
-              color: '#4b5563', 
-              lineHeight: '1.6',
-              fontSize: '15px'
-            }}>
-              {report.description}
-            </p>
-          </div>
+              <h3 style={{ margin: '0 0 12px 0', color: '#1f2937', fontSize: '16px', fontWeight: '600' }}>
+                👤 Reporter Information
+              </h3>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                {reportUser.profile?.profileImage ? (
+                  <img 
+                    src={`${config.BACKEND_URL}${reportUser.profile.profileImage}`}
+                    alt="Reporter"
+                    style={{
+                      width: '40px',
+                      height: '40px',
+                      borderRadius: '50%',
+                      objectFit: 'cover',
+                      border: '2px solid #e2e8f0'
+                    }}
+                  />
+                ) : (
+                  <div style={{
+                    width: '40px',
+                    height: '40px',
+                    borderRadius: '50%',
+                    backgroundColor: '#e2e8f0',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '18px'
+                  }}>
+                    👤
+                  </div>
+                )}
+                <div>
+                  <div style={{ fontWeight: '500', color: '#1f2937' }}>
+                    {reportUser.username}
+                  </div>
+                  {reportUser.profile?.firstName && (
+                    <div style={{ fontSize: '14px', color: '#6b7280' }}>
+                      {reportUser.profile.firstName} {reportUser.profile.lastName}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
 
-          {/* Location Details */}
+          {/* Location */}
           <div style={{ marginBottom: '20px' }}>
-            <h3 style={{ 
-              margin: '0 0 8px 0', 
-              color: '#1f2937', 
-              fontSize: '16px', 
-              fontWeight: '600' 
-            }}>
-              Location
+            <h3 style={{ margin: '0 0 12px 0', color: '#1f2937', fontSize: '16px', fontWeight: '600' }}>
+              📍 Location
             </h3>
             <div style={{ 
-              background: '#f9fafb', 
+              background: '#f8fafc', 
               padding: '12px', 
-              borderRadius: '8px',
-              border: '1px solid #e5e7eb',
-              marginBottom: '12px'
+              borderRadius: '8px', 
+              border: '1px solid #e2e8f0'
             }}>
-              {/* Province, City, Barangay Information */}
-              {(report.location?.barangay || report.barangay) && (report.location?.city || report.city) && (report.location?.province || report.province) && (
-                <div style={{ color: '#1f2937', fontSize: '15px', fontWeight: '600', marginBottom: '8px' }}>
-                  🏝️ {report.location?.barangay || report.barangay}, {report.location?.city || report.city}, {report.location?.province || report.province}
-                </div>
-              )}
-              
-              {/* Address fallback */}
-              {report.location?.address && !(report.location?.barangay || report.barangay) && (
-                <div style={{ color: '#4b5563', fontSize: '14px', marginBottom: '8px' }}>
-                  📍 {report.location.address}
-                </div>
-              )}
-              
-              {/* Coordinates */}
+              <p style={{ margin: '0 0 8px 0', fontWeight: '500', color: '#1f2937' }}>
+                {report.location?.address || 'Address not available'}
+              </p>
               {report.location?.coordinates?.latitude && report.location?.coordinates?.longitude && (
-                <div style={{ color: '#6b7280', fontSize: '13px' }}>
-                  📍 Coordinates: {report.location.coordinates.latitude.toFixed(6)}, {report.location.coordinates.longitude.toFixed(6)}
+                <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '8px' }}>
+                  Coordinates: {report.location.coordinates.latitude.toFixed(6)}, {report.location.coordinates.longitude.toFixed(6)}
                 </div>
               )}
-              
-              {report.locationName && (
-                <div style={{ color: '#4b5563', fontSize: '14px', marginTop: '4px' }}>
-                  🏷️ {report.locationName}
-                </div>
-              )}
-              <div style={{ 
-                display: 'flex', 
-                gap: '8px', 
-                marginTop: '8px'
-              }}>
+              <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
                 <button
                   onClick={() => {
-                    if (report.location?.coordinates?.latitude && report.location?.coordinates?.longitude) {
-                      const url = `https://www.google.com/maps?q=${report.location.coordinates.latitude},${report.location.coordinates.longitude}`;
-                      window.open(url, '_blank');
-                    }
+                    const url = `https://www.google.com/maps?q=${report.location.coordinates.latitude},${report.location.coordinates.longitude}`;
+                    window.open(url, '_blank');
                   }}
                   style={{
                     background: '#3b82f6',
@@ -332,60 +270,27 @@ const ReportDetailModal = ({ report, isOpen, onClose, reportUser }) => {
                     borderRadius: '6px',
                     fontSize: '12px',
                     cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px'
+                    transition: 'background-color 0.2s'
                   }}
+                  onMouseOver={(e) => e.target.style.backgroundColor = '#2563eb'}
+                  onMouseOut={(e) => e.target.style.backgroundColor = '#3b82f6'}
                 >
                   🗺️ Open in Google Maps
                 </button>
                 <button
-                  onClick={() => {
-                    if (report.location?.coordinates?.latitude && report.location?.coordinates?.longitude) {
-                      const coordinateText = `${report.location.coordinates.latitude}, ${report.location.coordinates.longitude}`;
-                      navigator.clipboard.writeText(coordinateText).then(() => {
-                        // Create and show a better notification
-                        const notification = document.createElement('div');
-                        notification.style.cssText = `
-                          position: fixed;
-                          top: 20px;
-                          right: 20px;
-                          background: #10b981;
-                          color: white !important;
-                          padding: 12px 16px;
-                          border-radius: 8px;
-                          font-size: 14px !important;
-                          font-weight: 600 !important;
-                          z-index: 10000;
-                          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-                          border: 2px solid #059669;
-                          text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-                          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
-                        `;
-                        notification.textContent = `✅ Coordinates copied: ${coordinateText}`;
-                        document.body.appendChild(notification);
-                        
-                        // Remove notification after 3 seconds
-                        setTimeout(() => {
-                          document.body.removeChild(notification);
-                        }, 3000);
-                      }).catch(() => {
-                        alert('Coordinates copied to clipboard!');
-                      });
-                    }
-                  }}
+                  onClick={() => copyToClipboard(`${report.location.coordinates.latitude}, ${report.location.coordinates.longitude}`)}
                   style={{
-                    background: '#10b981',
+                    background: '#6b7280',
                     color: 'white',
                     border: 'none',
                     padding: '6px 12px',
                     borderRadius: '6px',
                     fontSize: '12px',
                     cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px'
+                    transition: 'background-color 0.2s'
                   }}
+                  onMouseOver={(e) => e.target.style.backgroundColor = '#4b5563'}
+                  onMouseOut={(e) => e.target.style.backgroundColor = '#6b7280'}
                 >
                   📋 Copy Coordinates
                 </button>
@@ -400,7 +305,8 @@ const ReportDetailModal = ({ report, isOpen, onClose, reportUser }) => {
                 overflow: 'hidden',
                 height: '250px',
                 position: 'relative',
-                background: '#f9fafb'
+                background: '#f9fafb',
+                marginTop: '12px'
               }}>
                 <iframe
                   src={`https://www.openstreetmap.org/export/embed.html?bbox=${(report.location.coordinates.longitude - 0.01)},${(report.location.coordinates.latitude - 0.01)},${(report.location.coordinates.longitude + 0.01)},${(report.location.coordinates.latitude + 0.01)}&layer=mapnik&marker=${report.location.coordinates.latitude},${report.location.coordinates.longitude}`}
@@ -409,73 +315,45 @@ const ReportDetailModal = ({ report, isOpen, onClose, reportUser }) => {
                   style={{ border: 0 }}
                   loading="lazy"
                   title="Report Location Map"
-                  onLoad={() => {
-                    console.log('Map loaded successfully');
-                  }}
-                  onError={(e) => {
-                    console.error('Map failed to load');
-                    // If map fails to load, show a fallback
-                    e.target.style.display = 'none';
-                    const parent = e.target.parentNode;
-                    const fallback = document.createElement('div');
-                    fallback.style.cssText = `
-                      height: 250px; 
-                      display: flex; 
-                      align-items: center; 
-                      justify-content: center; 
-                      background: #f3f4f6; 
-                      color: #6b7280;
-                      text-align: center;
-                      padding: 20px;
-                      flex-direction: column;
-                    `;
-                    fallback.innerHTML = `
-                      <div>
-                        <div style="font-size: 48px; margin-bottom: 16px;">🗺️</div>
-                        <div style="font-size: 16px; font-weight: 600; margin-bottom: 8px;">Interactive Map Unavailable</div>
-                        <div style="font-size: 14px; margin-bottom: 12px;">
-                          Location: ${report.location.coordinates.latitude.toFixed(6)}, ${report.location.coordinates.longitude.toFixed(6)}
-                        </div>
-                        <button onclick="window.open('https://www.google.com/maps?q=${report.location.coordinates.latitude},${report.location.coordinates.longitude}', '_blank')" 
-                                style="background: #3b82f6; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 14px;">
-                          🗺️ View on Google Maps
-                        </button>
-                      </div>
-                    `;
-                    parent.appendChild(fallback);
-                  }}
                 />
-                <div style={{
-                  position: 'absolute',
-                  top: '8px',
-                  left: '8px',
-                  background: 'rgba(0, 0, 0, 0.8)',
-                  color: 'white',
-                  padding: '6px 10px',
-                  borderRadius: '6px',
-                  fontSize: '12px',
-                  fontWeight: '500'
-                }}>
-                  📍 Report Location
-                </div>
-                <div style={{
-                  position: 'absolute',
-                  bottom: '8px',
-                  right: '8px',
-                  background: 'rgba(255, 255, 255, 0.9)',
-                  color: '#374151',
-                  padding: '4px 8px',
-                  borderRadius: '4px',
-                  fontSize: '10px',
-                  border: '1px solid #e5e7eb'
-                }}>
-                  📍 {report.location.coordinates.latitude.toFixed(4)}, {report.location.coordinates.longitude.toFixed(4)}
-                </div>
               </div>
             )}
           </div>
 
-          {/* Images */}
+          {/* Description */}
+          <div style={{ marginBottom: '20px' }}>
+            <h3 style={{ margin: '0 0 12px 0', color: '#1f2937', fontSize: '16px', fontWeight: '600' }}>
+              📝 Description
+            </h3>
+            <div style={{
+              background: '#f8fafc',
+              padding: '16px',
+              borderRadius: '8px',
+              border: '1px solid #e2e8f0',
+              fontSize: '14px',
+              lineHeight: '1.6',
+              color: '#374151'
+            }}>
+              {report.description || 'No description provided'}
+            </div>
+          </div>
+
+          {/* Resolution Note */}
+          {report.status === 'verified' && (
+            <div style={{
+              background: '#d1fae5',
+              border: '1px solid #a7f3d0',
+              borderRadius: '8px',
+              padding: '12px',
+              marginBottom: '20px'
+            }}>
+              <p style={{ margin: 0, color: '#065f46', fontSize: '14px', textAlign: 'center' }}>
+                🛠️ This issue has been resolved. Thank you for reporting!
+              </p>
+            </div>
+          )}
+
+          {/* Images - UPDATED WITH LARGER SIZE */}
           {report.images && report.images.length > 0 && (
             <div style={{ marginBottom: '20px' }}>
               <h3 style={{ 
@@ -484,84 +362,74 @@ const ReportDetailModal = ({ report, isOpen, onClose, reportUser }) => {
                 fontSize: '16px', 
                 fontWeight: '600' 
               }}>
-                Images ({report.images.length})
+                📷 Images ({report.images.length})
               </h3>
               <div style={{ 
-                display: 'grid', 
-                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-                gap: '12px'
+                border: '1px solid #e5e7eb',
+                borderRadius: '8px',
+                overflow: 'hidden',
+                height: '250px',
+                width: '100%',
+                position: 'relative',
+                background: '#f9fafb',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
               }}>
-                {report.images.map((image, index) => {
-                  const imageUrl = `${config.BACKEND_URL}/uploads/${image.filename || image}`;
-                  return (
-                    <div key={index} style={{ position: 'relative' }}>
-                      <img 
-                        src={imageUrl}
-                        alt={`Report image ${index + 1}`}
-                        style={{
-                          width: '100%',
-                          height: '200px',
-                          objectFit: 'cover',
-                          borderRadius: '8px',
-                          border: '1px solid #e5e7eb',
-                          cursor: 'pointer',
-                          transition: 'transform 0.2s'
-                        }}
-                        onClick={(e) => {
-                          // Open image in new tab
-                          window.open(e.target.src, '_blank');
-                        }}
-                        onMouseOver={(e) => e.target.style.transform = 'scale(1.02)'}
-                        onMouseOut={(e) => e.target.style.transform = 'scale(1)'}
-                        onError={(e) => {
-                          console.error('Image failed to load:', imageUrl);
-                          // Replace with a placeholder
-                          e.target.style.display = 'none';
-                          const parent = e.target.parentNode;
-                          const fallback = document.createElement('div');
-                          fallback.style.cssText = `
-                            width: 100%;
-                            height: 200px;
-                            display: flex;
-                            align-items: center;
-                            justify-content: center;
-                            background: #f3f4f6;
-                            border-radius: 8px;
-                            border: 1px solid #e5e7eb;
-                            color: #6b7280;
-                            font-size: 14px;
-                            text-align: center;
-                          `;
-                          fallback.innerHTML = `
-                            <div>
-                              <div style="font-size: 24px; margin-bottom: 8px;">📷</div>
-                              <div>Image not available</div>
-                              <div style="font-size: 12px; margin-top: 4px; color: #9ca3af;">
-                                ${image.filename || image}
-                              </div>
-                            </div>
-                          `;
-                          parent.appendChild(fallback);
-                        }}
-                        onLoad={() => {
-                          console.log('Image loaded successfully:', imageUrl);
-                        }}
-                      />
-                      <div style={{
-                        position: 'absolute',
-                        bottom: '8px',
-                        right: '8px',
-                        background: 'rgba(0, 0, 0, 0.7)',
-                        color: 'white',
-                        padding: '4px 8px',
-                        borderRadius: '4px',
-                        fontSize: '12px'
-                      }}>
-                        Click to enlarge
+                <img 
+                  src={`${config.BACKEND_URL}/uploads/${report.images[0]?.filename || report.images[0]}`}
+                  alt="Report image"
+                  style={{
+                    maxWidth: '100%',
+                    maxHeight: '100%',
+                    width: 'auto',
+                    height: 'auto',
+                    objectFit: 'contain',
+                    cursor: 'pointer',
+                    transition: 'transform 0.2s'
+                  }}
+                  onClick={(e) => {
+                    window.open(e.target.src, '_blank');
+                  }}
+                  onMouseOver={(e) => e.target.style.transform = 'scale(1.02)'}
+                  onMouseOut={(e) => e.target.style.transform = 'scale(1)'}
+                  onError={(e) => {
+                    console.error('Image failed to load');
+                    e.target.style.display = 'none';
+                    const parent = e.target.parentNode;
+                    const fallback = document.createElement('div');
+                    fallback.style.cssText = `
+                      width: 100%;
+                      height: 100%;
+                      display: flex;
+                      align-items: center;
+                      justify-content: center;
+                      background: #f3f4f6;
+                      color: #6b7280;
+                      font-size: 14px;
+                      text-align: center;
+                    `;
+                    fallback.innerHTML = `
+                      <div>
+                        <div style="font-size: 24px; margin-bottom: 8px;">📷</div>
+                        <div>Image not available</div>
                       </div>
-                    </div>
-                  );
-                })}
+                    `;
+                    parent.appendChild(fallback);
+                  }}
+                />
+                <div style={{
+                  position: 'absolute',
+                  bottom: '8px',
+                  right: '8px',
+                  background: 'rgba(0, 0, 0, 0.7)',
+                  color: 'white',
+                  padding: '4px 8px',
+                  borderRadius: '4px',
+                  fontSize: '12px'
+                }}>
+                  Click to enlarge
+                </div>
               </div>
             </div>
           )}
@@ -571,21 +439,25 @@ const ReportDetailModal = ({ report, isOpen, onClose, reportUser }) => {
             background: '#f9fafb', 
             padding: '16px', 
             borderRadius: '8px',
-            border: '1px solid #e5e7eb'
+            border: '1px solid #e2e8f0',
+            textAlign: 'center'
           }}>
             <div style={{ 
-              color: '#6b7280', 
-              fontSize: '14px',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center'
+              fontSize: '14px', 
+              color: '#6b7280',
+              marginBottom: '4px' 
             }}>
-              <span>🕒 Reported on</span>
-              <span style={{ fontWeight: '500', color: '#1f2937' }}>
-                {formatDate(report.createdAt)}
-              </span>
+              Reported on
+            </div>
+            <div style={{ 
+              fontSize: '16px', 
+              fontWeight: '600',
+              color: '#1f2937' 
+            }}>
+              {formatDate(report.createdAt)}
             </div>
           </div>
+
         </div>
       </div>
     </div>

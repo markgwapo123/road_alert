@@ -20,6 +20,17 @@ api.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }
+    
+    // Add debugging for PATCH requests
+    if (config.method === 'patch' && config.url.includes('/status')) {
+      console.log('🚀 PATCH request intercepted:', {
+        url: config.url,
+        method: config.method,
+        data: config.data,
+        headers: config.headers
+      })
+    }
+    
     return config
   },
   (error) => {
@@ -47,11 +58,23 @@ export const reportsAPI = {
   
   // Get report by ID
   getReportById: (id) => api.get(`/reports/${id}`),
-    // Verify/Accept report
-  verifyReport: (id) => api.patch(`/reports/${id}/status`, { status: 'verified' }),
+  // Verify/Accept report
+  verifyReport: (id) => {
+    console.log('🔧 verifyReport called with ID:', id)
+    const requestData = { status: 'verified' }
+    console.log('🔧 Request data:', requestData)
+    console.log('🔧 API URL:', `${API_BASE_URL}/reports/${id}/status`)
+    return api.patch(`/reports/${id}/status`, requestData)
+  },
   
   // Reject report
-  rejectReport: (id) => api.patch(`/reports/${id}/status`, { status: 'rejected' }),
+  rejectReport: (id) => {
+    console.log('🔧 rejectReport called with ID:', id)
+    const requestData = { status: 'rejected' }
+    console.log('🔧 Request data:', requestData)
+    console.log('🔧 API URL:', `${API_BASE_URL}/reports/${id}/status`)
+    return api.patch(`/reports/${id}/status`, requestData)
+  },
   
   // Update report status (generic)
   updateReportStatus: (id, status) => 

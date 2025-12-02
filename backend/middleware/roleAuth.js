@@ -19,6 +19,14 @@ const auth = async (req, res, next) => {
     // Check if admin still exists and is active
     const admin = await Admin.findById(decoded.id).select('-password');
     
+    console.log('🔐 Admin authentication check:', {
+      adminId: decoded.id,
+      adminFound: !!admin,
+      adminActive: admin?.isActive,
+      adminRole: admin?.role,
+      permissionsLength: admin?.permissions?.length
+    });
+    
     if (!admin) {
       return res.status(401).json({
         error: 'Token is no longer valid'
@@ -36,9 +44,16 @@ const auth = async (req, res, next) => {
       id: admin._id,
       username: admin.username,
       role: admin.role,
-      permissions: admin.permissions,
+      permissions: admin.permissions || [], // Ensure permissions is always an array
       profile: admin.profile
     };
+
+    console.log('🔐 Admin attached to request:', {
+      id: req.admin.id,
+      username: req.admin.username,
+      role: req.admin.role,
+      permissionsCount: req.admin.permissions.length
+    });
 
     next();
 
@@ -106,13 +121,36 @@ const canManageReports = (req, res, next) => {
     });
   }
 
-  const canReview = req.admin.permissions.includes('review_reports');
-  const canAccept = req.admin.permissions.includes('accept_reports');
-  const canReject = req.admin.permissions.includes('reject_reports');
+  // Debug logging
+  console.log('🔐 canManageReports check:', {
+    adminId: req.admin.id,
+    username: req.admin.username,
+    role: req.admin.role,
+    permissions: req.admin.permissions
+  });
+
+  // Ensure permissions is an array
+  const permissions = req.admin.permissions || [];
+  
+  const canReview = permissions.includes('review_reports');
+  const canAccept = permissions.includes('accept_reports');
+  const canReject = permissions.includes('reject_reports');
+
+  console.log('🔐 Permission checks:', {
+    canReview,
+    canAccept,
+    canReject,
+    hasAllPermissions: canReview && canAccept && canReject
+  });
 
   if (!canReview || !canAccept || !canReject) {
     return res.status(403).json({
-      error: 'Access denied. Report management privileges required.'
+      error: 'Access denied. Report management privileges required.',
+      missingPermissions: {
+        review: !canReview,
+        accept: !canAccept,
+        reject: !canReject
+      }
     });
   }
 

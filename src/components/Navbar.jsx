@@ -75,7 +75,6 @@ const Navbar = () => {
           <div className="flex items-center space-x-2">
             <MapPinIcon className="h-8 w-8 text-red-600" />
             <span className="text-xl font-bold text-gray-900">RoadAlert</span>
-            <span className="text-sm text-gray-500">Admin Dashboard</span>
           </div>
 
           {/* Navigation Links */}
@@ -109,7 +108,7 @@ const Navbar = () => {
             >
               <UserIcon className="h-5 w-5 text-red-600" />
               <span className="text-red-600">
-                {currentAdmin?.role === 'super_admin' ? 'Super Admin' : 'Admin'}
+                {currentAdmin?.username || (currentAdmin?.role === 'super_admin' ? 'Super Admin' : 'Admin')}
               </span>
               <ChevronDownIcon className="h-4 w-4 text-red-600" />
             </button>
