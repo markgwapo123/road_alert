@@ -6,6 +6,7 @@ const { body, validationResult } = require('express-validator');
 const Report = require('../models/Report');
 const User = require('../models/User');
 const auth = require('../middleware/auth');
+const { canManageReports } = require('../middleware/roleAuth');
 const NotificationService = require('../services/NotificationService');
 
 const router = express.Router();
@@ -431,7 +432,7 @@ router.get('/:id', async (req, res) => {
 // @route   PATCH /api/reports/:id/status
 // @desc    Update report status
 // @access  Public (for admin dashboard)
-router.patch('/:id/status', async (req, res) => {
+router.patch('/:id/status', auth, canManageReports, async (req, res) => {
   try {
     const { status, adminNotes } = req.body;
 

@@ -6,6 +6,8 @@ import Login from './pages/Login'
 import AdminProfile from './pages/AdminProfile'
 import ChangePassword from './pages/ChangePassword'
 import CreateAdmin from './pages/CreateAdmin'
+import AdminManagement from './pages/AdminManagement'
+import NewsManagement from './pages/NewsManagement'
 import ReportsPDF from './pages/ReportsPDF'
 import Users from './pages/Users'
 import Navbar from './components/Navbar'
@@ -54,6 +56,16 @@ function App() {
             <Route path="/admin/create-admin" element={
               <PrivateRoute>
                 <CreateAdmin />
+              </PrivateRoute>
+            } />
+            <Route path="/admin/manage-admins" element={
+              <PrivateRoute>
+                <AdminManagement />
+              </PrivateRoute>
+            } />
+            <Route path="/admin/news" element={
+              <PrivateRoute>
+                <NewsManagement />
               </PrivateRoute>
             } />
             <Route path="/admin/reports-pdf" element={

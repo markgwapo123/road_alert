@@ -130,8 +130,8 @@ router.post('/login', async (req, res) => {
           username: admin.username,
           role: admin.role 
         },
-        process.env.JWT_SECRET,
-        { expiresIn: process.env.JWT_EXPIRE }
+        process.env.JWT_SECRET || 'your_jwt_secret',
+        { expiresIn: process.env.JWT_EXPIRE || '7d' }
       );
 
       return res.json({

@@ -3,6 +3,7 @@ const Admin = require('../models/Admin');
 const Report = require('../models/Report');
 const User = require('../models/User');
 const auth = require('../middleware/auth');
+const { requireSuperAdmin, requirePermission, canManageReports } = require('../middleware/roleAuth');
 
 const router = express.Router();
 
@@ -50,6 +51,175 @@ router.get('/dashboard', auth, async (req, res) => {
     });
   }
 });
+
+// =============== ADMIN MANAGEMENT ROUTES (Super Admin Only) ===============
+
+// @route   POST /api/admin/create-admin-user
+// @desc    Create a new admin user (super admin only)
+// @access  Private (super admin only)
+router.post('/create-admin-user', auth, requireSuperAdmin, async (req, res) => {
+  try {
+    const { username, password, email, profile } = req.body;
+
+    // Validate required fields
+    if (!username || !password) {
+      return res.status(400).json({
+        error: 'Username and password are required'
+      });
+    }
+
+    // Check if username already exists
+    const existingAdmin = await Admin.findOne({ username });
+    if (existingAdmin) {
+      return res.status(400).json({
+        error: 'Username already exists'
+      });
+    }
+
+    // Check if email already exists (if provided)
+    if (email) {
+      const existingEmail = await Admin.findOne({ email });
+      if (existingEmail) {
+        return res.status(400).json({
+          error: 'Email already exists'
+        });
+      }
+    }
+
+    // Create new admin user
+    const newAdmin = new Admin({
+      username,
+      password,
+      email,
+      role: 'admin_user',
+      createdBy: req.admin.id,
+      profile: profile || {}
+    });
+
+    await newAdmin.save();
+
+    // Return admin without password
+    const adminResponse = newAdmin.toObject();
+    delete adminResponse.password;
+
+    res.status(201).json({
+      message: 'Admin user created successfully',
+      admin: adminResponse
+    });
+
+  } catch (error) {
+    console.error('Create admin user error:', error);
+    res.status(500).json({
+      error: 'Server error while creating admin user'
+    });
+  }
+});
+
+// @route   GET /api/admin/admin-users
+// @desc    Get all admin users (super admin only)
+// @access  Private (super admin only)
+router.get('/admin-users', auth, requireSuperAdmin, async (req, res) => {
+  try {
+    // Get all admin users except super admins
+    const adminUsers = await Admin.find({ role: 'admin_user' })
+      .populate('createdBy', 'username')
+      .select('-password')
+      .sort({ createdAt: -1 });
+
+    // Get statistics
+    const totalAdminUsers = adminUsers.length;
+    const activeAdminUsers = adminUsers.filter(admin => admin.isActive).length;
+
+    res.json({
+      adminUsers,
+      statistics: {
+        total: totalAdminUsers,
+        active: activeAdminUsers,
+        inactive: totalAdminUsers - activeAdminUsers
+      }
+    });
+
+  } catch (error) {
+    console.error('Get admin users error:', error);
+    res.status(500).json({
+      error: 'Server error while fetching admin users'
+    });
+  }
+});
+
+// @route   PUT /api/admin/admin-user/:id/toggle-status
+// @desc    Activate/deactivate admin user (super admin only)
+// @access  Private (super admin only)
+router.put('/admin-user/:id/toggle-status', auth, requireSuperAdmin, async (req, res) => {
+  try {
+    const adminUser = await Admin.findById(req.params.id);
+    
+    if (!adminUser) {
+      return res.status(404).json({
+        error: 'Admin user not found'
+      });
+    }
+
+    if (adminUser.role !== 'admin_user') {
+      return res.status(400).json({
+        error: 'Can only toggle status of admin users'
+      });
+    }
+
+    // Toggle status
+    adminUser.isActive = !adminUser.isActive;
+    await adminUser.save();
+
+    const adminResponse = adminUser.toObject();
+    delete adminResponse.password;
+
+    res.json({
+      message: `Admin user ${adminUser.isActive ? 'activated' : 'deactivated'} successfully`,
+      admin: adminResponse
+    });
+
+  } catch (error) {
+    console.error('Toggle admin status error:', error);
+    res.status(500).json({
+      error: 'Server error while toggling admin status'
+    });
+  }
+});
+
+// @route   DELETE /api/admin/admin-user/:id
+// @desc    Delete admin user (super admin only)
+// @access  Private (super admin only)
+router.delete('/admin-user/:id', auth, requireSuperAdmin, async (req, res) => {
+  try {
+    const adminUser = await Admin.findById(req.params.id);
+    
+    if (!adminUser) {
+      return res.status(404).json({
+        error: 'Admin user not found'
+      });
+    }
+
+    if (adminUser.role !== 'admin_user') {
+      return res.status(400).json({
+        error: 'Can only delete admin users, not super admins'
+      });
+    }
+
+    await Admin.findByIdAndDelete(req.params.id);
+
+    res.json({
+      message: 'Admin user deleted successfully'
+    });
+
+  } catch (error) {
+    console.error('Delete admin user error:', error);
+    res.status(500).json({
+      error: 'Server error while deleting admin user'
+    });
+  }
+});
+
+// =============== END ADMIN MANAGEMENT ROUTES ===============
 
 // @route   GET /api/admin/app-users
 // @desc    Get all app users with online status

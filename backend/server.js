@@ -35,6 +35,8 @@ app.use(cors({
   origin: [
     'http://localhost:5173', 
     'http://localhost:5174', 
+    'http://localhost:5175', 
+    'http://localhost:5176', 
     'http://localhost:3000'
   ],
   credentials: true,
@@ -122,6 +124,7 @@ app.use('/api/reports', require('./routes/reports'));
 app.use('/api/admin', require('./routes/admin'));
 app.use('/api/users', require('./routes/users'));
 app.use('/api/notifications', require('./routes/notifications'));
+app.use('/api/news', require('./routes/news'));
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

@@ -23,8 +23,8 @@ const adminSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ['admin', 'moderator'],
-    default: 'admin'
+    enum: ['super_admin', 'admin_user'],
+    default: 'admin_user'
   },
   isActive: {
     type: Boolean,
@@ -33,8 +33,22 @@ const adminSchema = new mongoose.Schema({
   lastLogin: Date,
   permissions: [{
     type: String,
-    enum: ['read_reports', 'verify_reports', 'delete_reports', 'manage_users', 'view_analytics']
+    enum: [
+      'manage_admins',        // Only super_admin
+      'review_reports',       // Both roles
+      'accept_reports',       // Both roles  
+      'reject_reports',       // Both roles
+      'create_news_posts',    // Both roles
+      'manage_users',         // Only super_admin
+      'view_analytics',       // Only super_admin
+      'system_settings'       // Only super_admin
+    ]
   }],
+  createdBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Admin',
+    default: null // null for super admin (self-created)
+  },
   profile: {
     firstName: String,
     lastName: String,
@@ -56,6 +70,32 @@ adminSchema.pre('save', async function(next) {
   } catch (error) {
     next(error);
   }
+});
+
+// Set default permissions based on role
+adminSchema.pre('save', function(next) {
+  if (this.isNew || this.isModified('role')) {
+    if (this.role === 'super_admin') {
+      this.permissions = [
+        'manage_admins',
+        'review_reports', 
+        'accept_reports',
+        'reject_reports',
+        'create_news_posts',
+        'manage_users',
+        'view_analytics',
+        'system_settings'
+      ];
+    } else if (this.role === 'admin_user') {
+      this.permissions = [
+        'review_reports',
+        'accept_reports', 
+        'reject_reports',
+        'create_news_posts'
+      ];
+    }
+  }
+  next();
 });
 
 // Compare password method

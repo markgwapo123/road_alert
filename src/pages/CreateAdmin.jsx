@@ -1,6 +1,7 @@
-import { useState } from 'react'
-import { UserPlusIcon, CheckIcon, EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline'
+import { useState, useEffect } from 'react'
+import { UserPlusIcon, CheckIcon, EyeIcon, EyeSlashIcon, ShieldExclamationIcon } from '@heroicons/react/24/outline'
 import axios from 'axios'
+import config from '../config/index.js'
 
 const CreateAdmin = () => {
   const [adminData, setAdminData] = useState({
@@ -8,7 +9,6 @@ const CreateAdmin = () => {
     password: '',
     confirmPassword: '',
     email: '',
-    role: 'admin', // Always admin
     firstName: '',
     lastName: '',
     department: '',
@@ -21,6 +21,33 @@ const CreateAdmin = () => {
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
+  const [currentAdmin, setCurrentAdmin] = useState(null)
+  const [checking, setChecking] = useState(true)
+
+  useEffect(() => {
+    fetchCurrentAdmin()
+  }, [])
+
+  const fetchCurrentAdmin = async () => {
+    try {
+      const token = localStorage.getItem('adminToken')
+      if (!token) {
+        setChecking(false)
+        return
+      }
+
+      const response = await axios.get(`${config.API_BASE_URL}/auth/verify`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      if (response.data.success) {
+        setCurrentAdmin(response.data.admin)
+      }
+    } catch (err) {
+      console.error('Error fetching current admin:', err)
+    } finally {
+      setChecking(false)
+    }
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -49,11 +76,10 @@ const CreateAdmin = () => {
 
     try {
       const token = localStorage.getItem('adminToken')
-      const response = await axios.post('http://localhost:3001/api/admin/users', {
+      const response = await axios.post(`${config.API_BASE_URL}/admin/create-admin-user`, {
         username: adminData.username,
         password: adminData.password,
         email: adminData.email || undefined,
-        role: adminData.role,
         profile: {
           firstName: adminData.firstName || undefined,
           lastName: adminData.lastName || undefined,
@@ -64,21 +90,19 @@ const CreateAdmin = () => {
         headers: { Authorization: `Bearer ${token}` }
       })
 
-      if (response.data.success) {
-        setMessage('Admin account created successfully!')
-        setAdminData({
-          username: '',
-          password: '',
-          confirmPassword: '',
-          email: '',
-          role: 'admin', // Reset to default admin role
-          firstName: '',
-          lastName: '',
-          department: '',
-          phone: ''
-        })
-        setTimeout(() => setMessage(''), 5000)
-      }
+      setMessage('Admin user created successfully!')
+      setAdminData({
+        username: '',
+        password: '',
+        confirmPassword: '',
+        email: '',
+        firstName: '',
+        lastName: '',
+        department: '',
+        phone: ''
+      })
+      setTimeout(() => setMessage(''), 5000)
+
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to create admin account')
     } finally {
@@ -99,11 +123,40 @@ const CreateAdmin = () => {
       [field]: !showPasswords[field]
     })
   }
+
+  // Show loading while checking admin role
+  if (checking) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Checking permissions...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Only super admins can access this page
+  if (currentAdmin && currentAdmin.role !== 'super_admin') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-md w-full">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+            <ShieldExclamationIcon className="w-16 h-16 text-red-500 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-red-700 mb-2">Access Denied</h2>
+            <p className="text-red-600 mb-4">Only Super Administrators can create admin users.</p>
+            <p className="text-sm text-red-500">Current role: {currentAdmin?.role || 'Unknown'}</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-4xl w-full space-y-8">        <div className="text-center">
-          <h1 className="text-3xl font-bold text-gray-900">Create Admin Account</h1>
-          <p className="mt-2 text-gray-600">Add a new administrator to the system</p>
+          <h1 className="text-3xl font-bold text-gray-900">Create Admin User</h1>
+          <p className="mt-2 text-gray-600">Add a new admin user with limited permissions</p>
         </div>
 
         <div className="bg-white rounded-lg shadow-lg p-8"><div className="flex items-center justify-center space-x-4 mb-6">
@@ -111,7 +164,7 @@ const CreateAdmin = () => {
             <UserPlusIcon className="h-8 w-8 text-red-600" />
           </div>
           <div className="text-center">
-            <h2 className="text-xl font-semibold text-gray-900">New Administrator</h2>
+            <h2 className="text-xl font-semibold text-gray-900">New Admin User</h2>
             <p className="text-gray-600">Create a new admin user account</p>
           </div>
         </div>
@@ -128,6 +181,18 @@ const CreateAdmin = () => {
             <span className="text-red-700">{error}</span>
           </div>
         )}
+
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+          <h4 className="font-medium text-blue-900 mb-2">Admin User Permissions</h4>
+          <p className="text-sm text-blue-800 mb-2">New admin users will have the following limited permissions:</p>
+          <ul className="text-sm text-blue-700 space-y-1">
+            <li>• Review pending reports</li>
+            <li>• Accept or reject reports</li>
+            <li>• Create news posts for user feed</li>
+            <li>• Cannot manage other administrators</li>
+            <li>• Cannot access system settings</li>
+          </ul>
+        </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Account Information */}          <div>
