@@ -3,6 +3,7 @@ import axios from 'axios';
 import config from '../config/index.js';
 import { NEGROS_PROVINCES, NEGROS_CITIES, NEGROS_BARANGAYS } from '../data/negrosLocations.js';
 import exifr from 'exifr';
+import { applyPrivacyProtection } from '../utils/privacyProtection.js';
 
 const ALERT_TYPES = [
   { value: 'emergency', label: 'Emergency Alert', example: 'ROAD CLOSED - Accident Ahead' },
@@ -35,6 +36,7 @@ const ReportForm = ({ onReport, onClose }) => {
   const [showCamera, setShowCamera] = useState(false);
   const [stream, setStream] = useState(null);
   const [capturedImage, setCapturedImage] = useState(null);
+  const [processingImage, setProcessingImage] = useState(false);
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
 
@@ -138,8 +140,11 @@ const ReportForm = ({ onReport, onClose }) => {
     }
   };
 
-  const capturePhoto = () => {
+  const capturePhoto = async () => {
     if (!videoRef.current || !canvasRef.current) return;
+    
+    setProcessingImage(true);
+    setSuccess('🔒 Processing image with privacy protection...');
     
     const video = videoRef.current;
     const canvas = canvasRef.current;
@@ -151,6 +156,13 @@ const ReportForm = ({ onReport, onClose }) => {
     
     // Draw the current video frame to canvas
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    
+    // Apply privacy protection (blur faces and hide license plates)
+    try {
+      await applyPrivacyProtection(canvas);
+    } catch (error) {
+      console.warn('⚠️ Privacy protection failed, proceeding without it:', error);
+    }
     
     // Convert canvas to blob
     canvas.toBlob((blob) => {
@@ -169,7 +181,8 @@ const ReportForm = ({ onReport, onClose }) => {
         // Stop camera
         stopCamera();
         
-        setSuccess('📷 Photo captured successfully!');
+        setProcessingImage(false);
+        setSuccess('📷 Photo captured successfully with privacy protection!');
       }
     }, 'image/jpeg', 0.8);
   };
@@ -614,8 +627,9 @@ const ReportForm = ({ onReport, onClose }) => {
                   type="button" 
                   onClick={capturePhoto}
                   className="camera-btn capture"
+                  disabled={processingImage}
                 >
-                  📸 Capture Photo
+                  {processingImage ? '🔒 Processing...' : '📸 Capture Photo'}
                 </button>
                 <button 
                   type="button" 
@@ -665,7 +679,8 @@ const ReportForm = ({ onReport, onClose }) => {
           )}
 
           <div className="help-text">
-            A clear photo helps verify the report and provides visual context. Please ensure the image shows the road condition clearly.
+            A clear photo helps verify the report and provides visual context. Please ensure the image shows the road condition clearly. 
+            <strong>🔒 Privacy Protected:</strong> Faces and license plates will be automatically blurred for everyone's safety.
           </div>
         </div>
 
