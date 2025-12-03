@@ -38,10 +38,11 @@ app.use(cors({
     'http://localhost:5175', 
     'http://localhost:5176', 
     'http://localhost:3000',
-    // Production URLs - will be updated with your actual URLs
-    'https://your-vercel-app.vercel.app',
+    // Production URLs
+    'https://road-alert-git-main-markstephens-projects.vercel.app',
     'https://*.vercel.app',
-    'https://road-alert-users.vercel.app' // Example URL
+    'https://road-alert-users.vercel.app',
+    /\.vercel\.app$/ // Allow all vercel.app subdomains
   ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
