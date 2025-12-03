@@ -208,26 +208,15 @@ const MyReports = ({ token }) => {
                   )}
                   
                   {report.images && Array.isArray(report.images) && report.images.length > 0 && (
-                    <div className="report-image" style={{ width: '100%', display: 'flex', justifyContent: 'center', marginTop: '10px' }}>
-                      <img 
-                        src={`${config.BACKEND_URL}/uploads/${report.images[0]?.filename || report.images[0]}`} 
-                        alt="Report"
-                        style={{
-                          width: '100%',
-                          height: 'auto',
-                          maxHeight: 'none',
-                          objectFit: 'contain',
-                          borderRadius: '8px',
-                          border: '1px solid #e5e5e5'
-                        }}
-                        onError={(e) => {
-                          e.target.style.display = 'none';
-                        }}
-                      />
-                    </div>
+                    <img 
+                      className="report-image"
+                      src={`${config.BACKEND_URL}/uploads/${report.images[0]?.filename || report.images[0]}`} 
+                      alt="Report"
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                      }}
+                    />
                   )}
-                  
-
                 </div>
               </div>
             );
