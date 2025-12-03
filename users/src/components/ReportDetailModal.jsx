@@ -208,6 +208,23 @@ const ReportDetailModal = ({ report, isOpen, onClose, reportUser }) => {
                       objectFit: 'cover',
                       border: '2px solid #e2e8f0'
                     }}
+                    onError={(e) => {
+                      console.log('Profile image failed to load in modal:', e.target.src);
+                      e.target.style.display = 'none';
+                      e.target.parentElement.innerHTML = `
+                        <div style="
+                          width: 40px;
+                          height: 40px;
+                          borderRadius: 50%;
+                          backgroundColor: #e2e8f0;
+                          display: flex;
+                          alignItems: center;
+                          justifyContent: center;
+                          fontSize: 18px;
+                          border: 2px solid #e2e8f0;
+                        ">👤</div>
+                      `;
+                    }}
                   />
                 ) : (
                   <div style={{

@@ -20,6 +20,17 @@ const config = {
   IS_WEB: isWeb
 };
 
+// Debug logging for profile image issues
+console.log('🔧 Config Debug Info:', {
+  BASE_URL,
+  API_BASE_URL: config.API_BASE_URL,
+  BACKEND_URL: config.BACKEND_URL,
+  IS_MOBILE: config.IS_MOBILE,
+  IS_WEB: config.IS_WEB,
+  ENVIRONMENT: import.meta.env.MODE,
+  VITE_API_URL: import.meta.env.VITE_API_URL
+});
+
 // Log configuration for debugging
 console.log('🔧 App Configuration:', {
   API_BASE_URL: config.API_BASE_URL,

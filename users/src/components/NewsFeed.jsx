@@ -470,7 +470,41 @@ const NewsFeed = ({ user }) => {
                   {/* Compact Footer */}
                   <div className="report-card-footer">
                     <div className="report-author">
-                      By: {report.reportedBy?.name || report.reportedBy?.username || 'Anonymous'}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        {/* Profile Avatar */}
+                        <div style={{
+                          width: '24px',
+                          height: '24px',
+                          borderRadius: '50%',
+                          overflow: 'hidden',
+                          border: '1px solid #e5e7eb',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          backgroundColor: '#f3f4f6',
+                          fontSize: '12px'
+                        }}>
+                          {report.reportedBy?.profile?.profileImage ? (
+                            <img 
+                              src={`${config.BACKEND_URL}${report.reportedBy.profile.profileImage}`}
+                              alt="Reporter"
+                              style={{
+                                width: '100%',
+                                height: '100%',
+                                objectFit: 'cover'
+                              }}
+                              onError={(e) => {
+                                console.log('Profile image failed to load:', e.target.src);
+                                e.target.style.display = 'none';
+                                e.target.parentElement.innerHTML = '👤';
+                              }}
+                            />
+                          ) : (
+                            '👤'
+                          )}
+                        </div>
+                        <span>By: {report.reportedBy?.name || report.reportedBy?.username || 'Anonymous'}</span>
+                      </div>
                     </div>
                     <div className="report-severity-badge" style={{
                       background: alertStyle.background === '#fbbf24' ? '#000' : alertStyle.background,

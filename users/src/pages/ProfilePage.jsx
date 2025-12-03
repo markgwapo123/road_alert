@@ -296,7 +296,16 @@ const ProfilePage = ({ onBack, onLogout, onUserUpdate }) => {
             <div className="profile-main-info">
               <div className="profile-picture-container">
                 {profileImage ? (
-                  <img src={profileImage} alt="Profile" className="facebook-profile-image" />
+                  <img 
+                    src={profileImage} 
+                    alt="Profile" 
+                    className="facebook-profile-image"
+                    onError={(e) => {
+                      console.log('Profile page image failed to load:', e.target.src);
+                      e.target.style.display = 'none';
+                      e.target.parentElement.innerHTML = '<div className="default-profile-icon">👤</div>';
+                    }}
+                  />
                 ) : (
                   <div className="default-profile-icon">👤</div>
                 )}
@@ -381,7 +390,15 @@ const ProfilePage = ({ onBack, onLogout, onUserUpdate }) => {
                   <div className="current-image">
                     <h4>Current</h4>
                     {profileImage ? (
-                      <img src={profileImage} alt="Current Profile" />
+                      <img 
+                        src={profileImage} 
+                        alt="Current Profile"
+                        onError={(e) => {
+                          console.log('Current profile image failed to load:', e.target.src);
+                          e.target.style.display = 'none';
+                          e.target.parentElement.innerHTML = '<div className="default-profile-icon">👤</div>';
+                        }}
+                      />
                     ) : (
                       <div className="default-profile-icon">👤</div>
                     )}

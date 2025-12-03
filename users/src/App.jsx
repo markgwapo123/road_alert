@@ -324,6 +324,11 @@ function App() {
                       height: '100%',
                       objectFit: 'cover'
                     }}
+                    onError={(e) => {
+                      console.log('User profile image failed to load:', e.target.src);
+                      e.target.style.display = 'none';
+                      e.target.parentElement.innerHTML = '👤';
+                    }}
                   />
                 ) : (
                   '👤'
