@@ -165,9 +165,6 @@ const NotificationPage = ({ notifications, unreadCount, onMarkAsRead, onMarkAllA
             <span className="page-icon">🔔</span>
             Notifications
           </h1>
-          <p className="page-subtitle">
-            Stay updated with your account and reports
-          </p>
         </div>
         
         {unreadCount > 0 && (
