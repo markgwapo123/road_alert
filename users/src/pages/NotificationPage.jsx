@@ -178,25 +178,26 @@ const NotificationPage = ({ notifications, unreadCount, onMarkAsRead, onMarkAllA
         )}
       </div>
 
-      <div className="notification-controls">
-        <div className="filter-section">
-          <h3>Filter by Type</h3>
-          <div className="filter-tabs">
-            {filterOptions.map(option => (
-              <button
-                key={option.value}
-                className={`filter-tab ${filterType === option.value ? 'active' : ''}`}
-                onClick={() => setFilterType(option.value)}
-              >
-                {option.label}
-                {option.count > 0 && (
-                  <span className="filter-count">{option.count}</span>
-                )}
-              </button>
-            ))}
-          </div>
+      {/* Filter by Type - moved up directly under title */}
+      <div className="filter-section">
+        <h3>Filter by Type</h3>
+        <div className="filter-tabs">
+          {filterOptions.map(option => (
+            <button
+              key={option.value}
+              className={`filter-tab ${filterType === option.value ? 'active' : ''}`}
+              onClick={() => setFilterType(option.value)}
+            >
+              {option.label}
+              {option.count > 0 && (
+                <span className="filter-count">{option.count}</span>
+              )}
+            </button>
+          ))}
         </div>
+      </div>
 
+      <div className="notification-controls">
         <div className="sort-section">
           <label htmlFor="sort-select">Sort by:</label>
           <select 
