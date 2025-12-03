@@ -1,15 +1,16 @@
-// API Configuration
+// API Configuration - Updated for production
 const isCapacitor = window.Capacitor !== undefined;
 const isWeb = !isCapacitor;
 
 // Production and development URLs
-const PRODUCTION_API_URL = import.meta.env.VITE_API_URL || 'https://roadalert-backend.onrender.com';
+const PRODUCTION_API_URL = import.meta.env.VITE_API_URL || 'https://roadalert-backend-xze4.onrender.com'; // Your actual Render URL
 const DEVELOPMENT_API_URL = isCapacitor 
   ? 'http://192.168.1.150:3001' 
   : 'http://localhost:3001';
 
 // Use production URL in production, development URL otherwise
-const BASE_URL = import.meta.env.PROD ? PRODUCTION_API_URL : DEVELOPMENT_API_URL;
+// If VITE_API_URL is set, always use it (for development with production backend)
+const BASE_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? PRODUCTION_API_URL : DEVELOPMENT_API_URL);
 
 const config = {
   API_BASE_URL: `${BASE_URL}/api`,
