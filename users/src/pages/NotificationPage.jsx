@@ -197,20 +197,20 @@ const NotificationPage = ({ notifications, unreadCount, onMarkAsRead, onMarkAllA
         </div>
       </div>
 
-      <div className="notification-controls">
-        <div className="sort-section">
-          <label htmlFor="sort-select">Sort by:</label>
-          <select 
-            id="sort-select"
-            value={sortBy} 
-            onChange={(e) => setSortBy(e.target.value)}
-            className="sort-select"
-          >
-            <option value="newest">Newest First</option>
-            <option value="oldest">Oldest First</option>
-            <option value="unread">Unread First</option>
-          </select>
-        </div>
+      {/* Sort by - moved up with spacing */}
+      <div className="sort-section" style={{ marginTop: '16px', marginBottom: '20px' }}>
+        <label htmlFor="sort-select" style={{ marginRight: '8px' }}>Sort by:</label>
+        <select 
+          id="sort-select"
+          value={sortBy} 
+          onChange={(e) => setSortBy(e.target.value)}
+          className="sort-select"
+          style={{ padding: '6px 12px', borderRadius: '4px', border: '1px solid #d1d5db' }}
+        >
+          <option value="newest">Newest First</option>
+          <option value="oldest">Oldest First</option>
+          <option value="unread">Unread First</option>
+        </select>
       </div>
 
       <div className="notifications-container">
