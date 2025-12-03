@@ -28,7 +28,7 @@ function App() {
   const [confirmationType, setConfirmationType] = useState('success');
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
-  // Fetch notifications and user data when token changes
+
   useEffect(() => {
     if (token) {
       fetchNotifications();
@@ -40,7 +40,7 @@ function App() {
     }
   }, [token]);
 
-  // ESC key handler for closing report form
+
   useEffect(() => {
     const handleEscKey = (event) => {
       if (event.key === 'Escape' && showReport) {
@@ -191,6 +191,18 @@ function App() {
         <div className="navbar-left">
           <span className="logo">🚧</span>
           <span className="app-name">ROAD ALERT</span>
+        </div>
+        <div className="navbar-right">
+          <button 
+            className={`nav-notification-btn ${currentView === 'notifications' ? 'active' : ''}`}
+            onClick={() => handleNavigation('notifications')}
+            title="Notifications"
+          >
+            <span className="notification-icon">🔔</span>
+            {unreadCount > 0 && (
+              <span className="notification-badge">{unreadCount}</span>
+            )}
+          </button>
         </div>
       </nav>
 
