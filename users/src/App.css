@@ -928,21 +928,53 @@ body {
 
 /* Notification Page Styles */
 .notification-page {
-  padding: 30px;
+  padding: 0;
   max-width: 1200px;
   margin: 0 auto;
   background: #ffffff;
   min-height: calc(100vh - 80px);
-  overflow-y: auto;
+  position: relative;
 }
 
 .notification-page-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: #ffffff;
+  padding: 30px 30px 20px 30px;
+  margin-bottom: 0;
+  border-bottom: 2px solid #e5e7eb;
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 30px;
-  padding-bottom: 20px;
-  border-bottom: 2px solid #e5e7eb;
+}
+
+/* Filter section - also sticky */
+.notification-page .filter-section {
+  position: sticky;
+  top: 120px; /* Adjust based on header height */
+  z-index: 99;
+  background: #ffffff;
+  padding: 20px 30px;
+  border-bottom: 1px solid #e5e7eb;
+  margin-bottom: 0;
+}
+
+/* Sort section - also sticky */
+.notification-page .sort-section {
+  position: sticky;
+  top: 200px; /* Adjust based on header + filter height */
+  z-index: 98;
+  background: #ffffff;
+  padding: 16px 30px 20px 30px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+/* Notifications container - scrollable content */
+.notifications-container {
+  padding: 20px 30px 30px 30px;
+  max-height: calc(100vh - 320px); /* Adjust for sticky elements */
+  overflow-y: auto;
 }
 
 .page-title-section .page-title {
@@ -1291,24 +1323,51 @@ body {
 /* Responsive design for notification page */
 @media (max-width: 768px) {
   .notification-page {
-    padding: 15px;
+    padding: 0;
     min-height: calc(100vh - 140px); /* Account for mobile navigation */
     margin-bottom: 0;
     box-sizing: border-box;
-    max-height: calc(100vh - 140px);
-    overflow-y: auto;
+    position: relative;
   }
   
   .notification-page-header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: white;
+    padding: 15px;
+    margin-bottom: 0;
+    border-bottom: 2px solid #e5e7eb;
     flex-direction: column;
     gap: 15px;
     align-items: stretch;
-    margin-bottom: 15px;
-    padding-bottom: 15px;
+  }
+
+  /* Mobile filter section - sticky */
+  .notification-page .filter-section {
     position: sticky;
-    top: 0;
+    top: 90px; /* Adjust for mobile header height */
+    z-index: 99;
     background: white;
-    z-index: 10;
+    padding: 15px;
+    border-bottom: 1px solid #e5e7eb;
+  }
+
+  /* Mobile sort section - sticky */
+  .notification-page .sort-section {
+    position: sticky;
+    top: 160px; /* Adjust for mobile header + filter height */
+    z-index: 98;
+    background: white;
+    padding: 15px;
+    border-bottom: 1px solid #e5e7eb;
+  }
+
+  /* Mobile notifications container - scrollable */
+  .notifications-container {
+    padding: 15px;
+    max-height: calc(100vh - 280px); /* Adjust for sticky elements */
+    overflow-y: auto;
   }
   
   .page-title-section .page-title {
