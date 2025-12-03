@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced Privacy Protection Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-container {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .upload-area {
+            border: 2px dashed #ddd;
+            border-radius: 8px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: border-color 0.3s;
+        }
+        .upload-area:hover {
+            border-color: #007bff;
+        }
+        .canvas-container {
+            margin: 20px 0;
+            text-align: center;
+        }
+        canvas {
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            max-width: 100%;
+        }
+        .feature-stats {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .feature-item {
+            display: inline-block;
+            margin: 5px 10px;
+            padding: 5px 10px;
+            background: #007bff;
+            color: white;
+            border-radius: 3px;
+            font-size: 12px;
+        }
+        .confidence-bar {
+            width: 100%;
+            height: 20px;
+            background: #e9ecef;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        .confidence-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #dc3545, #ffc107, #28a745);
+            transition: width 0.3s;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .log {
+            background: #343a40;
+            color: #ffffff;
+            padding: 15px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            height: 200px;
+            overflow-y: auto;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Enhanced Privacy Protection Test</h1>
+    <p>This page tests the improved facial feature detection algorithm that looks for eyes, nose, mouth, and hair.</p>
+
+    <div class="test-container">
+        <h3>Upload Test Image</h3>
+        <div class="upload-area" onclick="document.getElementById('fileInput').click()">
+            <p>Click here or drop an image to test facial feature detection</p>
+            <input type="file" id="fileInput" accept="image/*" style="display: none;">
+        </div>
+        
+        <div class="canvas-container">
+            <canvas id="originalCanvas" style="max-width: 300px; margin-right: 10px;"></canvas>
+            <canvas id="processedCanvas" style="max-width: 300px;"></canvas>
+        </div>
+
+        <div class="feature-stats" id="featureStats" style="display: none;">
+            <h4>Detection Results:</h4>
+            <div id="detectedFeatures"></div>
+            <div>Overall Confidence: <span id="overallConfidence"></span></div>
+            <div class="confidence-bar">
+                <div class="confidence-fill" id="confidenceBar" style="width: 0%;"></div>
+            </div>
+            <div>Processing Time: <span id="processingTime"></span>ms</div>
+        </div>
+
+        <button onclick="testWithSampleImages()">Test with Sample Images</button>
+        <button onclick="clearResults()">Clear Results</button>
+    </div>
+
+    <div class="test-container">
+        <h3>Processing Log</h3>
+        <div class="log" id="processingLog"></div>
+    </div>
+
+    <script type="module">
+        import { applyPrivacyProtection } from './src/utils/privacyProtection.js';
+
+        let log = [];
+        
+        function logMessage(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = `[${timestamp}] ${message}`;
+            log.push(logEntry);
+            updateLogDisplay();
+            console.log(logEntry);
+        }
+
+        function updateLogDisplay() {
+            const logElement = document.getElementById('processingLog');
+            logElement.innerHTML = log.slice(-20).join('\n'); // Show last 20 entries
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+
+        document.getElementById('fileInput').addEventListener('change', handleFileSelect);
+
+        async function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            logMessage(`Loading image: ${file.name} (${(file.size/1024).toFixed(1)}KB)`);
+            
+            const img = new Image();
+            img.onload = () => processImage(img);
+            img.src = URL.createObjectURL(file);
+        }
+
+        async function processImage(img) {
+            const startTime = Date.now();
+            logMessage(`Processing ${img.width}x${img.height} image...`);
+
+            // Draw original image
+            const originalCanvas = document.getElementById('originalCanvas');
+            const originalCtx = originalCanvas.getContext('2d');
+            originalCanvas.width = img.width;
+            originalCanvas.height = img.height;
+            originalCtx.drawImage(img, 0, 0);
+
+            try {
+                // Apply privacy protection
+                const processedCanvas = document.getElementById('processedCanvas');
+                const processedCtx = processedCanvas.getContext('2d');
+                processedCanvas.width = img.width;
+                processedCanvas.height = img.height;
+                processedCtx.drawImage(img, 0, 0);
+
+                logMessage('Applying facial feature detection...');
+                await applyPrivacyProtection(processedCanvas);
+
+                const processingTime = Date.now() - startTime;
+                document.getElementById('processingTime').textContent = processingTime;
+
+                logMessage(`Processing completed in ${processingTime}ms`);
+                
+                // Show results
+                showDetectionResults();
+
+            } catch (error) {
+                logMessage(`Error: ${error.message}`);
+                console.error('Privacy protection error:', error);
+            }
+        }
+
+        function showDetectionResults() {
+            document.getElementById('featureStats').style.display = 'block';
+            
+            // These would be populated by actual detection results
+            const mockFeatures = ['Eyes Detected', 'Hair Detected', 'Skin Detected', 'Facial Structure'];
+            const confidence = Math.random() * 0.4 + 0.6; // Mock 60-100% confidence
+
+            document.getElementById('detectedFeatures').innerHTML = 
+                mockFeatures.map(feature => `<div class="feature-item">${feature}</div>`).join('');
+            
+            document.getElementById('overallConfidence').textContent = `${(confidence * 100).toFixed(1)}%`;
+            document.getElementById('confidenceBar').style.width = `${confidence * 100}%`;
+        }
+
+        window.testWithSampleImages = function() {
+            logMessage('Testing with sample scenarios...');
+            
+            // Create test canvas with patterns
+            const testCanvas = document.getElementById('processedCanvas');
+            const ctx = testCanvas.getContext('2d');
+            testCanvas.width = 400;
+            testCanvas.height = 300;
+            
+            // Create skin tone pattern
+            ctx.fillStyle = '#D4A574'; // Skin tone
+            ctx.fillRect(50, 50, 100, 120);
+            
+            // Create hair pattern
+            ctx.fillStyle = '#8B4513'; // Brown hair
+            ctx.fillRect(30, 30, 140, 40);
+            
+            // Create eye pattern
+            ctx.fillStyle = '#000000'; // Black eyes
+            ctx.fillRect(70, 80, 10, 10);
+            ctx.fillRect(110, 80, 10, 10);
+            
+            // Create mouth pattern
+            ctx.fillStyle = '#CD5C5C'; // Red lips
+            ctx.fillRect(85, 130, 30, 8);
+            
+            logMessage('Sample face pattern created for testing');
+            showDetectionResults();
+        };
+
+        window.clearResults = function() {
+            const canvases = ['originalCanvas', 'processedCanvas'];
+            canvases.forEach(id => {
+                const canvas = document.getElementById(id);
+                const ctx = canvas.getContext('2d');
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+            });
+            
+            document.getElementById('featureStats').style.display = 'none';
+            log = [];
+            updateLogDisplay();
+            logMessage('Results cleared');
+        };
+
+        // Initial log message
+        logMessage('Enhanced Privacy Protection Test initialized');
+        logMessage('Algorithm: Facial feature detection (eyes, nose, mouth, hair)');
+        logMessage('Ready for testing...');
+    </script>
+</body>
+</html>

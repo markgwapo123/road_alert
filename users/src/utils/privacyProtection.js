@@ -6,7 +6,7 @@
 
 /**
  * Detects human faces in an image and blurs them
- * Uses multiple detection algorithms for better coverage
+ * Uses facial feature detection (eyes, nose, mouth, hair)
  * @param {HTMLCanvasElement} canvas - Canvas with the image
  * @param {CanvasRenderingContext2D} context - Canvas context
  */
@@ -15,8 +15,8 @@ export const blurDetectedFaces = async (canvas, context) => {
     const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
     const data = imageData.data;
     
-    // Primary face detection based on skin tone regions
-    const faceRegions = detectFaceRegions(data, canvas.width, canvas.height);
+    // Advanced facial feature detection
+    const faceRegions = detectFacialFeatures(data, canvas.width, canvas.height);
     
     // Secondary detection for human shapes in upper areas
     const upperBodyRegions = detectUpperBodyRegions(data, canvas.width, canvas.height);
@@ -26,13 +26,13 @@ export const blurDetectedFaces = async (canvas, context) => {
     
     // Blur detected regions
     for (const region of allRegions) {
-      blurRegion(context, region.x, region.y, region.width, region.height, 25); // Increased blur
+      blurRegion(context, region.x, region.y, region.width, region.height, 30); // Increased blur
     }
     
     // Additional safety blur for potential missed faces
     await applySafetyBlur(canvas, context, data);
     
-    console.log(`🔒 Privacy: Blurred ${allRegions.length} potential face/body region(s)`);
+    console.log(`🔒 Privacy: Blurred ${allRegions.length} potential face/body region(s) using facial feature detection`);
   } catch (error) {
     console.warn('⚠️ Face detection failed:', error);
   }
@@ -64,42 +64,30 @@ export const hideLicensePlates = async (canvas, context) => {
 };
 
 /**
- * Simple face detection based on skin tone analysis
+ * Advanced facial feature detection based on eyes, nose, mouth, and hair
  * @param {Uint8ClampedArray} data - Image pixel data
  * @param {number} width - Image width
  * @param {number} height - Image height
  * @returns {Array} Array of detected face regions
  */
-const detectFaceRegions = (data, width, height) => {
+const detectFacialFeatures = (data, width, height) => {
   const regions = [];
-  const blockSize = 15; // Smaller blocks for better detection
-  const skinThreshold = 0.2; // Lower threshold for more sensitive detection
+  const blockSize = 12; // Smaller blocks for precise feature detection
   
-  for (let y = 0; y < height - blockSize; y += blockSize) {
+  // Focus on areas where faces are typically found (upper 70% of image)
+  const searchHeight = Math.floor(height * 0.7);
+  
+  for (let y = 0; y < searchHeight - blockSize; y += blockSize) {
     for (let x = 0; x < width - blockSize; x += blockSize) {
-      let skinPixels = 0;
-      let totalPixels = 0;
       
-      // Analyze block for skin tone
-      for (let by = 0; by < blockSize; by++) {
-        for (let bx = 0; bx < blockSize; bx++) {
-          const pixelIndex = ((y + by) * width + (x + bx)) * 4;
-          const r = data[pixelIndex];
-          const g = data[pixelIndex + 1];
-          const b = data[pixelIndex + 2];
-          
-          if (isSkinTone(r, g, b) || isAlternateSkinTone(r, g, b)) {
-            skinPixels++;
-          }
-          totalPixels++;
-        }
-      }
+      const features = analyzeFacialFeatures(data, width, height, x, y, blockSize);
       
-      // If block has significant skin tone, consider it a potential face
-      if (skinPixels / totalPixels > skinThreshold) {
-        // Check for nearby skin regions to form larger face area
-        const faceRegion = expandFaceRegion(data, width, height, x, y, blockSize);
-        if (faceRegion.width > 20 && faceRegion.height > 20) { // Smaller minimum face size
+      // If facial features detected, create comprehensive face region
+      if (features.hasFacialFeatures) {
+        const faceRegion = createCompleteFaceRegion(data, width, height, x, y, features);
+        
+        // Ensure minimum face size and add to regions
+        if (faceRegion.width > 30 && faceRegion.height > 30) {
           regions.push(faceRegion);
         }
       }
@@ -107,6 +95,237 @@ const detectFaceRegions = (data, width, height) => {
   }
   
   return removeDuplicateRegions(regions);
+};
+
+/**
+ * Analyzes a region for facial features (eyes, nose, mouth, hair)
+ * @param {Uint8ClampedArray} data - Image data
+ * @param {number} width - Image width
+ * @param {number} height - Image height
+ * @param {number} x - X coordinate
+ * @param {number} y - Y coordinate
+ * @param {number} blockSize - Block size to analyze
+ * @returns {Object} Facial feature analysis
+ */
+const analyzeFacialFeatures = (data, width, height, x, y, blockSize) => {
+  let eyePixels = 0;
+  let hairPixels = 0;
+  let skinPixels = 0;
+  let mouthPixels = 0;
+  let nosePixels = 0;
+  let totalPixels = 0;
+  
+  const features = {
+    hasEyes: false,
+    hasHair: false,
+    hasSkin: false,
+    hasMouth: false,
+    hasNose: false,
+    hasFacialFeatures: false,
+    confidence: 0
+  };
+  
+  // Analyze each pixel in the block
+  for (let by = 0; by < blockSize; by++) {
+    for (let bx = 0; bx < blockSize; bx++) {
+      const pixelIndex = ((y + by) * width + (x + bx)) * 4;
+      const r = data[pixelIndex];
+      const g = data[pixelIndex + 1];
+      const b = data[pixelIndex + 2];
+      const brightness = (r + g + b) / 3;
+      
+      // Eye detection (dark areas, pupils)
+      if (isEyePixel(r, g, b, brightness)) {
+        eyePixels++;
+      }
+      
+      // Hair detection (various dark to light browns, black, blonde)
+      if (isHairPixel(r, g, b, brightness)) {
+        hairPixels++;
+      }
+      
+      // Skin detection (improved algorithm)
+      if (isSkinTone(r, g, b) || isAlternateSkinTone(r, g, b)) {
+        skinPixels++;
+      }
+      
+      // Mouth/lip detection (reddish tones)
+      if (isMouthPixel(r, g, b)) {
+        mouthPixels++;
+      }
+      
+      // Nose detection (skin tone with shadows)
+      if (isNosePixel(r, g, b, brightness)) {
+        nosePixels++;
+      }
+      
+      totalPixels++;
+    }
+  }
+  
+  // Calculate feature ratios
+  const eyeRatio = eyePixels / totalPixels;
+  const hairRatio = hairPixels / totalPixels;
+  const skinRatio = skinPixels / totalPixels;
+  const mouthRatio = mouthPixels / totalPixels;
+  const noseRatio = nosePixels / totalPixels;
+  
+  // Feature detection thresholds
+  features.hasEyes = eyeRatio > 0.15; // Eyes are prominent
+  features.hasHair = hairRatio > 0.20; // Hair coverage
+  features.hasSkin = skinRatio > 0.25; // Skin tone presence
+  features.hasMouth = mouthRatio > 0.08; // Mouth/lip area
+  features.hasNose = noseRatio > 0.10; // Nose area
+  
+  // Determine if this looks like a face
+  const featureCount = [
+    features.hasEyes,
+    features.hasHair,
+    features.hasSkin,
+    features.hasMouth,
+    features.hasNose
+  ].filter(Boolean).length;
+  
+  // Need at least 2 facial features to consider it a face
+  features.hasFacialFeatures = featureCount >= 2;
+  features.confidence = featureCount / 5; // Confidence based on number of features
+  
+  return features;
+};
+
+/**
+ * Detects eye pixels (dark pupils, eyelashes, eyebrows)
+ * @param {number} r - Red value
+ * @param {number} g - Green value
+ * @param {number} b - Blue value
+ * @param {number} brightness - Brightness value
+ * @returns {boolean} Whether pixel looks like an eye
+ */
+const isEyePixel = (r, g, b, brightness) => {
+  // Very dark pixels (pupils, eyelashes)
+  if (brightness < 50) return true;
+  
+  // Dark brown/black eyebrows
+  if (brightness < 80 && r < 100 && g < 80 && b < 70) return true;
+  
+  // Eye whites (but not too bright to avoid false positives)
+  if (brightness > 200 && brightness < 240 && 
+      Math.abs(r - g) < 20 && Math.abs(g - b) < 20) return true;
+  
+  return false;
+};
+
+/**
+ * Detects hair pixels (various hair colors)
+ * @param {number} r - Red value
+ * @param {number} g - Green value
+ * @param {number} b - Blue value
+ * @param {number} brightness - Brightness value
+ * @returns {boolean} Whether pixel looks like hair
+ */
+const isHairPixel = (r, g, b, brightness) => {
+  // Black hair
+  if (brightness < 60) return true;
+  
+  // Brown hair (various shades)
+  if (brightness < 120 && r > g && r > b && (r - g) < 40) return true;
+  
+  // Blonde hair
+  if (brightness > 120 && brightness < 200 && 
+      r > 180 && g > 150 && b < 150) return true;
+  
+  // Red hair
+  if (r > 150 && g < 120 && b < 100 && r > g + 30) return true;
+  
+  // Gray/white hair
+  if (brightness > 160 && Math.abs(r - g) < 30 && Math.abs(g - b) < 30) return true;
+  
+  return false;
+};
+
+/**
+ * Detects mouth/lip pixels (reddish, pinkish tones)
+ * @param {number} r - Red value
+ * @param {number} g - Green value
+ * @param {number} b - Blue value
+ * @returns {boolean} Whether pixel looks like mouth/lips
+ */
+const isMouthPixel = (r, g, b) => {
+  // Natural lip colors (pinkish, reddish)
+  if (r > g + 20 && r > b + 10 && r > 120 && g < 160) return true;
+  
+  // Darker lip colors
+  if (r > g && r > b && r > 80 && r < 150) return true;
+  
+  // Very dark mouth area (open mouth)
+  if (r < 80 && g < 80 && b < 80) return true;
+  
+  return false;
+};
+
+/**
+ * Detects nose pixels (skin tone with shadows/highlights)
+ * @param {number} r - Red value
+ * @param {number} g - Green value
+ * @param {number} b - Blue value
+ * @param {number} brightness - Brightness value
+ * @returns {boolean} Whether pixel looks like nose
+ */
+const isNosePixel = (r, g, b, brightness) => {
+  // Nose is typically skin tone with some variation in brightness
+  const isSkin = isSkinTone(r, g, b) || isAlternateSkinTone(r, g, b);
+  
+  if (!isSkin) return false;
+  
+  // Nose has highlights and shadows
+  if (brightness > 140 || brightness < 80) return true;
+  
+  // Nose bridge area (slightly more red/pink)
+  if (r > g + 10 && r > b + 5) return true;
+  
+  return false;
+};
+
+/**
+ * Creates a comprehensive face region based on detected features
+ * @param {Uint8ClampedArray} data - Image data
+ * @param {number} width - Image width
+ * @param {number} height - Image height
+ * @param {number} x - X coordinate of detected features
+ * @param {number} y - Y coordinate of detected features
+ * @param {Object} features - Detected facial features
+ * @returns {Object} Complete face region
+ */
+const createCompleteFaceRegion = (data, width, height, x, y, features) => {
+  // Face proportions: typical face is about 1:1.3 ratio (width:height)
+  const baseSize = 40; // Base size for detected feature
+  
+  // Expand region based on confidence and feature types
+  let expansionFactor = 2.5 + (features.confidence * 1.5);
+  
+  // If we have hair, expand upward more
+  if (features.hasHair) expansionFactor += 0.5;
+  
+  // If we have eyes, this is likely the center of the face
+  if (features.hasEyes) expansionFactor += 0.3;
+  
+  const faceWidth = baseSize * expansionFactor;
+  const faceHeight = faceWidth * 1.3; // Face is taller than wide
+  
+  // Center the region around the detected features
+  const centerX = x + (baseSize / 2);
+  const centerY = y + (baseSize / 2);
+  
+  const faceRegion = {
+    x: Math.max(0, Math.floor(centerX - faceWidth / 2)),
+    y: Math.max(0, Math.floor(centerY - faceHeight / 3)), // Face extends more below features
+    width: Math.min(width, Math.ceil(faceWidth)),
+    height: Math.min(height, Math.ceil(faceHeight)),
+    confidence: features.confidence,
+    features: features
+  };
+  
+  return faceRegion;
 };
 
 /**
@@ -739,24 +958,75 @@ const blurRegion = (context, x, y, width, height, blurAmount) => {
  * @returns {Array} Filtered regions without duplicates
  */
 const removeDuplicateRegions = (regions) => {
+  if (regions.length === 0) return regions;
+  
+  // Sort regions by confidence (if available) and then by size
+  regions.sort((a, b) => {
+    const confA = a.confidence || 0;
+    const confB = b.confidence || 0;
+    
+    if (confA !== confB) return confB - confA; // Higher confidence first
+    
+    const sizeA = a.width * a.height;
+    const sizeB = b.width * b.height;
+    return sizeB - sizeA; // Larger size first
+  });
+  
   const filtered = [];
   
   for (const region of regions) {
-    let isDuplicate = false;
+    let shouldAdd = true;
+    let indexToReplace = -1;
     
-    for (const existing of filtered) {
+    for (let i = 0; i < filtered.length; i++) {
+      const existing = filtered[i];
+      
       if (regionsOverlap(region, existing)) {
-        isDuplicate = true;
-        break;
+        const overlapArea = calculateOverlapArea(region, existing);
+        const regionArea = region.width * region.height;
+        const existingArea = existing.width * existing.height;
+        const overlapPercent = overlapArea / Math.min(regionArea, existingArea);
+        
+        // If overlap is significant (>40%), choose better region
+        if (overlapPercent > 0.4) {
+          const regionConf = region.confidence || 0;
+          const existingConf = existing.confidence || 0;
+          
+          if (regionConf > existingConf) {
+            // Replace existing with current (better confidence)
+            indexToReplace = i;
+            break;
+          } else {
+            // Keep existing, skip current
+            shouldAdd = false;
+            break;
+          }
+        }
       }
     }
     
-    if (!isDuplicate) {
+    if (indexToReplace >= 0) {
+      filtered[indexToReplace] = region;
+    } else if (shouldAdd) {
       filtered.push(region);
     }
   }
   
   return filtered;
+};
+
+/**
+ * Calculates the overlap area between two regions
+ */
+const calculateOverlapArea = (region1, region2) => {
+  const left = Math.max(region1.x, region2.x);
+  const right = Math.min(region1.x + region1.width, region2.x + region2.width);
+  const top = Math.max(region1.y, region2.y);
+  const bottom = Math.min(region1.y + region1.height, region2.y + region2.height);
+  
+  if (left >= right || top >= bottom) return 0;
+  
+  return (right - left) * (bottom - top);
 };
 
 /**
