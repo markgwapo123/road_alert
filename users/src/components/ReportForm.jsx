@@ -30,13 +30,6 @@ const ReportForm = ({ onReport, onClose }) => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  
-  // Camera states
-  const [showCamera, setShowCamera] = useState(false);
-  const [stream, setStream] = useState(null);
-  const [capturedImage, setCapturedImage] = useState(null);
-  const videoRef = useRef(null);
-  const canvasRef = useRef(null);
 
   // Get geolocation
   const getLocation = () => {
@@ -51,85 +44,6 @@ const ReportForm = ({ onReport, onClose }) => {
       }})),
       err => setError('Failed to get location')
     );
-  };
-
-  // Camera functions
-  const startCamera = async () => {
-    try {
-      setError('');
-      const constraints = {
-        video: {
-          facingMode: 'environment', // Use back camera on mobile
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
-        }
-      };
-      
-      const mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
-      setStream(mediaStream);
-      setShowCamera(true);
-      
-      // Wait for video element to be ready
-      setTimeout(() => {
-        if (videoRef.current) {
-          videoRef.current.srcObject = mediaStream;
-        }
-      }, 100);
-    } catch (error) {
-      console.error('Error accessing camera:', error);
-      setError('Unable to access camera. Please ensure camera permissions are granted.');
-    }
-  };
-
-  const capturePhoto = () => {
-    if (!videoRef.current || !canvasRef.current) return;
-    
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
-    const context = canvas.getContext('2d');
-    
-    // Set canvas dimensions to match video
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    
-    // Draw the current video frame to canvas
-    context.drawImage(video, 0, 0, canvas.width, canvas.height);
-    
-    // Convert canvas to blob
-    canvas.toBlob((blob) => {
-      if (blob) {
-        // Create a File object from the blob
-        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-        const file = new File([blob], `road-alert-${timestamp}.jpg`, { 
-          type: 'image/jpeg',
-          lastModified: Date.now()
-        });
-        
-        // Set the captured image in form
-        setForm(f => ({ ...f, image: file }));
-        setCapturedImage(canvas.toDataURL('image/jpeg'));
-        
-        // Stop camera
-        stopCamera();
-        
-        setSuccess('📷 Photo captured successfully!');
-      }
-    }, 'image/jpeg', 0.8);
-  };
-
-  const stopCamera = () => {
-    if (stream) {
-      stream.getTracks().forEach(track => track.stop());
-      setStream(null);
-    }
-    setShowCamera(false);
-  };
-
-  const retakePhoto = () => {
-    setForm(f => ({ ...f, image: null }));
-    setCapturedImage(null);
-    setSuccess('');
-    startCamera();
   };
 
   // Extract GPS coordinates from image EXIF data
@@ -523,90 +437,6 @@ const ReportForm = ({ onReport, onClose }) => {
             <span className="label-required">*</span>
           </label>
           
-          {!showCamera && !capturedImage && (
-            <div className="camera-controls">
-              <button 
-                type="button" 
-                onClick={startCamera}
-                className="camera-btn start-camera"
-              >
-                <span className="camera-icon">📸</span>
-                Take Photo with Camera
-              </button>
-              <div className="help-text">
-                Click to open your device's camera and capture a photo of the road condition.
-              </div>
-            </div>
-          )}
-
-          {showCamera && (
-            <div className="camera-container">
-              <video 
-                ref={videoRef}
-                autoPlay 
-                playsInline
-                className="camera-video"
-                muted
-              />
-              <canvas 
-                ref={canvasRef} 
-                style={{ display: 'none' }}
-              />
-              <div className="camera-controls">
-                <button 
-                  type="button" 
-                  onClick={capturePhoto}
-                  className="camera-btn capture"
-                >
-                  📸 Capture Photo
-                </button>
-                <button 
-                  type="button" 
-                  onClick={stopCamera}
-                  className="camera-btn cancel"
-                >
-                  ❌ Cancel
-                </button>
-              </div>
-            </div>
-          )}
-
-          {capturedImage && (
-            <div className="captured-photo">
-              <img 
-                src={capturedImage} 
-                alt="Captured road condition" 
-                className="captured-image"
-              />
-              <div className="photo-controls">
-                <button 
-                  type="button" 
-                  onClick={retakePhoto}
-                  className="camera-btn retake"
-                >
-                  🔄 Retake Photo
-                </button>
-                <button 
-                  type="button" 
-                  onClick={() => {
-                    setForm(f => ({ ...f, image: null }));
-                    setCapturedImage(null);
-                    setSuccess('');
-                  }}
-                  className="camera-btn remove"
-                >
-                  🗑️ Remove Photo
-                </button>
-              </div>
-              {form.image && (
-                <div className="file-info">
-                  <span>📸</span>
-                  Captured: {form.image.name} ({Math.round(form.image.size / 1024)} KB)
-                </div>
-              )}
-            </div>
-          )}
-
           <div className="help-text">
             A clear photo helps verify the report and provides visual context. Please ensure the image shows the road condition clearly.
           </div>
