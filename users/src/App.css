@@ -1623,7 +1623,7 @@ main h1 {
 .report-media {
   display: flex;
   gap: 8px;
-  height: 120px;
+  height: 180px; /* Increased from 120px to match larger images */
 }
 
 .report-image-container,
@@ -1633,7 +1633,7 @@ main h1 {
 
 .report-image {
   width: 100%;
-  height: 120px;
+  height: 180px; /* Increased from 120px */
   object-fit: cover;
   border-radius: 6px;
   border: 1px solid #e5e7eb;
@@ -1642,7 +1642,7 @@ main h1 {
 .report-image-placeholder,
 .report-map-placeholder {
   width: 100%;
-  height: 120px;
+  height: 180px; /* Increased from 120px to match report-image */
   background-color: #f9fafb;
   border-radius: 6px;
   border: 1px solid #e5e7eb;
@@ -1807,13 +1807,13 @@ main h1 {
   
   .report-image,
   .report-map {
-    height: 80px;
+    height: 140px; /* Increased from 80px for better mobile visibility */
     border-radius: 4px;
   }
   
   .report-image-placeholder,
   .report-map-placeholder {
-    height: 80px;
+    height: 140px; /* Increased from 80px to match */
     border-radius: 4px;
   }
   
@@ -1883,18 +1883,18 @@ main h1 {
   }
   
   .report-media {
-    height: 60px;
+    height: 100px; /* Increased from 60px */
     gap: 4px;
   }
   
   .report-image,
   .report-map {
-    height: 60px;
+    height: 100px; /* Increased from 60px */
   }
   
   .report-image-placeholder,
   .report-map-placeholder {
-    height: 60px;
+    height: 100px; /* Increased from 60px */
   }
   
   .placeholder-icon {
@@ -3770,7 +3770,7 @@ main h1 {
 
 .my-report-card .report-image img {
   width: 100%;
-  max-height: 200px;
+  max-height: 300px; /* Increased from 200px */
   object-fit: cover;
   border-radius: 8px;
 }
@@ -4182,7 +4182,7 @@ main h1 {
   .my-report-card .report-image img {
     width: 100%;
     max-width: none;
-    height: 180px;
+    height: 220px; /* Increased from 180px */
     object-fit: cover;
     border-radius: 8px;
     margin-bottom: 12px;
@@ -6208,7 +6208,7 @@ main h1 {
   }
   
   .my-report-card .report-image img {
-    height: 150px;
+    height: 180px; /* Increased from 150px */
   }
   
   /* Report Form - Extra compact */
