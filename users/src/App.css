@@ -5,6 +5,29 @@
   box-sizing: border-box;
 }
 
+/* Global Scrollbar Styling */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 2px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a1a1a1;
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
 body {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   background: #f0f2f5;
@@ -3716,17 +3739,17 @@ main h1 {
 
 /* Custom Scrollbar for Reports List */
 .reports-list::-webkit-scrollbar {
-  width: 8px;
+  width: 4px;
 }
 
 .reports-list::-webkit-scrollbar-track {
-  background: #f1f1f1;
-  border-radius: 4px;
+  background: transparent;
+  border-radius: 2px;
 }
 
 .reports-list::-webkit-scrollbar-thumb {
   background: #c1c1c1;
-  border-radius: 4px;
+  border-radius: 2px;
 }
 
 .reports-list::-webkit-scrollbar-thumb:hover {
@@ -3734,17 +3757,17 @@ main h1 {
 }
 
 .my-reports::-webkit-scrollbar {
-  width: 8px;
+  width: 4px;
 }
 
 .my-reports::-webkit-scrollbar-track {
-  background: #f1f1f1;
-  border-radius: 4px;
+  background: transparent;
+  border-radius: 2px;
 }
 
 .my-reports::-webkit-scrollbar-thumb {
   background: #c1c1c1;
-  border-radius: 4px;
+  border-radius: 2px;
 }
 
 .my-reports::-webkit-scrollbar-thumb:hover {
@@ -4623,17 +4646,17 @@ main h1 {
 
 /* Custom scrollbar for verification form */
 .verification-form-container::-webkit-scrollbar {
-  width: 8px;
+  width: 4px;
 }
 
 .verification-form-container::-webkit-scrollbar-track {
-  background: #f1f1f1;
-  border-radius: 4px;
+  background: transparent;
+  border-radius: 2px;
 }
 
 .verification-form-container::-webkit-scrollbar-thumb {
   background: #c1c1c1;
-  border-radius: 4px;
+  border-radius: 2px;
 }
 
 .verification-form-container::-webkit-scrollbar-thumb:hover {
