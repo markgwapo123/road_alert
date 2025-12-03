@@ -949,22 +949,16 @@ body {
   align-items: flex-start;
 }
 
-/* Filter section - also sticky */
+/* Filter section - now scrollable */
 .notification-page .filter-section {
-  position: sticky;
-  top: 120px; /* Adjust based on header height */
-  z-index: 99;
   background: #ffffff;
   padding: 20px 30px;
   border-bottom: 1px solid #e5e7eb;
   margin-bottom: 0;
 }
 
-/* Sort section - also sticky */
+/* Sort section - now scrollable */
 .notification-page .sort-section {
-  position: sticky;
-  top: 200px; /* Adjust based on header + filter height */
-  z-index: 98;
   background: #ffffff;
   padding: 16px 30px 20px 30px;
   border-bottom: 1px solid #e5e7eb;
@@ -973,8 +967,6 @@ body {
 /* Notifications container - scrollable content */
 .notifications-container {
   padding: 20px 30px 30px 30px;
-  max-height: calc(100vh - 320px); /* Adjust for sticky elements */
-  overflow-y: auto;
 }
 
 .page-title-section .page-title {
@@ -1343,21 +1335,15 @@ body {
     align-items: stretch;
   }
 
-  /* Mobile filter section - sticky */
+  /* Mobile filter section - now scrollable */
   .notification-page .filter-section {
-    position: sticky;
-    top: 90px; /* Adjust for mobile header height */
-    z-index: 99;
     background: white;
     padding: 15px;
     border-bottom: 1px solid #e5e7eb;
   }
 
-  /* Mobile sort section - sticky */
+  /* Mobile sort section - now scrollable */
   .notification-page .sort-section {
-    position: sticky;
-    top: 160px; /* Adjust for mobile header + filter height */
-    z-index: 98;
     background: white;
     padding: 15px;
     border-bottom: 1px solid #e5e7eb;
@@ -1366,8 +1352,6 @@ body {
   /* Mobile notifications container - scrollable */
   .notifications-container {
     padding: 15px;
-    max-height: calc(100vh - 280px); /* Adjust for sticky elements */
-    overflow-y: auto;
   }
   
   .page-title-section .page-title {
