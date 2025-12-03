@@ -748,48 +748,6 @@ body {
   position: relative; /* For notification badge positioning */
 }
 
-/* Navbar notification button */
-.nav-notification-btn {
-  position: relative;
-  background: transparent;
-  border: none;
-  padding: 8px 12px;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.nav-notification-btn:hover {
-  background: #f3f4f6;
-}
-
-.nav-notification-btn.active {
-  background: #dc2626;
-  color: white;
-}
-
-.nav-notification-btn .notification-icon {
-  font-size: 20px;
-}
-
-.nav-notification-btn .notification-badge {
-  position: absolute;
-  top: 2px;
-  right: 2px;
-  background: #ef4444;
-  color: white;
-  font-size: 10px;
-  font-weight: bold;
-  padding: 2px 6px;
-  border-radius: 10px;
-  min-width: 16px;
-  text-align: center;
-  line-height: 1.2;
-}
-
 .navbar .verify-btn:hover,
 .navbar .report-btn:hover,
 .navbar .home-btn:hover,

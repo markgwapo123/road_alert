@@ -192,18 +192,6 @@ function App() {
           <span className="logo">🚧</span>
           <span className="app-name">ROAD ALERT</span>
         </div>
-        <div className="navbar-right">
-          <button 
-            className={`nav-notification-btn ${currentView === 'notifications' ? 'active' : ''}`}
-            onClick={() => handleNavigation('notifications')}
-            title="Notifications"
-          >
-            <span className="notification-icon">🔔</span>
-            {unreadCount > 0 && (
-              <span className="notification-badge">{unreadCount}</span>
-            )}
-          </button>
-        </div>
       </nav>
 
       {/* Mobile Bottom Navigation */}
