@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
 import config from '../config/index.js';
 import { NEGROS_PROVINCES, NEGROS_CITIES, NEGROS_BARANGAYS } from '../data/negrosLocations.js';
@@ -30,20 +30,163 @@ const ReportForm = ({ onReport, onClose }) => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  
+  // Camera states
+  const [showCamera, setShowCamera] = useState(false);
+  const [stream, setStream] = useState(null);
+  const [capturedImage, setCapturedImage] = useState(null);
+  const videoRef = useRef(null);
+  const canvasRef = useRef(null);
 
-  // Get geolocation
+  // Mobile location detection helper
+  useEffect(() => {
+    // Check if this is a mobile device
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    
+    if (isMobile && !form.location) {
+      // Show helpful message for mobile users
+      setTimeout(() => {
+        if (!form.location) {
+          setSuccess('💡 Tip: For best results, ensure location services are enabled on your device before clicking "Use Current Location"');
+        }
+      }, 2000);
+    }
+  }, [form.location]);
+
+  // Get geolocation with better mobile support
   const getLocation = () => {
     if (!navigator.geolocation) {
-      setError('Geolocation not supported');
+      setError('Geolocation not supported on this device');
       return;
     }
+
+    setError(''); // Clear any previous errors
+    setSuccess('🔍 Getting your location...');
+
+    const options = {
+      enableHighAccuracy: true, // Use GPS if available
+      timeout: 15000, // 15 second timeout
+      maximumAge: 60000 // Accept cached location if less than 1 minute old
+    };
+
     navigator.geolocation.getCurrentPosition(
-      pos => setForm(f => ({ ...f, location: {
-        lat: pos.coords.latitude,
-        lng: pos.coords.longitude
-      }})),
-      err => setError('Failed to get location')
+      (pos) => {
+        console.log('📍 Location detected:', pos.coords);
+        setForm(f => ({ 
+          ...f, 
+          location: {
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude,
+            accuracy: pos.coords.accuracy,
+            source: 'current_location'
+          }
+        }));
+        setSuccess('✅ Location detected successfully!');
+        setError(''); // Clear any errors
+      },
+      (err) => {
+        console.error('Location error:', err);
+        let errorMessage = '';
+        
+        switch(err.code) {
+          case err.PERMISSION_DENIED:
+            errorMessage = '❌ Location access denied. Please enable location permissions in your browser settings and try again.';
+            break;
+          case err.POSITION_UNAVAILABLE:
+            errorMessage = '❌ Location unavailable. Please check if location services are enabled on your device.';
+            break;
+          case err.TIMEOUT:
+            errorMessage = '❌ Location request timed out. Please try again or check your GPS signal.';
+            break;
+          default:
+            errorMessage = '❌ Failed to get location. Please ensure location services are enabled.';
+            break;
+        }
+        
+        setError(errorMessage);
+        setSuccess('');
+      },
+      options
     );
+  };
+
+  // Camera functions
+  const startCamera = async () => {
+    try {
+      setError('');
+      const constraints = {
+        video: {
+          facingMode: 'environment', // Use back camera on mobile
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        }
+      };
+      
+      const mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
+      setStream(mediaStream);
+      setShowCamera(true);
+      
+      // Wait for video element to be ready
+      setTimeout(() => {
+        if (videoRef.current) {
+          videoRef.current.srcObject = mediaStream;
+        }
+      }, 100);
+    } catch (error) {
+      console.error('Error accessing camera:', error);
+      setError('Unable to access camera. Please ensure camera permissions are granted.');
+    }
+  };
+
+  const capturePhoto = () => {
+    if (!videoRef.current || !canvasRef.current) return;
+    
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    const context = canvas.getContext('2d');
+    
+    // Set canvas dimensions to match video
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    
+    // Draw the current video frame to canvas
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    
+    // Convert canvas to blob
+    canvas.toBlob((blob) => {
+      if (blob) {
+        // Create a File object from the blob
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const file = new File([blob], `road-alert-${timestamp}.jpg`, { 
+          type: 'image/jpeg',
+          lastModified: Date.now()
+        });
+        
+        // Set the captured image in form
+        setForm(f => ({ ...f, image: file }));
+        setCapturedImage(canvas.toDataURL('image/jpeg'));
+        
+        // Stop camera
+        stopCamera();
+        
+        setSuccess('📷 Photo captured successfully!');
+      }
+    }, 'image/jpeg', 0.8);
+  };
+
+  const stopCamera = () => {
+    if (stream) {
+      stream.getTracks().forEach(track => track.stop());
+      setStream(null);
+    }
+    setShowCamera(false);
+  };
+
+  const retakePhoto = () => {
+    setForm(f => ({ ...f, image: null }));
+    setCapturedImage(null);
+    setSuccess('');
+    startCamera();
   };
 
   // Extract GPS coordinates from image EXIF data
@@ -162,7 +305,7 @@ const ReportForm = ({ onReport, onClose }) => {
     setSubmitting(true);
     
     if (!form.location) {
-      setError('Please detect your location'); 
+      setError('📍 Location is required. Please click "Use Current Location" and allow location access in your browser.'); 
       setSubmitting(false); 
       return;
     }
@@ -437,6 +580,90 @@ const ReportForm = ({ onReport, onClose }) => {
             <span className="label-required">*</span>
           </label>
           
+          {!showCamera && !capturedImage && (
+            <div className="camera-controls">
+              <button 
+                type="button" 
+                onClick={startCamera}
+                className="camera-btn start-camera"
+              >
+                <span className="camera-icon">📸</span>
+                Take Photo with Camera
+              </button>
+              <div className="help-text">
+                Click to open your device's camera and capture a photo of the road condition.
+              </div>
+            </div>
+          )}
+
+          {showCamera && (
+            <div className="camera-container">
+              <video 
+                ref={videoRef}
+                autoPlay 
+                playsInline
+                className="camera-video"
+                muted
+              />
+              <canvas 
+                ref={canvasRef} 
+                style={{ display: 'none' }}
+              />
+              <div className="camera-controls">
+                <button 
+                  type="button" 
+                  onClick={capturePhoto}
+                  className="camera-btn capture"
+                >
+                  📸 Capture Photo
+                </button>
+                <button 
+                  type="button" 
+                  onClick={stopCamera}
+                  className="camera-btn cancel"
+                >
+                  ❌ Cancel
+                </button>
+              </div>
+            </div>
+          )}
+
+          {capturedImage && (
+            <div className="captured-photo">
+              <img 
+                src={capturedImage} 
+                alt="Captured road condition" 
+                className="captured-image"
+              />
+              <div className="photo-controls">
+                <button 
+                  type="button" 
+                  onClick={retakePhoto}
+                  className="camera-btn retake"
+                >
+                  🔄 Retake Photo
+                </button>
+                <button 
+                  type="button" 
+                  onClick={() => {
+                    setForm(f => ({ ...f, image: null }));
+                    setCapturedImage(null);
+                    setSuccess('');
+                  }}
+                  className="camera-btn remove"
+                >
+                  🗑️ Remove Photo
+                </button>
+              </div>
+              {form.image && (
+                <div className="file-info">
+                  <span>📸</span>
+                  Captured: {form.image.name} ({Math.round(form.image.size / 1024)} KB)
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="help-text">
             A clear photo helps verify the report and provides visual context. Please ensure the image shows the road condition clearly.
           </div>
@@ -459,7 +686,10 @@ const ReportForm = ({ onReport, onClose }) => {
               <span className="location-icon">
                 {form.location && form.location.source !== 'image_exif' ? '✅' : '📍'}
               </span>
-              {form.location && form.location.source !== 'image_exif' ? 'Current Location Detected' : 'Use Current Location'}
+              {form.location && form.location.source !== 'image_exif' 
+                ? `Current Location Detected ${form.location.accuracy ? `(±${Math.round(form.location.accuracy)}m)` : ''}` 
+                : 'Use Current Location'
+              }
             </button>
             
             {form.location && form.location.source === 'image_exif' && (
@@ -502,7 +732,7 @@ const ReportForm = ({ onReport, onClose }) => {
             )}
           </div>
           <div className="help-text">
-            📍 Location will be automatically detected from photo GPS data if available, or you can manually detect your current location. Your location will only be used for this report.
+            📍 Location will be automatically detected from photo GPS data if available, or you can manually detect your current location. <strong>On mobile: Make sure to allow location access when prompted by your browser.</strong> Your location will only be used for this report.
           </div>
         </div>
 

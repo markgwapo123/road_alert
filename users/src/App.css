@@ -7536,6 +7536,168 @@ main h1 {
   display: flex;
 }
 
+/* Camera Styles for Report Form */
+.camera-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.camera-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 20px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-height: 44px;
+}
+
+.camera-btn.start-camera {
+  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+  color: white;
+}
+
+.camera-btn.start-camera:hover {
+  background: linear-gradient(135deg, #2563eb, #1e40af);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.camera-btn.capture {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: white;
+}
+
+.camera-btn.capture:hover {
+  background: linear-gradient(135deg, #059669, #047857);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.camera-btn.retake {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: white;
+}
+
+.camera-btn.retake:hover {
+  background: linear-gradient(135deg, #d97706, #b45309);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+}
+
+.camera-btn.cancel,
+.camera-btn.remove {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  color: white;
+}
+
+.camera-btn.cancel:hover,
+.camera-btn.remove:hover {
+  background: linear-gradient(135deg, #dc2626, #b91c1c);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+/* Camera Container */
+.camera-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+  background: #f8fafc;
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+}
+
+.camera-video {
+  width: 100%;
+  max-width: 500px;
+  height: 300px;
+  object-fit: cover;
+  border-radius: 8px;
+  background: #000;
+  margin: 0 auto;
+}
+
+/* Captured Photo Display */
+.captured-photo {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.captured-image {
+  width: 100%;
+  max-width: 500px;
+  height: auto;
+  max-height: 300px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 2px solid #e2e8f0;
+  margin: 0 auto;
+}
+
+.photo-controls {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+
+.camera-icon {
+  font-size: 18px;
+}
+
+/* Mobile Responsive Camera Styles */
+@media (max-width: 768px) {
+  .camera-container {
+    padding: 12px;
+  }
+  
+  .camera-video {
+    height: 250px;
+  }
+  
+  .camera-controls {
+    gap: 8px;
+  }
+  
+  .camera-btn {
+    padding: 10px 16px;
+    font-size: 14px;
+  }
+  
+  .photo-controls {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .camera-btn.retake,
+  .camera-btn.remove {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .camera-video {
+    height: 200px;
+  }
+  
+  .camera-btn {
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+  
+  .captured-image {
+    max-height: 250px;
+  }
+}
+
 .upload-btn {
   background: rgba(59, 130, 246, 0.9);
   color: white;
