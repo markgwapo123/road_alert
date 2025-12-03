@@ -1,7 +1,7 @@
 /**
  * Privacy Protection Utility for Road Alert
  * Automatically blurs faces and license plates in captured images
- * Uses Canvas API and basic image processing for privacy protection
+ * Uses Canvas API and advanced image processing for privacy protection
  */
 
 /**
@@ -9,57 +9,61 @@
  * Uses facial feature detection (eyes, nose, mouth, hair)
  * @param {HTMLCanvasElement} canvas - Canvas with the image
  * @param {CanvasRenderingContext2D} context - Canvas context
+ * @returns {Promise} Resolves when face blurring is complete
  */
 export const blurDetectedFaces = async (canvas, context) => {
   try {
+    console.log('🔍 Starting enhanced facial feature detection...');
     const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
-    const data = imageData.data;
+    const regions = detectFacialFeatures(imageData.data, canvas.width, canvas.height);
     
-    // Advanced facial feature detection
-    const faceRegions = detectFacialFeatures(data, canvas.width, canvas.height);
+    console.log(`👤 Detected ${regions.length} potential face regions`);
     
-    // Secondary detection for human shapes in upper areas
-    const upperBodyRegions = detectUpperBodyRegions(data, canvas.width, canvas.height);
-    
-    // Combine all detected regions
-    const allRegions = [...faceRegions, ...upperBodyRegions];
-    
-    // Blur detected regions
-    for (const region of allRegions) {
-      blurRegion(context, region.x, region.y, region.width, region.height, 30); // Increased blur
+    if (regions.length === 0) {
+      console.log('No faces detected');
+      return;
+    }
+
+    // Blur each detected face region with 30px intensity
+    for (const region of regions) {
+      console.log(`Blurring face region: ${region.width}x${region.height} (confidence: ${(region.confidence * 100).toFixed(1)}%)`);
+      applyBlur(context, region.x, region.y, region.width, region.height, 30);
     }
     
-    // Additional safety blur for potential missed faces
-    await applySafetyBlur(canvas, context, data);
-    
-    console.log(`🔒 Privacy: Blurred ${allRegions.length} potential face/body region(s) using facial feature detection`);
+    console.log('✅ Face detection and blurring completed');
   } catch (error) {
-    console.warn('⚠️ Face detection failed:', error);
+    console.error('❌ Error in face detection:', error);
   }
 };
 
 /**
- * Detects and hides license plates in an image
- * Uses Google Maps style solid overlay instead of blur
+ * Detects license plates and hides them with Google Maps style overlay
  * @param {HTMLCanvasElement} canvas - Canvas with the image
  * @param {CanvasRenderingContext2D} context - Canvas context
+ * @returns {Promise} Resolves when license plate hiding is complete
  */
 export const hideLicensePlates = async (canvas, context) => {
   try {
+    console.log('🚗 Detecting license plates...');
     const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
-    const data = imageData.data;
+    const plates = detectLicensePlates(imageData.data, canvas.width, canvas.height);
     
-    // Detect potential license plate regions
-    const plateRegions = detectLicensePlates(data, canvas.width, canvas.height);
+    console.log(`🔍 Detected ${plates.length} potential license plates`);
     
-    // Apply Google Maps style solid overlay to detected license plates
-    for (const region of plateRegions) {
-      applyGoogleMapsStyleOverlay(context, region.x, region.y, region.width, region.height);
+    if (plates.length === 0) {
+      console.log('No license plates detected');
+      return;
+    }
+
+    // Hide each detected license plate with Google Maps style overlay
+    for (const plate of plates) {
+      console.log(`Hiding license plate: ${plate.width}x${plate.height}`);
+      applyGoogleMapsStyleOverlay(context, plate.x, plate.y, plate.width, plate.height);
     }
     
-    console.log(`🔒 Privacy: Applied Google Maps style overlay to ${plateRegions.length} potential license plate(s)`);
+    console.log('✅ License plate detection and hiding completed');
   } catch (error) {
-    console.warn('⚠️ License plate detection failed:', error);
+    console.error('❌ Error in license plate detection:', error);
   }
 };
 
@@ -329,7 +333,7 @@ const createCompleteFaceRegion = (data, width, height, x, y, features) => {
 };
 
 /**
- * Detects potential license plate regions with improved accuracy
+ * Detects license plates in the image
  * @param {Uint8ClampedArray} data - Image pixel data
  * @param {number} width - Image width
  * @param {number} height - Image height
@@ -337,23 +341,18 @@ const createCompleteFaceRegion = (data, width, height, x, y, features) => {
  */
 const detectLicensePlates = (data, width, height) => {
   const regions = [];
-  const blockSize = 25; // Optimal size for license plate detection
+  const blockSize = 20; // Larger blocks for license plate detection
   
-  // Focus on areas where license plates are typically found
-  const searchAreas = [
-    { startY: Math.floor(height * 0.3), endY: Math.floor(height * 0.9) }, // Lower 60% for front/rear plates
-    { startY: Math.floor(height * 0.1), endY: Math.floor(height * 0.7) }  // Middle area for side plates
-  ];
-  
-  for (const area of searchAreas) {
-    for (let y = area.startY; y < area.endY - blockSize; y += blockSize) {
-      for (let x = 0; x < width - blockSize; x += blockSize) {
-        const plateScore = analyzePlateRegion(data, width, height, x, y, blockSize);
+  for (let y = 0; y < height - blockSize; y += blockSize) {
+    for (let x = 0; x < width - blockSize; x += blockSize) {
+      
+      const plateAnalysis = analyzePlateRegion(data, width, height, x, y, blockSize);
+      
+      if (plateAnalysis.isLicensePlate) {
+        const plateRegion = expandPlateRegion(data, width, height, x, y, blockSize, plateAnalysis.score);
         
-        if (plateScore.isLikelyPlate) {
-          // Expand region for better coverage
-          const expandedRegion = expandPlateRegion(data, width, height, x, y, blockSize, plateScore);
-          regions.push(expandedRegion);
+        if (plateRegion.width > 40 && plateRegion.height > 15 && plateRegion.width / plateRegion.height > 2) {
+          regions.push(plateRegion);
         }
       }
     }
@@ -363,21 +362,20 @@ const detectLicensePlates = (data, width, height) => {
 };
 
 /**
- * Analyzes a region to determine if it's likely a license plate
+ * Analyzes a region for license plate characteristics
  * @param {Uint8ClampedArray} data - Image data
  * @param {number} width - Image width
  * @param {number} height - Image height
  * @param {number} x - X coordinate
  * @param {number} y - Y coordinate
  * @param {number} blockSize - Block size to analyze
- * @returns {Object} Analysis result with plate likelihood
+ * @returns {Object} License plate analysis
  */
 const analyzePlateRegion = (data, width, height, x, y, blockSize) => {
   let whitePixels = 0;
-  let blackPixels = 0;
-  let coloredPixels = 0;
-  let totalPixels = 0;
+  let darkPixels = 0;
   let edgePixels = 0;
+  let totalPixels = 0;
   
   for (let by = 0; by < blockSize; by++) {
     for (let bx = 0; bx < blockSize; bx++) {
@@ -387,16 +385,14 @@ const analyzePlateRegion = (data, width, height, x, y, blockSize) => {
       const b = data[pixelIndex + 2];
       const brightness = (r + g + b) / 3;
       
-      // Classify pixels
-      if (brightness > 200 && Math.abs(r - g) < 30 && Math.abs(g - b) < 30) {
-        whitePixels++; // White/light background
-      } else if (brightness < 80) {
-        blackPixels++; // Dark text/numbers
-      } else if (isPlateColor(r, g, b)) {
-        coloredPixels++; // Colored plate (yellow, blue, green)
+      if (isPlateColor(r, g, b)) {
+        whitePixels++;
       }
       
-      // Check for edges (typical plate borders)
+      if (brightness < 100) {
+        darkPixels++;
+      }
+      
       if (isEdgePixel(data, width, height, x + bx, y + by)) {
         edgePixels++;
       }
@@ -405,468 +401,165 @@ const analyzePlateRegion = (data, width, height, x, y, blockSize) => {
     }
   }
   
-  // Calculate ratios
   const whiteRatio = whitePixels / totalPixels;
-  const blackRatio = blackPixels / totalPixels;
-  const colorRatio = coloredPixels / totalPixels;
+  const darkRatio = darkPixels / totalPixels;
   const edgeRatio = edgePixels / totalPixels;
-  const contrastRatio = (whitePixels + blackPixels) / totalPixels;
   
-  // License plate characteristics:
-  // - High contrast (white background, black text) OR colored background
-  // - Rectangular shape with edges
-  // - Specific size ratio
-  const isLikelyPlate = (
-    (contrastRatio > 0.6 && whiteRatio > 0.3 && blackRatio > 0.1) || // Traditional white plates
-    (colorRatio > 0.4 && (whiteRatio > 0.2 || blackRatio > 0.1)) || // Colored plates
-    (edgeRatio > 0.2 && contrastRatio > 0.5) // Strong edges with contrast
-  );
+  const score = (whiteRatio * 0.4) + (darkRatio * 0.3) + (edgeRatio * 0.3);
   
   return {
-    isLikelyPlate,
-    confidence: Math.max(contrastRatio, colorRatio) + edgeRatio,
-    whiteRatio,
-    blackRatio,
-    colorRatio,
-    edgeRatio
+    isLicensePlate: score > 0.4 && whiteRatio > 0.3 && darkRatio > 0.1,
+    score: score,
+    whiteRatio: whiteRatio,
+    darkRatio: darkRatio,
+    edgeRatio: edgeRatio
   };
 };
 
 /**
- * Checks if a color matches typical license plate colors
+ * Checks if a pixel color matches typical license plate colors
  * @param {number} r - Red value
  * @param {number} g - Green value
  * @param {number} b - Blue value
- * @returns {boolean} Whether the color is typical for license plates
+ * @returns {boolean} Whether pixel looks like a license plate color
  */
 const isPlateColor = (r, g, b) => {
-  // Yellow plates (many countries)
+  const brightness = (r + g + b) / 3;
+  
+  // White/light colored plates
+  if (brightness > 180 && Math.abs(r - g) < 30 && Math.abs(g - b) < 30) return true;
+  
+  // Yellow plates
   if (r > 200 && g > 180 && b < 100) return true;
   
-  // Blue plates (European)
-  if (b > 150 && r < 100 && g < 150) return true;
-  
-  // Green plates (some regions)
-  if (g > 150 && r < 120 && b < 120) return true;
-  
-  // Light colored plates
-  if (r > 180 && g > 180 && b > 180) return true;
+  // Blue plates (some regions)
+  if (b > 150 && r < 100 && g < 120) return true;
   
   return false;
 };
 
 /**
- * Checks if a pixel is likely an edge
+ * Checks if a pixel is likely an edge (high contrast)
  * @param {Uint8ClampedArray} data - Image data
  * @param {number} width - Image width
  * @param {number} height - Image height
  * @param {number} x - X coordinate
  * @param {number} y - Y coordinate
- * @returns {boolean} Whether pixel is likely an edge
+ * @returns {boolean} Whether pixel is an edge
  */
 const isEdgePixel = (data, width, height, x, y) => {
   if (x <= 0 || y <= 0 || x >= width - 1 || y >= height - 1) return false;
   
-  const getPixelBrightness = (px, py) => {
-    const idx = (py * width + px) * 4;
-    return (data[idx] + data[idx + 1] + data[idx + 2]) / 3;
-  };
+  const currentIndex = (y * width + x) * 4;
+  const rightIndex = (y * width + x + 1) * 4;
+  const bottomIndex = ((y + 1) * width + x) * 4;
   
-  const center = getPixelBrightness(x, y);
-  const left = getPixelBrightness(x - 1, y);
-  const right = getPixelBrightness(x + 1, y);
-  const up = getPixelBrightness(x, y - 1);
-  const down = getPixelBrightness(x, y + 1);
+  const currentBrightness = (data[currentIndex] + data[currentIndex + 1] + data[currentIndex + 2]) / 3;
+  const rightBrightness = (data[rightIndex] + data[rightIndex + 1] + data[rightIndex + 2]) / 3;
+  const bottomBrightness = (data[bottomIndex] + data[bottomIndex + 1] + data[bottomIndex + 2]) / 3;
   
-  // Check for significant brightness differences (edges)
-  return (
-    Math.abs(center - left) > 50 ||
-    Math.abs(center - right) > 50 ||
-    Math.abs(center - up) > 50 ||
-    Math.abs(center - down) > 50
-  );
+  const horizontalDiff = Math.abs(currentBrightness - rightBrightness);
+  const verticalDiff = Math.abs(currentBrightness - bottomBrightness);
+  
+  return horizontalDiff > 30 || verticalDiff > 30;
 };
 
 /**
- * Expands detected plate region for better coverage
+ * Expands a potential license plate region
  * @param {Uint8ClampedArray} data - Image data
  * @param {number} width - Image width
  * @param {number} height - Image height
  * @param {number} x - X coordinate
  * @param {number} y - Y coordinate
- * @param {number} blockSize - Original block size
- * @param {Object} plateScore - Analysis score
- * @returns {Object} Expanded region
+ * @param {number} blockSize - Initial block size
+ * @param {number} plateScore - Plate detection score
+ * @returns {Object} Expanded plate region
  */
 const expandPlateRegion = (data, width, height, x, y, blockSize, plateScore) => {
-  // License plates are typically 2-4 times wider than they are tall
-  const plateRatio = 3; // Typical width:height ratio
-  
-  let expandedWidth = blockSize;
-  let expandedHeight = blockSize;
-  
-  // Expand horizontally (plates are wider)
-  const maxWidth = blockSize * plateRatio;
-  for (let w = blockSize; w < maxWidth && (x + w) < width; w += 10) {
-    const rightRegion = analyzePlateRegion(data, width, height, x + blockSize, y, 10);
-    if (rightRegion.confidence > 0.3) {
-      expandedWidth = w;
-    } else {
-      break;
-    }
-  }
-  
-  // Ensure minimum coverage and add padding
-  const finalWidth = Math.max(expandedWidth, blockSize * 2);
-  const finalHeight = Math.max(expandedHeight, blockSize);
+  const expansionFactor = 1.5 + plateScore;
+  const plateWidth = blockSize * expansionFactor * 3; // Plates are typically wider
+  const plateHeight = blockSize * expansionFactor;
   
   return {
-    x: Math.max(0, x - 5), // Add padding
-    y: Math.max(0, y - 5),
-    width: Math.min(width - x, finalWidth + 10),
-    height: Math.min(height - y, finalHeight + 10),
-    confidence: plateScore.confidence
+    x: Math.max(0, x - blockSize),
+    y: Math.max(0, y - blockSize / 2),
+    width: Math.min(width, plateWidth),
+    height: Math.min(height, plateHeight),
+    score: plateScore
   };
 };
 
 /**
- * Checks if RGB values match typical skin tone
- * @param {number} r - Red value
- * @param {number} g - Green value  
- * @param {number} b - Blue value
- * @returns {boolean} Whether the color is likely skin tone
+ * Detects skin tone pixels using HSV color space analysis
+ * @param {number} r - Red value (0-255)
+ * @param {number} g - Green value (0-255)
+ * @param {number} b - Blue value (0-255)
+ * @returns {boolean} Whether the pixel is likely skin tone
  */
 const isSkinTone = (r, g, b) => {
-  // Primary skin tone detection algorithm - covers light to medium skin tones
-  return (
-    r > 95 && g > 40 && b > 20 &&
-    r > g && r > b &&
-    Math.abs(r - g) > 10 &&
-    r - b > 10
-  );
-};
-
-/**
- * Additional skin tone detection for broader range
- * @param {number} r - Red value
- * @param {number} g - Green value  
- * @param {number} b - Blue value
- * @returns {boolean} Whether the color matches alternate skin tones
- */
-const isAlternateSkinTone = (r, g, b) => {
-  // Covers darker skin tones and different lighting conditions
-  const hue = getHue(r, g, b);
-  const saturation = getSaturation(r, g, b);
-  const brightness = (r + g + b) / 3;
-  
-  // Skin tone typically has hue between 0-30 degrees (red-orange range)
-  // and moderate saturation
-  return (
-    (hue >= 0 && hue <= 30) || (hue >= 330 && hue <= 360)
-  ) && (
-    saturation >= 0.15 && saturation <= 0.8
-  ) && (
-    brightness >= 40 && brightness <= 220
-  ) && (
-    // Additional checks for skin tone characteristics
-    r >= g && (r - b) >= 10
-  );
-};
-
-/**
- * Calculate hue from RGB
- */
-const getHue = (r, g, b) => {
-  r /= 255;
-  g /= 255;
-  b /= 255;
-  
-  const max = Math.max(r, g, b);
-  const min = Math.min(r, g, b);
-  const diff = max - min;
-  
-  if (diff === 0) return 0;
-  
-  let hue;
-  if (max === r) {
-    hue = ((g - b) / diff) % 6;
-  } else if (max === g) {
-    hue = (b - r) / diff + 2;
-  } else {
-    hue = (r - g) / diff + 4;
+  // Basic skin tone check
+  if (r > 95 && g > 40 && b > 20 && 
+      Math.max(r, g, b) - Math.min(r, g, b) > 15 &&
+      Math.abs(r - g) > 15 && r > g && r > b) {
+    return true;
   }
-  
-  return Math.round(hue * 60);
+  return false;
 };
 
 /**
- * Calculate saturation from RGB
- */
-const getSaturation = (r, g, b) => {
-  r /= 255;
-  g /= 255;
-  b /= 255;
-  
-  const max = Math.max(r, g, b);
-  const min = Math.min(r, g, b);
-  const diff = max - min;
-  
-  if (max === 0) return 0;
-  return diff / max;
-};
-
-/**
- * Detects upper body regions that might contain faces
- * @param {Uint8ClampedArray} data - Image pixel data
- * @param {number} width - Image width
- * @param {number} height - Image height
- * @returns {Array} Array of detected upper body regions
- */
-const detectUpperBodyRegions = (data, width, height) => {
-  const regions = [];
-  const blockSize = 40;
-  
-  // Focus on upper 60% of image where faces are likely
-  const searchHeight = Math.floor(height * 0.6);
-  
-  for (let y = 0; y < searchHeight - blockSize; y += blockSize) {
-    for (let x = 0; x < width - blockSize; x += blockSize) {
-      let skinPixels = 0;
-      let clothingPixels = 0;
-      let totalPixels = 0;
-      
-      // Analyze block for human characteristics
-      for (let by = 0; by < blockSize; by++) {
-        for (let bx = 0; bx < blockSize; bx++) {
-          const pixelIndex = ((y + by) * width + (x + bx)) * 4;
-          const r = data[pixelIndex];
-          const g = data[pixelIndex + 1];
-          const b = data[pixelIndex + 2];
-          
-          if (isSkinTone(r, g, b) || isAlternateSkinTone(r, g, b)) {
-            skinPixels++;
-          } else if (isClothingColor(r, g, b)) {
-            clothingPixels++;
-          }
-          totalPixels++;
-        }
-      }
-      
-      // Look for combination of skin and clothing (typical human pattern)
-      const skinRatio = skinPixels / totalPixels;
-      const clothingRatio = clothingPixels / totalPixels;
-      
-      if (skinRatio > 0.1 && clothingRatio > 0.2) {
-        regions.push({
-          x: Math.max(0, x - 20),
-          y: Math.max(0, y - 20),
-          width: blockSize + 40,
-          height: blockSize + 40
-        });
-      }
-    }
-  }
-  
-  return removeDuplicateRegions(regions);
-};
-
-/**
- * Detects typical clothing colors
+ * Alternative skin tone detection for different ethnicities
  * @param {number} r - Red value
  * @param {number} g - Green value
  * @param {number} b - Blue value
- * @returns {boolean} Whether the color is likely clothing
+ * @returns {boolean} Whether pixel is alternate skin tone
  */
-const isClothingColor = (r, g, b) => {
-  const brightness = (r + g + b) / 3;
+const isAlternateSkinTone = (r, g, b) => {
+  // Darker skin tones
+  if (r > 60 && g > 40 && b > 20 && r > g && g >= b) return true;
   
-  // Common clothing colors: dark colors, bright colors, white/light colors
-  return (
-    // Dark clothing (black, navy, etc.)
-    brightness < 80 ||
-    // White/light clothing
-    (brightness > 200 && Math.abs(r - g) < 30 && Math.abs(g - b) < 30) ||
-    // Bright colors (red, blue, green shirts, etc.)
-    (Math.max(r, g, b) > 150 && (Math.abs(r - g) > 50 || Math.abs(g - b) > 50 || Math.abs(r - b) > 50))
-  );
+  // Lighter skin tones
+  if (r > 200 && g > 160 && b > 130 && r > g && g > b) return true;
+  
+  return false;
 };
 
 /**
- * Applies additional safety blur to areas that might contain faces
- * @param {HTMLCanvasElement} canvas - Canvas element
+ * Applies blur to a specific region of the canvas
  * @param {CanvasRenderingContext2D} context - Canvas context
- * @param {Uint8ClampedArray} data - Image data
+ * @param {number} x - X coordinate
+ * @param {number} y - Y coordinate
+ * @param {number} width - Width of region
+ * @param {number} height - Height of region
+ * @param {number} blurAmount - Blur intensity in pixels
  */
-const applySafetyBlur = async (canvas, context, data) => {
-  const width = canvas.width;
-  const height = canvas.height;
+const applyBlur = (context, x, y, width, height, blurAmount = 20) => {
+  // Save current state
+  context.save();
   
-  // Additional check for any remaining skin-colored regions in face area
-  const faceArea = {
-    startY: 0,
-    endY: Math.floor(height * 0.4), // Top 40% of image
-    startX: Math.floor(width * 0.1), // Exclude extreme edges
-    endX: Math.floor(width * 0.9)
-  };
+  // Create temporary canvas for the region
+  const tempCanvas = document.createElement('canvas');
+  const tempContext = tempCanvas.getContext('2d');
+  tempCanvas.width = width;
+  tempCanvas.height = height;
   
-  for (let y = faceArea.startY; y < faceArea.endY; y += 30) {
-    for (let x = faceArea.startX; x < faceArea.endX; x += 30) {
-      let skinPixels = 0;
-      const checkSize = 25;
-      
-      // Check small area for skin tone
-      for (let cy = 0; cy < checkSize && (y + cy) < height; cy++) {
-        for (let cx = 0; cx < checkSize && (x + cx) < width; cx++) {
-          const pixelIndex = ((y + cy) * width + (x + cx)) * 4;
-          const r = data[pixelIndex];
-          const g = data[pixelIndex + 1];
-          const b = data[pixelIndex + 2];
-          
-          if (isSkinTone(r, g, b) || isAlternateSkinTone(r, g, b)) {
-            skinPixels++;
-          }
-        }
-      }
-      
-      // If significant skin detected, apply safety blur
-      if (skinPixels > checkSize * checkSize * 0.15) {
-        blurRegion(context, x - 15, y - 15, checkSize + 30, checkSize + 30, 20);
-      }
-    }
-  }
-};
-
-/**
- * Expands a detected skin region to cover full face area
- * @param {Uint8ClampedArray} data - Image data
- * @param {number} width - Image width
- * @param {number} height - Image height
- * @param {number} startX - Starting X coordinate
- * @param {number} startY - Starting Y coordinate
- * @param {number} blockSize - Initial block size
- * @returns {Object} Expanded face region
- */
-const expandFaceRegion = (data, width, height, startX, startY, blockSize) => {
-  let minX = startX;
-  let maxX = startX + blockSize;
-  let minY = startY;
-  let maxY = startY + blockSize;
+  // Copy the region to temp canvas
+  const imageData = context.getImageData(x, y, width, height);
+  tempContext.putImageData(imageData, 0, 0);
   
-  // Expand region to include nearby skin pixels
-  const expansion = 50; // Increased expansion distance
+  // Apply blur filter
+  context.filter = `blur(${blurAmount}px)`;
+  context.drawImage(tempCanvas, x, y);
   
-  // Expand left
-  for (let x = startX - expansion; x >= 0 && x < startX; x += 5) {
-    if (hasSkinInColumn(data, width, height, x, minY, maxY)) {
-      minX = x;
-    } else break;
-  }
-  
-  // Expand right
-  for (let x = maxX; x < width && x < maxX + expansion; x += 5) {
-    if (hasSkinInColumn(data, width, height, x, minY, maxY)) {
-      maxX = x;
-    } else break;
-  }
-  
-  // Expand up
-  for (let y = startY - expansion; y >= 0 && y < startY; y += 5) {
-    if (hasSkinInRow(data, width, height, y, minX, maxX)) {
-      minY = y;
-    } else break;
-  }
-  
-  // Expand down
-  for (let y = maxY; y < height && y < maxY + expansion; y += 5) {
-    if (hasSkinInRow(data, width, height, y, minX, maxX)) {
-      maxY = y;
-    } else break;
-  }
-  
-  return {
-    x: Math.max(0, minX - 10), // Add padding
-    y: Math.max(0, minY - 10),
-    width: Math.min(width, maxX - minX + 20),
-    height: Math.min(height, maxY - minY + 20)
-  };
-};
-  let minX = startX;
-  let maxX = startX + blockSize;
-  let minY = startY;
-  let maxY = startY + blockSize;
-  
-  // Expand region to include nearby skin pixels
-  const expansion = 40; // Maximum expansion distance
-  
-  // Expand left
-  for (let x = startX - expansion; x >= 0 && x < startX; x += 5) {
-    if (hasSkinInColumn(data, width, height, x, minY, maxY)) {
-      minX = x;
-    } else break;
-  }
-  
-  // Expand right
-  for (let x = maxX; x < width && x < maxX + expansion; x += 5) {
-    if (hasSkinInColumn(data, width, height, x, minY, maxY)) {
-      maxX = x;
-    } else break;
-  }
-  
-  // Expand up
-  for (let y = startY - expansion; y >= 0 && y < startY; y += 5) {
-    if (hasSkinInRow(data, width, height, y, minX, maxX)) {
-      minY = y;
-    } else break;
-  }
-  
-  // Expand down
-  for (let y = maxY; y < height && y < maxY + expansion; y += 5) {
-    if (hasSkinInRow(data, width, height, y, minX, maxX)) {
-      maxY = y;
-    } else break;
-  }
-  
-  return {
-    x: minX,
-    y: minY,
-    width: maxX - minX,
-    height: maxY - minY
-  };
-};
-
-/**
- * Checks if a column has skin tone pixels
- */
-const hasSkinInColumn = (data, width, height, x, minY, maxY) => {
-  for (let y = minY; y < maxY; y++) {
-    const pixelIndex = (y * width + x) * 4;
-    const r = data[pixelIndex];
-    const g = data[pixelIndex + 1];
-    const b = data[pixelIndex + 2];
-    if (isSkinTone(r, g, b)) return true;
-  }
-  return false;
-};
-
-/**
- * Checks if a row has skin tone pixels
- */
-const hasSkinInRow = (data, width, height, y, minX, maxX) => {
-  for (let x = minX; x < maxX; x++) {
-    const pixelIndex = (y * width + x) * 4;
-    const r = data[pixelIndex];
-    const g = data[pixelIndex + 1];
-    const b = data[pixelIndex + 2];
-    if (isSkinTone(r, g, b)) return true;
-  }
-  return false;
+  // Restore context
+  context.filter = 'none';
+  context.restore();
 };
 
 /**
  * Applies Google Maps style solid overlay to license plates
  * @param {CanvasRenderingContext2D} context - Canvas context
  * @param {number} x - X coordinate
- * @param {number} y - Y coordinate  
+ * @param {number} y - Y coordinate
  * @param {number} width - Width of region
  * @param {number} height - Height of region
  */
@@ -874,25 +567,27 @@ const applyGoogleMapsStyleOverlay = (context, x, y, width, height) => {
   // Save current state
   context.save();
   
-  // Create solid overlay similar to Google Maps
-  const gradient = context.createLinearGradient(x, y, x + width, y + height);
-  gradient.addColorStop(0, 'rgba(128, 128, 128, 0.95)'); // Dark gray
-  gradient.addColorStop(0.5, 'rgba(100, 100, 100, 0.98)'); // Darker center
-  gradient.addColorStop(1, 'rgba(128, 128, 128, 0.95)'); // Dark gray
+  // Create rounded rectangle path
+  const radius = 6;
+  context.beginPath();
+  context.roundRect(x, y, width, height, radius);
   
-  // Apply the overlay
-  context.fillStyle = gradient;
-  context.fillRect(x, y, width, height);
+  // Fill with semi-transparent dark color
+  context.fillStyle = 'rgba(60, 60, 60, 0.85)';
+  context.fill();
   
-  // Add subtle border effect like Google Maps
-  context.strokeStyle = 'rgba(80, 80, 80, 0.8)';
+  // Add subtle border
+  context.strokeStyle = 'rgba(40, 40, 40, 0.9)';
   context.lineWidth = 1;
-  context.strokeRect(x, y, width, height);
+  context.stroke();
   
-  // Optional: Add subtle pattern for better visual effect
-  context.fillStyle = 'rgba(110, 110, 110, 0.3)';
-  for (let i = 0; i < width; i += 4) {
-    context.fillRect(x + i, y, 2, height);
+  // Add "hidden" text if region is large enough
+  if (width > 60 && height > 20) {
+    context.fillStyle = 'rgba(255, 255, 255, 0.7)';
+    context.font = `${Math.min(height * 0.6, 12)}px Arial`;
+    context.textAlign = 'center';
+    context.textBaseline = 'middle';
+    context.fillText('Hidden', x + width / 2, y + height / 2);
   }
   
   // Restore context
@@ -900,60 +595,7 @@ const applyGoogleMapsStyleOverlay = (context, x, y, width, height) => {
 };
 
 /**
- * Applies blur effect to a specific region (used for faces)
- * @param {CanvasRenderingContext2D} context - Canvas context
- * @param {number} x - X coordinate
- * @param {number} y - Y coordinate  
- * @param {number} width - Width of region
- * @param {number} height - Height of region
- * @param {number} blurAmount - Blur intensity
- */
-const blurRegion = (context, x, y, width, height, blurAmount) => {
-  // Save current state
-  context.save();
-  
-  // Create a temporary canvas for the blur effect
-  const tempCanvas = document.createElement('canvas');
-  const tempContext = tempCanvas.getContext('2d');
-  tempCanvas.width = width;
-  tempCanvas.height = height;
-  
-  // Copy the region to temp canvas
-  const imageData = context.getImageData(x, y, width, height);
-  tempContext.putImageData(imageData, 0, 0);
-  
-  // Apply blur filter
-  context.filter = `blur(${blurAmount}px)`;
-  context.drawImage(tempCanvas, x, y);
-  
-  // Restore context
-  context.filter = 'none';
-  context.restore();
-};
-  // Save current state
-  context.save();
-  
-  // Create a temporary canvas for the blur effect
-  const tempCanvas = document.createElement('canvas');
-  const tempContext = tempCanvas.getContext('2d');
-  tempCanvas.width = width;
-  tempCanvas.height = height;
-  
-  // Copy the region to temp canvas
-  const imageData = context.getImageData(x, y, width, height);
-  tempContext.putImageData(imageData, 0, 0);
-  
-  // Apply blur filter
-  context.filter = `blur(${blurAmount}px)`;
-  context.drawImage(tempCanvas, x, y);
-  
-  // Restore context
-  context.filter = 'none';
-  context.restore();
-};
-
-/**
- * Removes overlapping regions to avoid duplicate blurs
+ * Removes overlapping regions to avoid duplicate processing
  * @param {Array} regions - Array of detected regions
  * @returns {Array} Filtered regions without duplicates
  */
@@ -1042,26 +684,28 @@ const regionsOverlap = (region1, region2) => {
 };
 
 /**
- * Main function to apply all privacy protections
- * @param {HTMLCanvasElement} canvas - Canvas with captured image
- * @returns {Promise<void>}
+ * Main function to apply comprehensive privacy protection to an image
+ * @param {HTMLCanvasElement} canvas - Canvas element containing the image
+ * @returns {Promise} Resolves when privacy protection is complete
  */
 export const applyPrivacyProtection = async (canvas) => {
-  const context = canvas.getContext('2d');
-  
-  console.log('🔒 Starting privacy protection...');
-  
-  // Apply face blurring
-  await blurDetectedFaces(canvas, context);
-  
-  // Apply license plate hiding
-  await hideLicensePlates(canvas, context);
-  
-  console.log('✅ Privacy protection applied successfully');
-};
-
-export default {
-  applyPrivacyProtection,
-  blurDetectedFaces,
-  hideLicensePlates
+  try {
+    console.log('🔒 Starting comprehensive privacy protection...');
+    
+    const context = canvas.getContext('2d');
+    if (!context) {
+      throw new Error('Could not get canvas context');
+    }
+    
+    // Apply face blurring
+    await blurDetectedFaces(canvas, context);
+    
+    // Apply license plate hiding
+    await hideLicensePlates(canvas, context);
+    
+    console.log('✅ Privacy protection applied successfully');
+  } catch (error) {
+    console.error('❌ Error applying privacy protection:', error);
+    throw error;
+  }
 };
