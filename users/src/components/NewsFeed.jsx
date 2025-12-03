@@ -471,7 +471,8 @@ const NewsFeed = ({ user }) => {
                   <div className="report-card-footer">
                     <div className="report-author">
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        {/* Profile Avatar */}
+                        <span>By:</span>
+                        {/* Profile Avatar beside username */}
                         <div style={{
                           width: '24px',
                           height: '24px',
@@ -503,7 +504,7 @@ const NewsFeed = ({ user }) => {
                             '👤'
                           )}
                         </div>
-                        <span>By: {report.reportedBy?.name || report.reportedBy?.username || 'Anonymous'}</span>
+                        <span>{report.reportedBy?.name || report.reportedBy?.username || 'Anonymous'}</span>
                       </div>
                     </div>
                     <div className="report-severity-badge" style={{

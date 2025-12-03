@@ -340,27 +340,26 @@ const ProfilePage = ({ onBack, onLogout, onUserUpdate }) => {
               
               <div className="profile-details">
                 <h1 className="profile-name">{user?.username}</h1>
-                <p className="profile-subtitle">Road Alert Community Member</p>
                 <div className="profile-status">
                   <span className={`status-badge ${status.className}`}>
                     {status.icon} {status.text}
                   </span>
                 </div>
-                
-                {gallery.length > 0 && (
-                  <div className="profile-actions">
-                    <button
-                      type="button"
-                      onClick={handleViewGallery}
-                      className="gallery-btn"
-                      title="View profile picture gallery"
-                    >
-                      🖼️ View Gallery ({gallery.length})
-                    </button>
-                  </div>
-                )}
               </div>
             </div>
+            
+            {gallery.length > 0 && (
+              <div className="profile-actions">
+                <button
+                  type="button"
+                  onClick={handleViewGallery}
+                  className="gallery-btn"
+                  title="View profile picture gallery"
+                >
+                  🖼️ View Gallery ({gallery.length})
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
