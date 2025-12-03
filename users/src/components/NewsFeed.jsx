@@ -243,9 +243,6 @@ const NewsFeed = ({ user }) => {
 
   return (
     <div className="news-feed">
-      <h2 className="news-feed-title">
-        Road Alerts & News
-      </h2>
       
       {/* Tabs */}
       <div style={{
