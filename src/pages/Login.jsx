@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { MapPinIcon } from '@heroicons/react/24/outline'
 import axios from 'axios'
 import AdminConfirmModal from '../components/AdminConfirmModal'
+import config from '../config/index.js'
 
 const Login = () => {
   const [credentials, setCredentials] = useState({
@@ -15,8 +16,8 @@ const Login = () => {
   const handleSubmit = async (e) => {
     e.preventDefault()
     try {
-      // Call backend login endpoint
-      const response = await axios.post('http://localhost:3001/api/auth/login', {
+      // Call backend login endpoint using production backend URL
+      const response = await axios.post(`${config.API_BASE_URL}/auth/login`, {
         username: credentials.username,
         password: credentials.password
       })
