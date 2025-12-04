@@ -199,14 +199,6 @@ const MyReports = ({ token }) => {
                     </div>
                   )}
                   
-                  {report.status === 'resolved' && (
-                    <div className="status-info">
-                      <p style={{ color: '#3b82f6', fontSize: '14px', fontStyle: 'italic' }}>
-                        🛠️ This issue has been resolved. Thank you for reporting!
-                      </p>
-                    </div>
-                  )}
-                  
                   {report.images && Array.isArray(report.images) && report.images.length > 0 && (
                     <img 
                       className="report-image"

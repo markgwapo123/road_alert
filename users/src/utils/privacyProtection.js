@@ -27,7 +27,25 @@ export const blurDetectedFaces = async (canvas, context) => {
     // Blur each detected face region with 30px intensity
     for (const region of regions) {
       console.log(`Blurring face region: ${region.width}x${region.height} (confidence: ${(region.confidence * 100).toFixed(1)}%)`);
-      applyBlur(context, region.x, region.y, region.width, region.height, 30);
+      // Safety: if region is unreasonably large, clamp it to a percent of image
+      const imageArea = canvas.width * canvas.height;
+      const regionArea = region.width * region.height;
+      const maxPercent = 0.30; // don't allow a face blur to cover more than 30% of image
+      if (regionArea > imageArea * maxPercent) {
+        console.warn('Detected face region too large, shrinking to safe maximum percent', region, 'imageArea', imageArea);
+        // Shrink region while maintaining aspect ratio and centered on detected center
+        const aspect = region.width / region.height;
+        const maxArea = Math.floor(imageArea * maxPercent);
+        const newHeight = Math.floor(Math.sqrt(maxArea / aspect));
+        const newWidth = Math.floor(newHeight * aspect);
+        const centerX = region.x + region.width / 2;
+        const centerY = region.y + region.height / 2;
+        const nx = Math.max(0, Math.floor(centerX - newWidth / 2));
+        const ny = Math.max(0, Math.floor(centerY - newHeight / 2));
+        applyBlur(context, nx, ny, newWidth, newHeight, 30);
+      } else {
+        applyBlur(context, region.x, region.y, region.width, region.height, 30);
+      }
     }
     
     console.log('✅ Face detection and blurring completed');
@@ -88,7 +106,7 @@ const detectFacialFeatures = (data, width, height) => {
       
       // If facial features detected, create comprehensive face region
       if (features.hasFacialFeatures) {
-        const faceRegion = createCompleteFaceRegion(data, width, height, x, y, features);
+        const faceRegion = createCompleteFaceRegion(data, width, height, x, y, features, blockSize);
         
         // Ensure minimum face size and add to regions
         if (faceRegion.width > 30 && faceRegion.height > 30) {
@@ -300,35 +318,55 @@ const isNosePixel = (r, g, b, brightness) => {
  * @param {Object} features - Detected facial features
  * @returns {Object} Complete face region
  */
-const createCompleteFaceRegion = (data, width, height, x, y, features) => {
-  // Face proportions: typical face is about 1:1.3 ratio (width:height)
-  const baseSize = 40; // Base size for detected feature
-  
-  // Expand region based on confidence and feature types
-  let expansionFactor = 2.5 + (features.confidence * 1.5);
-  
-  // If we have hair, expand upward more
-  if (features.hasHair) expansionFactor += 0.5;
-  
-  // If we have eyes, this is likely the center of the face
-  if (features.hasEyes) expansionFactor += 0.3;
-  
+const createCompleteFaceRegion = (data, width, height, x, y, features, blockSize = 12) => {
+  // Make expansion conservative and proportional to analysis block size
+  const baseSize = Math.max(24, blockSize * 2); // base relative to detection block
+
+  // Conservative expansion: avoid aggressive growth that can cover most of the image
+  let expansionFactor = 1.3 + (features.confidence * 0.6); // between ~1.3 and ~1.9
+  expansionFactor = Math.min(expansionFactor, 2.0);
+
+  // Small extra padding for hair/eyes but limited
+  if (features.hasHair) expansionFactor += 0.15;
+  if (features.hasEyes) expansionFactor += 0.1;
+  expansionFactor = Math.min(expansionFactor, 2.2);
+
   const faceWidth = baseSize * expansionFactor;
-  const faceHeight = faceWidth * 1.3; // Face is taller than wide
-  
-  // Center the region around the detected features
-  const centerX = x + (baseSize / 2);
-  const centerY = y + (baseSize / 2);
-  
+  const faceHeight = faceWidth * 1.2; // slightly less tall ratio for safer crop
+
+  // Center the region around the detected block
+  const centerX = x + (blockSize / 2);
+  const centerY = y + (blockSize / 2);
+
+  let rx = Math.max(0, Math.floor(centerX - faceWidth / 2));
+  let ry = Math.max(0, Math.floor(centerY - faceHeight / 3)); // face extends below the detected features
+  let rwidth = Math.min(width - rx, Math.max(1, Math.ceil(faceWidth)));
+  let rheight = Math.min(height - ry, Math.max(1, Math.ceil(faceHeight)));
+
+  // Safety clamp: do not allow a single face region to exceed a percentage of the image
+  const maxRegionAreaPercent = 0.25; // at most 25% of the image area for one face
+  const imageArea = width * height;
+  if (rwidth * rheight > imageArea * maxRegionAreaPercent) {
+    // Shrink while preserving aspect ratio
+    const maxArea = Math.floor(imageArea * maxRegionAreaPercent);
+    const aspect = rwidth / rheight;
+    rheight = Math.floor(Math.sqrt(maxArea / aspect));
+    rwidth = Math.floor(rheight * aspect);
+
+    // Re-center after shrink
+    rx = Math.max(0, Math.floor(centerX - rwidth / 2));
+    ry = Math.max(0, Math.floor(centerY - rheight / 3));
+  }
+
   const faceRegion = {
-    x: Math.max(0, Math.floor(centerX - faceWidth / 2)),
-    y: Math.max(0, Math.floor(centerY - faceHeight / 3)), // Face extends more below features
-    width: Math.min(width, Math.ceil(faceWidth)),
-    height: Math.min(height, Math.ceil(faceHeight)),
+    x: rx,
+    y: ry,
+    width: rwidth,
+    height: rheight,
     confidence: features.confidence,
     features: features
   };
-  
+
   return faceRegion;
 };
 
@@ -476,15 +514,21 @@ const isEdgePixel = (data, width, height, x, y) => {
  * @returns {Object} Expanded plate region
  */
 const expandPlateRegion = (data, width, height, x, y, blockSize, plateScore) => {
-  const expansionFactor = 1.5 + plateScore;
+  // Conservative plate expansion to avoid covering large image areas
+  const expansionFactor = Math.min(1.8, 1.2 + plateScore);
   const plateWidth = blockSize * expansionFactor * 3; // Plates are typically wider
   const plateHeight = blockSize * expansionFactor;
-  
+
+  const rx = Math.max(0, Math.floor(x - blockSize));
+  const ry = Math.max(0, Math.floor(y - Math.floor(blockSize / 2)));
+  const rwidth = Math.min(width - rx, Math.max(1, Math.ceil(plateWidth)));
+  const rheight = Math.min(height - ry, Math.max(1, Math.ceil(plateHeight)));
+
   return {
-    x: Math.max(0, x - blockSize),
-    y: Math.max(0, y - blockSize / 2),
-    width: Math.min(width, plateWidth),
-    height: Math.min(height, plateHeight),
+    x: rx,
+    y: ry,
+    width: rwidth,
+    height: rheight,
     score: plateScore
   };
 };
@@ -539,16 +583,32 @@ const applyBlur = (context, x, y, width, height, blurAmount = 20) => {
   // Create temporary canvas for the region
   const tempCanvas = document.createElement('canvas');
   const tempContext = tempCanvas.getContext('2d');
-  tempCanvas.width = width;
-  tempCanvas.height = height;
-  
+  // Clamp coordinates to canvas bounds to avoid exceptions
+  const canvasWidth = context.canvas.width;
+  const canvasHeight = context.canvas.height;
+  let rx = Math.max(0, Math.floor(x));
+  let ry = Math.max(0, Math.floor(y));
+  let rwidth = Math.max(1, Math.min(width, canvasWidth - rx));
+  let rheight = Math.max(1, Math.min(height, canvasHeight - ry));
+
+  tempCanvas.width = rwidth;
+  tempCanvas.height = rheight;
+
   // Copy the region to temp canvas
-  const imageData = context.getImageData(x, y, width, height);
+  let imageData;
+  try {
+    imageData = context.getImageData(rx, ry, rwidth, rheight);
+  } catch (e) {
+    // If getImageData fails, bail out safely
+    console.warn('applyBlur: getImageData failed, skipping blur for region', rx, ry, rwidth, rheight, e);
+    context.restore();
+    return;
+  }
   tempContext.putImageData(imageData, 0, 0);
-  
-  // Apply blur filter
+
+  // Apply blur filter to the main context when drawing the temp canvas back
   context.filter = `blur(${blurAmount}px)`;
-  context.drawImage(tempCanvas, x, y);
+  context.drawImage(tempCanvas, rx, ry);
   
   // Restore context
   context.filter = 'none';

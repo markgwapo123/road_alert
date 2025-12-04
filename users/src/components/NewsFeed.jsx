@@ -49,6 +49,35 @@ const NewsFeed = ({ user }) => {
   const [activeTab, setActiveTab] = useState('reports'); // 'reports' or 'news'
 
   useEffect(() => {
+    // Debug: Log configuration details
+    console.log('🔧 NewsFeed Debug Information:');
+    console.log('- API_BASE_URL:', config.API_BASE_URL);
+    console.log('- BACKEND_URL:', config.BACKEND_URL);
+    console.log('- Environment:', config.ENVIRONMENT);
+    console.log('- Is Mobile:', config.IS_MOBILE);
+    console.log('- Is Web:', config.IS_WEB);
+    console.log('- User Agent:', navigator.userAgent);
+    
+    // Test backend connectivity
+    const testBackendConnection = async () => {
+      try {
+        const response = await fetch(`${config.BACKEND_URL}/api/health`);
+        console.log('🌐 Backend health check:', response.status, response.ok ? '✅' : '❌');
+        
+        // Test uploads directory
+        const uploadsResponse = await fetch(`${config.BACKEND_URL}/api/debug/uploads`);
+        const uploadsData = await uploadsResponse.json();
+        console.log('📁 Uploads directory debug:', uploadsData);
+        
+        if (uploadsData.success && uploadsData.files?.length > 0) {
+          console.log('📷 Sample files in uploads:', uploadsData.files.slice(0, 3));
+        }
+      } catch (error) {
+        console.error('🌐 Backend connection failed:', error.message);
+      }
+    };
+    testBackendConnection();
+    
     const fetchData = async () => {
       try {
         // Fetch both reports and news posts
@@ -430,12 +459,46 @@ const NewsFeed = ({ user }) => {
                             src={`${config.BACKEND_URL}/uploads/${report.images[0].filename || report.images[0]}`}
                             alt="Report"
                             className="report-image"
+                            onLoad={(e) => {
+                              console.log('✅ Image loaded successfully:', e.target.src);
+                            }}
                             onError={(e) => {
+                              console.error('❌ Image failed to load:', e.target.src);
+                              console.error('Backend URL:', config.BACKEND_URL);
+                              console.error('Image filename:', report.images[0].filename || report.images[0]);
+                              
+                              // Try alternative URLs
+                              const originalSrc = e.target.src;
+                              const filename = report.images[0].filename || report.images[0];
+                              
+                              // Try different URL formats
+                              const alternativeUrls = [
+                                `${config.BACKEND_URL}/uploads/${filename}`,
+                                `${config.API_BASE_URL}/../uploads/${filename}`,
+                                `https://roadalert-backend-xze4.onrender.com/uploads/${filename}`,
+                                `http://192.168.1.150:3001/uploads/${filename}`
+                              ];
+                              
+                              // Try the next URL in sequence
+                              const currentIndex = alternativeUrls.indexOf(originalSrc);
+                              const nextIndex = currentIndex + 1;
+                              
+                              if (nextIndex < alternativeUrls.length) {
+                                console.log('🔄 Trying alternative URL:', alternativeUrls[nextIndex]);
+                                e.target.src = alternativeUrls[nextIndex];
+                                return;
+                              }
+                              
+                              // If all URLs failed, show placeholder
+                              console.error('🚫 All image URLs failed, showing placeholder');
                               e.target.style.display = 'none';
                               e.target.parentElement.innerHTML = `
                                 <div class="report-image-placeholder">
                                   <span class="placeholder-icon">📷</span>
-                                  <span class="placeholder-text">No Image</span>
+                                  <span class="placeholder-text">Image not available</span>
+                                  <div style="font-size: 10px; color: #999; margin-top: 4px;">
+                                    Debug: ${filename}
+                                  </div>
                                 </div>
                               `;
                             }}

@@ -355,21 +355,6 @@ const ReportDetailModal = ({ report, isOpen, onClose, reportUser }) => {
             </div>
           </div>
 
-          {/* Resolution Note */}
-          {report.status === 'verified' && (
-            <div style={{
-              background: '#d1fae5',
-              border: '1px solid #a7f3d0',
-              borderRadius: '8px',
-              padding: '12px',
-              marginBottom: '20px'
-            }}>
-              <p style={{ margin: 0, color: '#065f46', fontSize: '14px', textAlign: 'center' }}>
-                🛠️ This issue has been resolved. Thank you for reporting!
-              </p>
-            </div>
-          )}
-
           {/* Images - UPDATED WITH LARGER SIZE */}
           {report.images && report.images.length > 0 && (
             <div style={{ marginBottom: '20px' }}>

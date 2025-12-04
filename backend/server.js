@@ -123,6 +123,53 @@ app.get('/', (req, res) => {
   });
 });
 
+// Debug endpoint for uploads directory
+app.get('/api/debug/uploads', (req, res) => {
+  const fs = require('fs');
+  const uploadsPath = path.join(__dirname, 'uploads');
+  
+  try {
+    // Check if uploads directory exists
+    if (!fs.existsSync(uploadsPath)) {
+      return res.json({
+        success: false,
+        message: 'Uploads directory does not exist',
+        path: uploadsPath,
+        exists: false
+      });
+    }
+    
+    // List files in uploads directory
+    const files = fs.readdirSync(uploadsPath);
+    const fileDetails = files.map(file => {
+      const filePath = path.join(uploadsPath, file);
+      const stats = fs.statSync(filePath);
+      return {
+        name: file,
+        size: stats.size,
+        modified: stats.mtime,
+        url: `/uploads/${file}`
+      };
+    });
+    
+    res.json({
+      success: true,
+      path: uploadsPath,
+      exists: true,
+      fileCount: files.length,
+      files: fileDetails.slice(0, 20), // Limit to first 20 files
+      totalFiles: files.length
+    });
+    
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      path: uploadsPath
+    });
+  }
+});
+
 // Routes
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/reports', require('./routes/reports'));
