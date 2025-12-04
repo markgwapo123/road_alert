@@ -41,6 +41,21 @@
   color: #888;
 }
 
+/* Global button styles - Black background with white text */
+button:not(.no-black-style) {
+  background-color: #111827 !important;
+  color: white !important;
+}
+
+button:not(.no-black-style):hover {
+  background-color: #000000 !important;
+}
+
+button:not(.no-black-style):disabled {
+  background-color: #4b5563 !important;
+  opacity: 0.6;
+}
+
 /* Line clamp utilities for text truncation */
 .line-clamp-2 {
   display: -webkit-box;

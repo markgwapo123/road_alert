@@ -100,7 +100,7 @@ const Dashboard = () => {
 
   const StatCard = ({ title, value, icon: Icon, color, onClick }) => (
     <div 
-      className="bg-white rounded-lg shadow p-6 cursor-pointer transition-all duration-200 hover:shadow-lg hover:scale-105 transform"
+      className="bg-white rounded-lg shadow p-4 sm:p-6 cursor-pointer transition-all duration-200 hover:shadow-lg hover:scale-105 transform"
       onClick={onClick}
       role="button"
       tabIndex={0}
@@ -112,10 +112,10 @@ const Dashboard = () => {
     >
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-sm font-medium text-gray-600">{title}</p>
-          <p className="text-3xl font-bold text-gray-900">{loading ? '...' : value}</p>
+          <p className="text-xs sm:text-sm font-medium text-gray-600">{title}</p>
+          <p className="text-2xl sm:text-3xl font-bold text-gray-900">{loading ? '...' : value}</p>
         </div>
-        <Icon className={`h-8 w-8 ${color}`} />
+        <Icon className={`h-6 w-6 sm:h-8 sm:w-8 ${color}`} />
       </div>
       <div className="mt-2 text-xs text-gray-500">
         Click to view details

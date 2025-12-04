@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom'
-import { MapPinIcon, ChartBarIcon, DocumentTextIcon, UserIcon, ChevronDownIcon, CogIcon, KeyIcon, UserPlusIcon, ArrowRightOnRectangleIcon, UsersIcon, NewspaperIcon, ShieldCheckIcon } from '@heroicons/react/24/outline'
+import { MapPinIcon, ChartBarIcon, DocumentTextIcon, UserIcon, ChevronDownIcon, CogIcon, KeyIcon, UserPlusIcon, ArrowRightOnRectangleIcon, UsersIcon, NewspaperIcon, ShieldCheckIcon, Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline'
 import { useState, useEffect } from 'react'
 import AdminLogoutConfirmModal from './AdminLogoutConfirmModal'
 import axios from 'axios'
@@ -10,6 +10,7 @@ const Navbar = () => {
   const [showAdminDropdown, setShowAdminDropdown] = useState(false)
   const [showLogoutModal, setShowLogoutModal] = useState(false)
   const [currentAdmin, setCurrentAdmin] = useState(null)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   
   useEffect(() => {
     if (location.pathname !== '/login') {
@@ -69,16 +70,16 @@ const Navbar = () => {
 
   return (
     <nav className="bg-white shadow-lg border-b">
-      <div className="container mx-auto px-4">
+      <div className="container mx-auto px-2 sm:px-4">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
           <div className="flex items-center space-x-2">
-            <MapPinIcon className="h-8 w-8 text-red-600" />
-            <span className="text-xl font-bold text-gray-900">RoadAlert</span>
+            <MapPinIcon className="h-6 w-6 sm:h-8 sm:w-8 text-red-600" />
+            <span className="text-lg sm:text-xl font-bold text-gray-900">RoadAlert</span>
           </div>
 
-          {/* Navigation Links */}
-          <div className="flex space-x-8">
+          {/* Desktop Navigation Links */}
+          <div className="hidden lg:flex space-x-4 xl:space-x-8">
             {filteredNavigation.map((item) => {
               const isActive = location.pathname === item.href
               return (
@@ -96,8 +97,10 @@ const Navbar = () => {
                 </Link>
               )
             })}
-          </div>          {/* Admin Dropdown Menu */}
-          <div className="relative">
+          </div>
+
+          {/* Desktop Admin Dropdown Menu */}
+          <div className="hidden lg:block relative">
             <button
               onClick={() => setShowAdminDropdown(!showAdminDropdown)}
               className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
@@ -196,7 +199,108 @@ const Navbar = () => {
               </div>
             )}
           </div>
+
+          {/* Mobile Menu Button */}
+          <button
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="lg:hidden p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+          >
+            {mobileMenuOpen ? (
+              <XMarkIcon className="h-6 w-6" />
+            ) : (
+              <Bars3Icon className="h-6 w-6" />
+            )}
+          </button>
         </div>
+
+        {/* Mobile Menu */}
+        {mobileMenuOpen && (
+          <div className="lg:hidden border-t border-gray-200 pb-3">
+            <div className="pt-2 pb-3 space-y-1">
+              {filteredNavigation.map((item) => {
+                const isActive = location.pathname === item.href
+                return (
+                  <Link
+                    key={item.name}
+                    to={item.href}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={`flex items-center space-x-3 px-4 py-3 text-base font-medium transition-colors ${
+                      isActive
+                        ? 'bg-red-100 text-red-700 border-l-4 border-red-600'
+                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100 border-l-4 border-transparent'
+                    }`}
+                  >
+                    <item.icon className="h-6 w-6" />
+                    <span>{item.name}</span>
+                  </Link>
+                )
+              })}
+            </div>
+
+            {/* Mobile Admin Section */}
+            <div className="pt-4 pb-3 border-t border-gray-200">
+              <div className="flex items-center px-4 mb-3">
+                <UserIcon className="h-6 w-6 text-red-600" />
+                <div className="ml-3">
+                  <div className="text-base font-medium text-gray-900">
+                    {currentAdmin?.username || 'Admin'}
+                  </div>
+                  <div className="text-sm text-gray-500">
+                    {currentAdmin?.role === 'super_admin' ? 'Super Admin' : 'Admin'}
+                  </div>
+                </div>
+              </div>
+              <div className="space-y-1">
+                <Link
+                  to="/admin/profile"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center px-4 py-2 text-base font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+                >
+                  <CogIcon className="h-5 w-5 mr-3" />
+                  Change Identity
+                </Link>
+                <Link
+                  to="/admin/change-password"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center px-4 py-2 text-base font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+                >
+                  <KeyIcon className="h-5 w-5 mr-3" />
+                  Change Password
+                </Link>
+                {currentAdmin?.role === 'super_admin' && (
+                  <>
+                    <Link
+                      to="/admin/manage-admins"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="flex items-center px-4 py-2 text-base font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+                    >
+                      <ShieldCheckIcon className="h-5 w-5 mr-3" />
+                      Manage Admins
+                    </Link>
+                    <Link
+                      to="/admin/create"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="flex items-center px-4 py-2 text-base font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+                    >
+                      <UserPlusIcon className="h-5 w-5 mr-3" />
+                      Create New Admin
+                    </Link>
+                  </>
+                )}
+                <button
+                  onClick={() => {
+                    setMobileMenuOpen(false)
+                    handleLogoutClick()
+                  }}
+                  className="flex items-center w-full px-4 py-2 text-base font-medium text-red-700 hover:bg-red-50"
+                >
+                  <ArrowRightOnRectangleIcon className="h-5 w-5 mr-3" />
+                  Logout
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Logout Confirmation Modal */}
