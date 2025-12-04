@@ -1,218 +1,29 @@
-/**
- * Privacy Protection Utility for Road Alert
- * Automatically blurs faces and license plates in captured images
- * Uses Canvas API and advanced image processing for privacy protection
- */
+// Privacy protection has been disabled by user request.
+// This module exposes the same function names used by the app but each function is a no-op.
+// Purpose: keep imports working while ensuring no image modifications occur.
 
 /**
- * Detects human faces in an image and blurs them
- * Uses facial feature detection (eyes, nose, mouth, hair)
- * @param {HTMLCanvasElement} canvas - Canvas with the image
- * @param {CanvasRenderingContext2D} context - Canvas context
- * @returns {Promise} Resolves when face blurring is complete
+ * No-op: previously blurred face regions.
  */
 export const blurDetectedFaces = async (canvas, context) => {
-  try {
-    console.log('🔍 Starting enhanced facial feature detection...');
-    const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
-    const regions = detectFacialFeatures(imageData.data, canvas.width, canvas.height);
-    
-    console.log(`👤 Detected ${regions.length} potential face regions`);
-    
-    if (regions.length === 0) {
-      console.log('No faces detected');
-      return;
-    }
-
-    // Blur each detected face region with 30px intensity
-    for (const region of regions) {
-      console.log(`Blurring face region: ${region.width}x${region.height} (confidence: ${(region.confidence * 100).toFixed(1)}%)`);
-      // Safety: if region is unreasonably large, clamp it to a percent of image
-      const imageArea = canvas.width * canvas.height;
-      const regionArea = region.width * region.height;
-      const maxPercent = 0.30; // don't allow a face blur to cover more than 30% of image
-      if (regionArea > imageArea * maxPercent) {
-        console.warn('Detected face region too large, shrinking to safe maximum percent', region, 'imageArea', imageArea);
-        // Shrink region while maintaining aspect ratio and centered on detected center
-        const aspect = region.width / region.height;
-        const maxArea = Math.floor(imageArea * maxPercent);
-        const newHeight = Math.floor(Math.sqrt(maxArea / aspect));
-        const newWidth = Math.floor(newHeight * aspect);
-        const centerX = region.x + region.width / 2;
-        const centerY = region.y + region.height / 2;
-        const nx = Math.max(0, Math.floor(centerX - newWidth / 2));
-        const ny = Math.max(0, Math.floor(centerY - newHeight / 2));
-        applyBlur(context, nx, ny, newWidth, newHeight, 30);
-      } else {
-        applyBlur(context, region.x, region.y, region.width, region.height, 30);
-      }
-    }
-    
-    console.log('✅ Face detection and blurring completed');
-  } catch (error) {
-    console.error('❌ Error in face detection:', error);
-  }
+  console.info('privacyProtection: blurDetectedFaces called but privacy protection is disabled.');
+  return;
 };
 
 /**
- * Detects license plates and hides them with Google Maps style overlay
- * @param {HTMLCanvasElement} canvas - Canvas with the image
- * @param {CanvasRenderingContext2D} context - Canvas context
- * @returns {Promise} Resolves when license plate hiding is complete
+ * No-op: previously hid license plates.
  */
 export const hideLicensePlates = async (canvas, context) => {
-  try {
-    console.log('🚗 Detecting license plates...');
-    const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
-    const plates = detectLicensePlates(imageData.data, canvas.width, canvas.height);
-    
-    console.log(`🔍 Detected ${plates.length} potential license plates`);
-    
-    if (plates.length === 0) {
-      console.log('No license plates detected');
-      return;
-    }
-
-    // Hide each detected license plate with Google Maps style overlay
-    for (const plate of plates) {
-      console.log(`Hiding license plate: ${plate.width}x${plate.height}`);
-      applyGoogleMapsStyleOverlay(context, plate.x, plate.y, plate.width, plate.height);
-    }
-    
-    console.log('✅ License plate detection and hiding completed');
-  } catch (error) {
-    console.error('❌ Error in license plate detection:', error);
-  }
+  console.info('privacyProtection: hideLicensePlates called but privacy protection is disabled.');
+  return;
 };
 
 /**
- * Advanced facial feature detection based on eyes, nose, mouth, and hair
- * @param {Uint8ClampedArray} data - Image pixel data
- * @param {number} width - Image width
- * @param {number} height - Image height
- * @returns {Array} Array of detected face regions
+ * No-op main entry point. Leaves the canvas unchanged.
  */
-const detectFacialFeatures = (data, width, height) => {
-  const regions = [];
-  const blockSize = 12; // Smaller blocks for precise feature detection
-  
-  // Focus on areas where faces are typically found (upper 70% of image)
-  const searchHeight = Math.floor(height * 0.7);
-  
-  for (let y = 0; y < searchHeight - blockSize; y += blockSize) {
-    for (let x = 0; x < width - blockSize; x += blockSize) {
-      
-      const features = analyzeFacialFeatures(data, width, height, x, y, blockSize);
-      
-      // If facial features detected, create comprehensive face region
-      if (features.hasFacialFeatures) {
-        const faceRegion = createCompleteFaceRegion(data, width, height, x, y, features, blockSize);
-        
-        // Ensure minimum face size and add to regions
-        if (faceRegion.width > 30 && faceRegion.height > 30) {
-          regions.push(faceRegion);
-        }
-      }
-    }
-  }
-  
-  return removeDuplicateRegions(regions);
-};
-
-/**
- * Analyzes a region for facial features (eyes, nose, mouth, hair)
- * @param {Uint8ClampedArray} data - Image data
- * @param {number} width - Image width
- * @param {number} height - Image height
- * @param {number} x - X coordinate
- * @param {number} y - Y coordinate
- * @param {number} blockSize - Block size to analyze
- * @returns {Object} Facial feature analysis
- */
-const analyzeFacialFeatures = (data, width, height, x, y, blockSize) => {
-  let eyePixels = 0;
-  let hairPixels = 0;
-  let skinPixels = 0;
-  let mouthPixels = 0;
-  let nosePixels = 0;
-  let totalPixels = 0;
-  
-  const features = {
-    hasEyes: false,
-    hasHair: false,
-    hasSkin: false,
-    hasMouth: false,
-    hasNose: false,
-    hasFacialFeatures: false,
-    confidence: 0
-  };
-  
-  // Analyze each pixel in the block
-  for (let by = 0; by < blockSize; by++) {
-    for (let bx = 0; bx < blockSize; bx++) {
-      const pixelIndex = ((y + by) * width + (x + bx)) * 4;
-      const r = data[pixelIndex];
-      const g = data[pixelIndex + 1];
-      const b = data[pixelIndex + 2];
-      const brightness = (r + g + b) / 3;
-      
-      // Eye detection (dark areas, pupils)
-      if (isEyePixel(r, g, b, brightness)) {
-        eyePixels++;
-      }
-      
-      // Hair detection (various dark to light browns, black, blonde)
-      if (isHairPixel(r, g, b, brightness)) {
-        hairPixels++;
-      }
-      
-      // Skin detection (improved algorithm)
-      if (isSkinTone(r, g, b) || isAlternateSkinTone(r, g, b)) {
-        skinPixels++;
-      }
-      
-      // Mouth/lip detection (reddish tones)
-      if (isMouthPixel(r, g, b)) {
-        mouthPixels++;
-      }
-      
-      // Nose detection (skin tone with shadows)
-      if (isNosePixel(r, g, b, brightness)) {
-        nosePixels++;
-      }
-      
-      totalPixels++;
-    }
-  }
-  
-  // Calculate feature ratios
-  const eyeRatio = eyePixels / totalPixels;
-  const hairRatio = hairPixels / totalPixels;
-  const skinRatio = skinPixels / totalPixels;
-  const mouthRatio = mouthPixels / totalPixels;
-  const noseRatio = nosePixels / totalPixels;
-  
-  // Feature detection thresholds
-  features.hasEyes = eyeRatio > 0.15; // Eyes are prominent
-  features.hasHair = hairRatio > 0.20; // Hair coverage
-  features.hasSkin = skinRatio > 0.25; // Skin tone presence
-  features.hasMouth = mouthRatio > 0.08; // Mouth/lip area
-  features.hasNose = noseRatio > 0.10; // Nose area
-  
-  // Determine if this looks like a face
-  const featureCount = [
-    features.hasEyes,
-    features.hasHair,
-    features.hasSkin,
-    features.hasMouth,
-    features.hasNose
-  ].filter(Boolean).length;
-  
-  // Need at least 2 facial features to consider it a face
-  features.hasFacialFeatures = featureCount >= 2;
-  features.confidence = featureCount / 5; // Confidence based on number of features
-  
-  return features;
+export const applyPrivacyProtection = async (canvas) => {
+  console.info('privacyProtection: applyPrivacyProtection called but privacy protection is disabled. Leaving image unchanged.');
+  return;
 };
 
 /**
@@ -743,38 +554,6 @@ const regionsOverlap = (region1, region2) => {
   );
 };
 
-/**
- * Main function to apply comprehensive privacy protection to an image
- * @param {HTMLCanvasElement} canvas - Canvas element containing the image
- * @returns {Promise} Resolves when privacy protection is complete
- */
-export const applyPrivacyProtection = async (canvas) => {
-  try {
-    console.log('🔒 Starting comprehensive privacy protection...');
-    
-    const context = canvas.getContext('2d');
-    if (!context) {
-      throw new Error('Could not get canvas context');
-    }
-    // Quick scan first: detect faces and plates without modifying canvas
-    const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
-    const faces = detectFacialFeatures(imageData.data, canvas.width, canvas.height);
-    const plates = detectLicensePlates(imageData.data, canvas.width, canvas.height);
-
-    if ((!faces || faces.length === 0) && (!plates || plates.length === 0)) {
-      console.log('No humans or vehicles detected — leaving image unchanged');
-      return; // nothing to blur or hide
-    }
-
-    // Apply face blurring (only when detections exist)
-    await blurDetectedFaces(canvas, context);
-
-    // Apply license plate hiding
-    await hideLicensePlates(canvas, context);
-    
-    console.log('✅ Privacy protection applied successfully');
-  } catch (error) {
-    console.error('❌ Error applying privacy protection:', error);
-    throw error;
-  }
-};
+// The original implementation of applyPrivacyProtection has been removed.
+// This file intentionally exports no-op functions above so callers remain functional
+// but no image blurring or plate hiding is performed.
