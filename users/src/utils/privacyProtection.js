@@ -756,10 +756,19 @@ export const applyPrivacyProtection = async (canvas) => {
     if (!context) {
       throw new Error('Could not get canvas context');
     }
-    
-    // Apply face blurring
+    // Quick scan first: detect faces and plates without modifying canvas
+    const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+    const faces = detectFacialFeatures(imageData.data, canvas.width, canvas.height);
+    const plates = detectLicensePlates(imageData.data, canvas.width, canvas.height);
+
+    if ((!faces || faces.length === 0) && (!plates || plates.length === 0)) {
+      console.log('No humans or vehicles detected — leaving image unchanged');
+      return; // nothing to blur or hide
+    }
+
+    // Apply face blurring (only when detections exist)
     await blurDetectedFaces(canvas, context);
-    
+
     // Apply license plate hiding
     await hideLicensePlates(canvas, context);
     
