@@ -322,22 +322,32 @@ const ReportsManagement = () => {
                 {/* Image Preview */}
                 {report.images && report.images.length > 0 && (
                   <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm font-bold text-gray-800">Images ({report.images.length})</p>
-                    </div>
+                    <p className="text-sm font-bold text-gray-800">Report Image</p>
                     <div className="h-32 bg-gray-100 rounded-lg overflow-hidden border border-gray-200 flex items-center justify-center">
                       <img
-                        src={`${config.BACKEND_URL}/uploads/${report.images[0]?.filename || report.images[0]}`}
-                        alt="Report image"
-                        className="max-w-full max-h-full object-contain cursor-pointer"
+                        src={(() => {
+                          const imageData = report.images[0];
+                          const filename = imageData?.filename || imageData;
+                          const cleanFilename = typeof filename === 'string' 
+                            ? filename.replace(/^.*\/uploads\//, '') 
+                            : filename;
+                          return `${config.BACKEND_URL}/uploads/${cleanFilename}`;
+                        })()}
+                        alt="Report evidence"
+                        className="max-w-full max-h-full object-contain cursor-pointer hover:opacity-90 transition-opacity"
                         onClick={() => {
-                          window.open(`${config.BACKEND_URL}/uploads/${report.images[0]?.filename || report.images[0]}`, '_blank');
+                          const imageData = report.images[0];
+                          const filename = imageData?.filename || imageData;
+                          const cleanFilename = typeof filename === 'string' 
+                            ? filename.replace(/^.*\/uploads\//, '') 
+                            : filename;
+                          window.open(`${config.BACKEND_URL}/uploads/${cleanFilename}`, '_blank');
                         }}
                         onError={(e) => {
                           e.target.src = `data:image/svg+xml;utf8,${encodeURIComponent(`
                             <svg xmlns='http://www.w3.org/2000/svg' width='128' height='128'>
                               <rect width='128' height='128' fill='%23f3f4f6'/>
-                              <text x='64' y='64' text-anchor='middle' dy='0.3em' fill='%236b7280' font-size='14'>Image not available</text>
+                              <text x='64' y='64' text-anchor='middle' dy='0.3em' fill='%236b7280' font-size='14'>Image unavailable</text>
                             </svg>
                           `)}`;
                         }}

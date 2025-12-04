@@ -1,6 +1,7 @@
 // Centralized configuration for admin frontend
-const BACKEND_URL = 'http://localhost:3001';
-const API_BASE_URL = 'http://localhost:3001/api';
+// Use production backend URL to access images uploaded from mobile devices
+const BACKEND_URL = 'https://roadalert-backend-xze4.onrender.com';
+const API_BASE_URL = 'https://roadalert-backend-xze4.onrender.com/api';
 
 // Lightweight logger (only in development)
 if (import.meta.env.DEV) {

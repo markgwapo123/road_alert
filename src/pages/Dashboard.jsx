@@ -421,26 +421,6 @@ const Dashboard = () => {
                       })}
                     </p>
                   </div>
-                </div>
-
-                {/* Right Column - Visual Content */}
-                <div className="space-y-4">
-                  {/* Map */}
-                  {selectedReport.location?.coordinates && (
-                    <div className="bg-white border border-gray-200 rounded-lg p-4">
-                      <h4 className="text-sm font-bold text-gray-800 mb-3">Location Map</h4>
-                      <div className="h-48 bg-gray-100 rounded-lg overflow-hidden border border-gray-200">
-                        <iframe
-                          src={`https://maps.google.com/maps?q=${selectedReport.location.coordinates.latitude},${selectedReport.location.coordinates.longitude}&z=15&output=embed`}
-                          width="100%"
-                          height="100%"
-                          style={{ border: 0 }}
-                          title="Report Location"
-                          loading="lazy"
-                        ></iframe>
-                      </div>
-                    </div>
-                  )}
 
                   {/* Quick Info */}
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
@@ -462,6 +442,76 @@ const Dashboard = () => {
                       )}
                     </div>
                   </div>
+                </div>
+
+                {/* Right Column - Visual Content */}
+                <div className="space-y-4">
+                  {/* Report Images */}
+                  {selectedReport.images && selectedReport.images.length > 0 && (
+                    <div className="bg-white border border-gray-200 rounded-lg p-4">
+                      <h4 className="text-sm font-bold text-gray-800 mb-3">Report Image</h4>
+                      <div className="rounded-lg overflow-hidden border border-gray-200 bg-gray-50 min-h-[200px] flex items-center justify-center">
+                        <img
+                          src={(() => {
+                            const imageData = selectedReport.images[0];
+                            const filename = imageData?.filename || imageData;
+                            // Remove any /api/reports prefix if present
+                            const cleanFilename = typeof filename === 'string' 
+                              ? filename.replace(/^.*\/uploads\//, '') 
+                              : filename;
+                            const imageUrl = `${config.BACKEND_URL}/uploads/${cleanFilename}`;
+                            console.log('🖼️ Constructed image URL:', imageUrl);
+                            console.log('📦 Raw image data:', imageData);
+                            return imageUrl;
+                          })()}
+                          alt="Report evidence"
+                          className="w-full h-auto object-contain max-h-64 cursor-pointer hover:opacity-90 transition-opacity"
+                          onClick={(e) => {
+                            window.open(e.target.src, '_blank');
+                          }}
+                          onLoad={(e) => {
+                            console.log('✅ Image loaded successfully:', e.target.src);
+                            e.target.style.backgroundColor = 'transparent';
+                          }}
+                          onError={(e) => {
+                            console.error('❌ Image failed to load:', e.target.src);
+                            console.log('Backend URL:', config.BACKEND_URL);
+                            console.log('Image data:', selectedReport.images[0]);
+                            e.target.style.display = 'none';
+                            e.target.parentElement.innerHTML = `
+                              <div class="flex flex-col items-center justify-center p-8 text-center">
+                                <svg class="h-16 w-16 text-gray-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                </svg>
+                                <p class="text-sm text-gray-600 font-medium">Image not available</p>
+                                <p class="text-xs text-gray-400 mt-1">Check browser console for details</p>
+                              </div>
+                            `;
+                          }}
+                        />
+                      </div>
+                      {selectedReport.images.length > 1 && (
+                        <p className="text-xs text-gray-500 mt-2">+ {selectedReport.images.length - 1} more image(s)</p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Map */}
+                  {selectedReport.location?.coordinates && (
+                    <div className="bg-white border border-gray-200 rounded-lg p-4">
+                      <h4 className="text-sm font-bold text-gray-800 mb-3">Location Map</h4>
+                      <div className="h-48 bg-gray-100 rounded-lg overflow-hidden border border-gray-200">
+                        <iframe
+                          src={`https://maps.google.com/maps?q=${selectedReport.location.coordinates.latitude},${selectedReport.location.coordinates.longitude}&z=15&output=embed`}
+                          width="100%"
+                          height="100%"
+                          style={{ border: 0 }}
+                          title="Report Location"
+                          loading="lazy"
+                        ></iframe>
+                      </div>
+                    </div>
+                  )}
 
                 </div>
               </div>
