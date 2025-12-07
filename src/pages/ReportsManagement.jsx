@@ -328,6 +328,13 @@ const ReportsManagement = () => {
                         src={(() => {
                           const imageData = report.images[0];
                           const filename = imageData?.filename || imageData;
+                          
+                          // If filename is already a full URL (Cloudinary), use it directly
+                          if (filename?.startsWith('http://') || filename?.startsWith('https://')) {
+                            return filename;
+                          }
+                          
+                          // Otherwise, construct local path
                           const cleanFilename = typeof filename === 'string' 
                             ? filename.replace(/^.*\/uploads\//, '') 
                             : filename;
@@ -338,6 +345,14 @@ const ReportsManagement = () => {
                         onClick={() => {
                           const imageData = report.images[0];
                           const filename = imageData?.filename || imageData;
+                          
+                          // If filename is already a full URL (Cloudinary), use it directly
+                          if (filename?.startsWith('http://') || filename?.startsWith('https://')) {
+                            window.open(filename, '_blank');
+                            return;
+                          }
+                          
+                          // Otherwise, construct local path
                           const cleanFilename = typeof filename === 'string' 
                             ? filename.replace(/^.*\/uploads\//, '') 
                             : filename;

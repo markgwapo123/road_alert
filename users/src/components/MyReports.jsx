@@ -202,7 +202,15 @@ const MyReports = ({ token }) => {
                   {report.images && Array.isArray(report.images) && report.images.length > 0 && (
                     <img 
                       className="report-image"
-                      src={`${config.BACKEND_URL}/uploads/${report.images[0]?.filename || report.images[0]}`} 
+                      src={(() => {
+                        const filename = report.images[0]?.filename || report.images[0];
+                        // If filename is already a full URL (Cloudinary), use it directly
+                        if (filename?.startsWith('http://') || filename?.startsWith('https://')) {
+                          return filename;
+                        }
+                        // Otherwise, construct local path
+                        return `${config.BACKEND_URL}/uploads/${filename}`;
+                      })()}
                       alt="Report"
                       onError={(e) => {
                         e.target.style.display = 'none';

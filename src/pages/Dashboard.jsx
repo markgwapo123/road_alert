@@ -455,13 +455,19 @@ const Dashboard = () => {
                           src={(() => {
                             const imageData = selectedReport.images[0];
                             const filename = imageData?.filename || imageData;
-                            // Remove any /api/reports prefix if present
+                            
+                            // If filename is already a full URL (Cloudinary), use it directly
+                            if (filename?.startsWith('http://') || filename?.startsWith('https://')) {
+                              console.log('🖼️ Using Cloudinary URL:', filename);
+                              return filename;
+                            }
+                            
+                            // Remove any /api/reports prefix if present for local files
                             const cleanFilename = typeof filename === 'string' 
                               ? filename.replace(/^.*\/uploads\//, '') 
                               : filename;
                             const imageUrl = `${config.BACKEND_URL}/uploads/${cleanFilename}`;
-                            console.log('🖼️ Constructed image URL:', imageUrl);
-                            console.log('📦 Raw image data:', imageData);
+                            console.log('🖼️ Constructed local image URL:', imageUrl);
                             return imageUrl;
                           })()}
                           alt="Report evidence"

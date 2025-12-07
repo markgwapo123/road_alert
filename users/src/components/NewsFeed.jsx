@@ -456,7 +456,15 @@ const NewsFeed = ({ user }) => {
                       <div className="report-image-container">
                         {report.images && report.images.length > 0 ? (
                           <img 
-                            src={`${config.BACKEND_URL}/uploads/${report.images[0].filename || report.images[0]}`}
+                            src={(() => {
+                              const filename = report.images[0].filename || report.images[0];
+                              // If filename is already a full URL (Cloudinary), use it directly
+                              if (filename?.startsWith('http://') || filename?.startsWith('https://')) {
+                                return filename;
+                              }
+                              // Otherwise, construct local path
+                              return `${config.BACKEND_URL}/uploads/${filename}`;
+                            })()}
                             alt="Report"
                             className="report-image"
                             onLoad={(e) => {
