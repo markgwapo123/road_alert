@@ -32,6 +32,11 @@ const ReportForm = ({ onReport, onClose }) => {
   const [success, setSuccess] = useState('');
   const [submitting, setSubmitting] = useState(false);
   
+  // Confirmation modal state
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [confirmMessage, setConfirmMessage] = useState('');
+  const [confirmType, setConfirmType] = useState(''); // 'success' or 'error'
+  
   // Camera states
   const [showCamera, setShowCamera] = useState(false);
   const [stream, setStream] = useState(null);
@@ -314,7 +319,7 @@ const ReportForm = ({ onReport, onClose }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(''); 
-    setSuccess(''); 
+    setSuccess('⏳ Submitting report... Please wait up to 15 seconds.'); 
     setSubmitting(true);
     
     if (!form.location) {
@@ -384,68 +389,80 @@ const ReportForm = ({ onReport, onClose }) => {
       location: form.location
     });
     
+    console.log('🌐 API Endpoint:', `${config.API_BASE_URL}/reports/user`);
+    console.log('🔧 Config:', config);
+    console.log('⏰ Sending request... (this may take up to 2 minutes if server is sleeping)');
+    
     try {
       const response = await axios.post(`${config.API_BASE_URL}/reports/user`, data, {
         headers: { 
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
           // Don't set Content-Type for FormData, let browser set it with boundary
         },
-        timeout: 30000 // 30 second timeout
+        timeout: 15000, // 15 second timeout (Render free tier can be slow)
+        onUploadProgress: (progressEvent) => {
+          const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+          console.log(`📤 Upload progress: ${percentCompleted}%`);
+        }
       });
       
       console.log('Report submission response:', response.data);
-      setSuccess('✅ Report submitted successfully! Your report has been sent for review and will be visible to other users once approved by our team.');
+      
+      // Show success modal
+      setConfirmType('success');
+      setConfirmMessage('✅ Report submitted successfully! Your report has been sent for review and will be visible to other users once approved by our team.');
+      setShowConfirmModal(true);
       
       // Clear the form
       setForm({ type: '', province: '', city: '', barangay: '', description: '', image: null, location: null });
+      setCapturedImage(null);
       
       // Call the callback to refresh any parent components
       if (onReport) {
         setTimeout(() => {
           onReport();
-        }, 1500); // Give user time to see the success message
-      }
-      
-      // Auto-close the form after 3 seconds if onClose is available
-      if (onClose) {
-        setTimeout(() => {
-          onClose();
-        }, 3000);
+        }, 1500);
       }
     } catch (err) {
       console.error('Report submission error:', err);
       console.error('Error response:', err.response?.data);
       
+      let errorMessage = '';
+      
       if (err.response?.status === 413) {
-        setError('❌ File is too large. Please select a smaller image (max 5MB).');
+        errorMessage = '❌ File is too large. Please select a smaller image (max 5MB).';
       } else if (err.response?.status === 400) {
         const errorData = err.response.data;
         if (errorData?.details && Array.isArray(errorData.details)) {
-          // Show detailed validation errors
           const detailMessages = errorData.details.map(detail => `• ${detail.msg || detail.message}`).join('\n');
-          setError(`❌ Validation Error:\n${detailMessages}`);
+          errorMessage = `❌ Validation Error:\n${detailMessages}`;
         } else {
           const errorMsg = errorData?.error || errorData?.message || 'Invalid form data';
-          setError(`❌ Validation Error: ${errorMsg}`);
+          errorMessage = `❌ Validation Error: ${errorMsg}`;
         }
       } else if (err.response?.status === 401) {
-        setError('❌ Authentication failed. Please log in again.');
+        errorMessage = '❌ Authentication failed. Please log in again.';
       } else if (err.response?.status === 403) {
         const errorData = err.response.data;
         if (errorData?.frozen) {
-          setError('🧊 Your account has been frozen. You cannot submit reports while your account is frozen. You can still view the news feed and existing reports.');
+          errorMessage = '🧊 Your account has been frozen. You cannot submit reports while your account is frozen.';
         } else {
-          setError(`❌ Access denied: ${errorData?.error || 'You are not authorized to perform this action.'}`);
+          errorMessage = `❌ Access denied: ${errorData?.error || 'You are not authorized to perform this action.'}`;
         }
       } else if (err.response?.status === 500) {
-        setError('❌ Server error. Please try again later or contact support.');
+        errorMessage = '❌ Server error. Please try again later or contact support.';
       } else if (err.code === 'NETWORK_ERROR' || err.code === 'ECONNREFUSED' || !err.response) {
-        setError('❌ Cannot connect to server. Please check if the backend server is running and try again.');
+        errorMessage = '❌ Cannot connect to server. Please check your internet connection and try again.';
       } else if (err.code === 'ECONNABORTED') {
-        setError('❌ Request timeout. Please check your internet connection and try again.');
+        errorMessage = '❌ Request timeout. The server took too long to respond. Please try again.';
       } else {
-        setError(`❌ ${err.response?.data?.message || err.response?.data?.error || 'Report submission failed. Please try again.'}`);
+        errorMessage = `❌ ${err.response?.data?.message || err.response?.data?.error || 'Report submission failed. Please try again.'}`;
       }
+      
+      // Show error modal
+      setConfirmType('error');
+      setConfirmMessage(errorMessage);
+      setShowConfirmModal(true);
     }
     setSubmitting(false);
   };
@@ -790,6 +807,85 @@ const ReportForm = ({ onReport, onClose }) => {
           {success}
           <div style={{ marginTop: '10px', fontSize: '14px', opacity: '0.8' }}>
             📧 You will receive a notification when your report is reviewed.
+          </div>
+        </div>
+      )}
+
+      {/* Confirmation Modal */}
+      {showConfirmModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 10000,
+          padding: '20px'
+        }}>
+          <div style={{
+            background: 'white',
+            borderRadius: '12px',
+            padding: '30px',
+            maxWidth: '500px',
+            width: '100%',
+            boxShadow: '0 10px 40px rgba(0,0,0,0.2)',
+            animation: 'slideIn 0.3s ease-out'
+          }}>
+            <div style={{
+              textAlign: 'center',
+              marginBottom: '20px'
+            }}>
+              <div style={{
+                fontSize: '60px',
+                marginBottom: '15px'
+              }}>
+                {confirmType === 'success' ? '✅' : '❌'}
+              </div>
+              <h3 style={{
+                fontSize: '22px',
+                fontWeight: 'bold',
+                color: confirmType === 'success' ? '#10b981' : '#ef4444',
+                marginBottom: '10px'
+              }}>
+                {confirmType === 'success' ? 'Success!' : 'Error'}
+              </h3>
+              <p style={{
+                fontSize: '16px',
+                color: '#374151',
+                lineHeight: '1.6',
+                whiteSpace: 'pre-line'
+              }}>
+                {confirmMessage}
+              </p>
+            </div>
+            <button
+              onClick={() => {
+                setShowConfirmModal(false);
+                if (confirmType === 'success' && onClose) {
+                  onClose();
+                }
+              }}
+              style={{
+                width: '100%',
+                padding: '14px',
+                backgroundColor: confirmType === 'success' ? '#10b981' : '#ef4444',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '16px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+              onMouseOver={(e) => e.target.style.opacity = '0.9'}
+              onMouseOut={(e) => e.target.style.opacity = '1'}
+            >
+              {confirmType === 'success' ? 'Done' : 'Try Again'}
+            </button>
           </div>
         </div>
       )}

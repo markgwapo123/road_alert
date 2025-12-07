@@ -8,20 +8,11 @@ const User = require('../models/User');
 const auth = require('../middleware/auth');
 const { canManageReports } = require('../middleware/roleAuth');
 const NotificationService = require('../services/NotificationService');
-const { cloudinary } = require('../config/cloudinary');
-const CloudinaryStorage = require('multer-storage-cloudinary');
 
 const router = express.Router();
 
-// Configure multer for file uploads with Cloudinary
-const storage = new CloudinaryStorage({
-  cloudinary: cloudinary,
-  params: {
-    folder: 'road-alert-reports',
-    allowed_formats: ['jpg', 'jpeg', 'png', 'gif', 'webp'],
-    transformation: [{ quality: 'auto', fetch_format: 'auto' }]
-  }
-});
+// Configure multer to store files in memory as Buffer (for Base64 conversion)
+const storage = multer.memoryStorage();
 
 const upload = multer({
   storage: storage,
@@ -359,13 +350,12 @@ router.post('/', upload.array('images', 5), reportValidation, async (req, res) =
       });
     }
 
-    // Process uploaded images - Cloudinary returns different properties
+    // Process uploaded images - Convert to Base64 for MongoDB storage
     const images = req.files ? req.files.map(file => ({
-      filename: file.path, // Cloudinary URL
+      data: file.buffer.toString('base64'), // Store image as Base64 string
       originalName: file.originalname,
       mimetype: file.mimetype,
-      size: file.size,
-      cloudinaryId: file.filename // Cloudinary public_id for deletion if needed
+      size: file.size
     })) : [];    // Create report
     const reportData = {
       ...req.body,
@@ -596,14 +586,12 @@ router.post('/user', require('../middleware/userAuth'), upload.array('images', 5
       });
     }
 
-    // Process uploaded images - Cloudinary returns different properties
+    // Process uploaded images - Convert to Base64 for MongoDB storage
     const images = req.files ? req.files.map(file => ({
-      filename: file.path, // Cloudinary URL
+      data: file.buffer.toString('base64'), // Store image as Base64 string
       originalName: file.originalname,
       mimetype: file.mimetype,
-      size: file.size,
-      cloudinaryId: file.filename, // Cloudinary public_id for deletion if needed
-      uploadPath: file.path // Keep for compatibility
+      size: file.size
     })) : [];
 
     // Create report data

@@ -454,7 +454,19 @@ const Dashboard = () => {
                         <img
                           src={(() => {
                             const imageData = selectedReport.images[0];
+                            
+                            // If it's a Base64 data URL in the new format
+                            if (imageData?.data) {
+                              console.log('🖼️ Using Base64 image from MongoDB');
+                              return `data:${imageData.mimetype};base64,${imageData.data}`;
+                            }
+                            
                             const filename = imageData?.filename || imageData;
+                            
+                            // If it's already a data URL, use it
+                            if (filename?.startsWith('data:')) {
+                              return filename;
+                            }
                             
                             // If filename is already a full URL (Cloudinary), use it directly
                             if (filename?.startsWith('http://') || filename?.startsWith('https://')) {

@@ -457,9 +457,17 @@ const NewsFeed = ({ user }) => {
                         {report.images && report.images.length > 0 ? (
                           <img 
                             src={(() => {
-                              const filename = report.images[0].filename || report.images[0];
-                              // If filename is already a full URL (Cloudinary), use it directly
+                              const imageData = report.images[0];
+                              // If it's a Base64 data URL, use it directly
+                              if (imageData?.data) {
+                                return `data:${imageData.mimetype};base64,${imageData.data}`;
+                              }
+                              // Legacy: If filename is a full URL (Cloudinary), use it directly
+                              const filename = imageData?.filename || imageData;
                               if (filename?.startsWith('http://') || filename?.startsWith('https://')) {
+                                return filename;
+                              }
+                              if (filename?.startsWith('data:')) {
                                 return filename;
                               }
                               // Otherwise, construct local path

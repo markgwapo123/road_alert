@@ -327,7 +327,18 @@ const ReportsManagement = () => {
                       <img
                         src={(() => {
                           const imageData = report.images[0];
+                          
+                          // If it's a Base64 data URL in the new format
+                          if (imageData?.data) {
+                            return `data:${imageData.mimetype};base64,${imageData.data}`;
+                          }
+                          
                           const filename = imageData?.filename || imageData;
+                          
+                          // If it's already a data URL, use it
+                          if (filename?.startsWith('data:')) {
+                            return filename;
+                          }
                           
                           // If filename is already a full URL (Cloudinary), use it directly
                           if (filename?.startsWith('http://') || filename?.startsWith('https://')) {
@@ -344,7 +355,21 @@ const ReportsManagement = () => {
                         className="max-w-full max-h-full object-contain cursor-pointer hover:opacity-90 transition-opacity"
                         onClick={() => {
                           const imageData = report.images[0];
+                          
+                          // If it's a Base64 data URL in the new format
+                          if (imageData?.data) {
+                            const dataUrl = `data:${imageData.mimetype};base64,${imageData.data}`;
+                            window.open(dataUrl, '_blank');
+                            return;
+                          }
+                          
                           const filename = imageData?.filename || imageData;
+                          
+                          // If it's already a data URL, use it
+                          if (filename?.startsWith('data:')) {
+                            window.open(filename, '_blank');
+                            return;
+                          }
                           
                           // If filename is already a full URL (Cloudinary), use it directly
                           if (filename?.startsWith('http://') || filename?.startsWith('https://')) {

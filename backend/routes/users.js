@@ -6,20 +6,11 @@ const path = require('path');
 const fs = require('fs');
 const User = require('../models/User');
 const userAuth = require('../middleware/userAuth');
-const { cloudinary } = require('../config/cloudinary');
-const CloudinaryStorage = require('multer-storage-cloudinary');
 
 const router = express.Router();
 
-// Configure multer for profile image uploads with Cloudinary
-const storage = new CloudinaryStorage({
-  cloudinary: cloudinary,
-  params: {
-    folder: 'road-alert-profiles',
-    allowed_formats: ['jpg', 'jpeg', 'png', 'gif', 'webp'],
-    transformation: [{ width: 500, height: 500, crop: 'limit', quality: 'auto' }]
-  }
-});
+// Configure multer to store files in memory for Base64 conversion
+const storage = multer.memoryStorage();
 
 const upload = multer({
   storage: storage,
@@ -248,14 +239,15 @@ router.post('/profile-image', userAuth, upload.single('image'), async (req, res)
       }
     }
 
-    // Update user with new profile image path - Cloudinary URL
-    const imageUrl = req.file.path; // Cloudinary URL
-    user.profile.profileImage = imageUrl;
+    // Convert image to Base64 and store in MongoDB
+    const imageBase64 = req.file.buffer.toString('base64');
+    const imageDataUrl = `data:${req.file.mimetype};base64,${imageBase64}`;
+    
+    user.profile.profileImage = imageDataUrl;
 
     // Add new image to gallery as current
     user.profile.profilePictureGallery.push({
-      imageUrl: imageUrl,
-      cloudinaryId: req.file.filename, // Cloudinary public_id for deletion if needed
+      imageUrl: imageDataUrl,
       uploadedAt: new Date(),
       isCurrent: true
     });
@@ -265,7 +257,7 @@ router.post('/profile-image', userAuth, upload.single('image'), async (req, res)
     res.json({
       success: true,
       message: 'Profile image uploaded successfully',
-      imageUrl: imageUrl
+      imageUrl: imageDataUrl
     });
 
   } catch (error) {
