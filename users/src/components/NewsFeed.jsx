@@ -464,14 +464,19 @@ const NewsFeed = ({ user }) => {
                               }
                               // Legacy: If filename is a full URL (Cloudinary), use it directly
                               const filename = imageData?.filename || imageData;
-                              if (filename?.startsWith('http://') || filename?.startsWith('https://')) {
-                                return filename;
+                              // Make sure filename is a string before calling startsWith
+                              if (typeof filename === 'string') {
+                                if (filename.startsWith('http://') || filename.startsWith('https://')) {
+                                  return filename;
+                                }
+                                if (filename.startsWith('data:')) {
+                                  return filename;
+                                }
+                                // Otherwise, construct local path
+                                return `${config.BACKEND_URL}/uploads/${filename}`;
                               }
-                              if (filename?.startsWith('data:')) {
-                                return filename;
-                              }
-                              // Otherwise, construct local path
-                              return `${config.BACKEND_URL}/uploads/${filename}`;
+                              // Fallback for non-string values
+                              return '';
                             })()}
                             alt="Report"
                             className="report-image"
