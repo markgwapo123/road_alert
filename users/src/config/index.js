@@ -10,7 +10,8 @@ const DEVELOPMENT_API_URL = isCapacitor
 
 // Use production URL in production, development URL otherwise
 // If VITE_API_URL is set, always use it (for development with production backend)
-const BASE_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? PRODUCTION_API_URL : DEVELOPMENT_API_URL);
+// TEMPORARY: Always use production URL for testing
+const BASE_URL = PRODUCTION_API_URL;
 
 const config = {
   API_BASE_URL: `${BASE_URL}/api`,
