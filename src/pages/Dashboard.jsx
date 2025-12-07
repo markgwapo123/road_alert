@@ -209,7 +209,7 @@ const Dashboard = () => {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">RoadAlert Dashboard</h1>
+        <h1 className="text-2xl font-bold text-gray-900">BantayDalan Dashboard</h1>
         <p className="text-gray-600">Overview of road hazard reports and system status</p>
       </div>
 
@@ -463,24 +463,28 @@ const Dashboard = () => {
                             
                             const filename = imageData?.filename || imageData;
                             
-                            // If it's already a data URL, use it
-                            if (filename?.startsWith('data:')) {
-                              return filename;
+                            // Make sure filename is a string before calling startsWith
+                            if (typeof filename === 'string') {
+                              // If it's already a data URL, use it
+                              if (filename.startsWith('data:')) {
+                                return filename;
+                              }
+                              
+                              // If filename is already a full URL (Cloudinary), use it directly
+                              if (filename.startsWith('http://') || filename.startsWith('https://')) {
+                                console.log('🖼️ Using Cloudinary URL:', filename);
+                                return filename;
+                              }
+                              
+                              // Remove any /api/reports prefix if present for local files
+                              const cleanFilename = filename.replace(/^.*\/uploads\//, '');
+                              const imageUrl = `${config.BACKEND_URL}/uploads/${cleanFilename}`;
+                              console.log('🖼️ Constructed local image URL:', imageUrl);
+                              return imageUrl;
                             }
                             
-                            // If filename is already a full URL (Cloudinary), use it directly
-                            if (filename?.startsWith('http://') || filename?.startsWith('https://')) {
-                              console.log('🖼️ Using Cloudinary URL:', filename);
-                              return filename;
-                            }
-                            
-                            // Remove any /api/reports prefix if present for local files
-                            const cleanFilename = typeof filename === 'string' 
-                              ? filename.replace(/^.*\/uploads\//, '') 
-                              : filename;
-                            const imageUrl = `${config.BACKEND_URL}/uploads/${cleanFilename}`;
-                            console.log('🖼️ Constructed local image URL:', imageUrl);
-                            return imageUrl;
+                            // Fallback for non-string values
+                            return '';
                           })()}
                           alt="Report evidence"
                           className="w-full h-auto object-contain max-h-64 cursor-pointer hover:opacity-90 transition-opacity"

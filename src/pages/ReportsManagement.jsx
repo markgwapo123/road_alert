@@ -335,14 +335,17 @@ const ReportsManagement = () => {
                           
                           const filename = imageData?.filename || imageData;
                           
-                          // If it's already a data URL, use it
-                          if (filename?.startsWith('data:')) {
-                            return filename;
-                          }
-                          
-                          // If filename is already a full URL (Cloudinary), use it directly
-                          if (filename?.startsWith('http://') || filename?.startsWith('https://')) {
-                            return filename;
+                          // Make sure filename is a string before calling startsWith
+                          if (typeof filename === 'string') {
+                            // If it's already a data URL, use it
+                            if (filename.startsWith('data:')) {
+                              return filename;
+                            }
+                            
+                            // If filename is already a full URL (Cloudinary), use it directly
+                            if (filename.startsWith('http://') || filename.startsWith('https://')) {
+                              return filename;
+                            }
                           }
                           
                           // Otherwise, construct local path
@@ -365,23 +368,24 @@ const ReportsManagement = () => {
                           
                           const filename = imageData?.filename || imageData;
                           
-                          // If it's already a data URL, use it
-                          if (filename?.startsWith('data:')) {
-                            window.open(filename, '_blank');
-                            return;
+                          // Make sure filename is a string before calling startsWith
+                          if (typeof filename === 'string') {
+                            // If it's already a data URL, use it
+                            if (filename.startsWith('data:')) {
+                              window.open(filename, '_blank');
+                              return;
+                            }
+                            
+                            // If filename is already a full URL (Cloudinary), use it directly
+                            if (filename.startsWith('http://') || filename.startsWith('https://')) {
+                              window.open(filename, '_blank');
+                              return;
+                            }
+                            
+                            // Otherwise, construct local path
+                            const cleanFilename = filename.replace(/^.*\/uploads\//, '');
+                            window.open(`${config.BACKEND_URL}/uploads/${cleanFilename}`, '_blank');
                           }
-                          
-                          // If filename is already a full URL (Cloudinary), use it directly
-                          if (filename?.startsWith('http://') || filename?.startsWith('https://')) {
-                            window.open(filename, '_blank');
-                            return;
-                          }
-                          
-                          // Otherwise, construct local path
-                          const cleanFilename = typeof filename === 'string' 
-                            ? filename.replace(/^.*\/uploads\//, '') 
-                            : filename;
-                          window.open(`${config.BACKEND_URL}/uploads/${cleanFilename}`, '_blank');
                         }}
                         onError={(e) => {
                           e.target.src = `data:image/svg+xml;utf8,${encodeURIComponent(`
