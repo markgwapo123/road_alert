@@ -8,21 +8,18 @@ const User = require('../models/User');
 const auth = require('../middleware/auth');
 const { canManageReports } = require('../middleware/roleAuth');
 const NotificationService = require('../services/NotificationService');
+const { cloudinary } = require('../config/cloudinary');
+const CloudinaryStorage = require('multer-storage-cloudinary');
 
 const router = express.Router();
 
-// Configure multer for file uploads
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const uploadPath = path.join(__dirname, '../uploads');
-    if (!fs.existsSync(uploadPath)) {
-      fs.mkdirSync(uploadPath, { recursive: true });
-    }
-    cb(null, uploadPath);
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, 'report-' + uniqueSuffix + path.extname(file.originalname));
+// Configure multer for file uploads with Cloudinary
+const storage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: 'road-alert-reports',
+    allowed_formats: ['jpg', 'jpeg', 'png', 'gif', 'webp'],
+    transformation: [{ quality: 'auto', fetch_format: 'auto' }]
   }
 });
 
@@ -362,12 +359,13 @@ router.post('/', upload.array('images', 5), reportValidation, async (req, res) =
       });
     }
 
-    // Process uploaded images
+    // Process uploaded images - Cloudinary returns different properties
     const images = req.files ? req.files.map(file => ({
-      filename: file.filename,
+      filename: file.path, // Cloudinary URL
       originalName: file.originalname,
       mimetype: file.mimetype,
-      size: file.size
+      size: file.size,
+      cloudinaryId: file.filename // Cloudinary public_id for deletion if needed
     })) : [];    // Create report
     const reportData = {
       ...req.body,
@@ -598,13 +596,14 @@ router.post('/user', require('../middleware/userAuth'), upload.array('images', 5
       });
     }
 
-    // Process uploaded images
+    // Process uploaded images - Cloudinary returns different properties
     const images = req.files ? req.files.map(file => ({
-      filename: file.filename,
+      filename: file.path, // Cloudinary URL
       originalName: file.originalname,
       mimetype: file.mimetype,
       size: file.size,
-      uploadPath: `/uploads/${file.filename}`
+      cloudinaryId: file.filename, // Cloudinary public_id for deletion if needed
+      uploadPath: file.path // Keep for compatibility
     })) : [];
 
     // Create report data
@@ -658,16 +657,9 @@ router.post('/user', require('../middleware/userAuth'), upload.array('images', 5
   } catch (error) {
     console.error('User report submission error:', error);
     
-    // Clean up uploaded files if report creation fails
-    if (req.files && req.files.length > 0) {
-      req.files.forEach(file => {
-        const filePath = path.join(__dirname, '../uploads', file.filename);
-        if (fs.existsSync(filePath)) {
-          fs.unlinkSync(filePath);
-        }
-      });
-    }
-
+    // Note: With Cloudinary, uploaded files are already stored in the cloud
+    // No need to clean up local files
+    
     res.status(500).json({
       success: false,
       error: 'Failed to submit report. Please try again.'

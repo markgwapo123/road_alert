@@ -6,21 +6,18 @@ const path = require('path');
 const fs = require('fs');
 const User = require('../models/User');
 const userAuth = require('../middleware/userAuth');
+const { cloudinary } = require('../config/cloudinary');
+const CloudinaryStorage = require('multer-storage-cloudinary');
 
 const router = express.Router();
 
-// Configure multer for profile image uploads
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const uploadPath = path.join(__dirname, '../uploads');
-    if (!fs.existsSync(uploadPath)) {
-      fs.mkdirSync(uploadPath, { recursive: true });
-    }
-    cb(null, uploadPath);
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, 'profile-' + uniqueSuffix + path.extname(file.originalname));
+// Configure multer for profile image uploads with Cloudinary
+const storage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: 'road-alert-profiles',
+    allowed_formats: ['jpg', 'jpeg', 'png', 'gif', 'webp'],
+    transformation: [{ width: 500, height: 500, crop: 'limit', quality: 'auto' }]
   }
 });
 
@@ -251,13 +248,14 @@ router.post('/profile-image', userAuth, upload.single('image'), async (req, res)
       }
     }
 
-    // Update user with new profile image path
-    const imageUrl = `/uploads/${req.file.filename}`;
+    // Update user with new profile image path - Cloudinary URL
+    const imageUrl = req.file.path; // Cloudinary URL
     user.profile.profileImage = imageUrl;
 
     // Add new image to gallery as current
     user.profile.profilePictureGallery.push({
       imageUrl: imageUrl,
+      cloudinaryId: req.file.filename, // Cloudinary public_id for deletion if needed
       uploadedAt: new Date(),
       isCurrent: true
     });
@@ -273,14 +271,9 @@ router.post('/profile-image', userAuth, upload.single('image'), async (req, res)
   } catch (error) {
     console.error('Profile image upload error:', error);
     
-    // Delete uploaded file if there was an error
-    if (req.file) {
-      const filePath = path.join(__dirname, '../uploads', req.file.filename);
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
-      }
-    }
-
+    // Note: With Cloudinary, uploaded files are already stored in the cloud
+    // No need to clean up local files
+    
     res.status(500).json({
       success: false,
       error: 'Server error while uploading profile image'
