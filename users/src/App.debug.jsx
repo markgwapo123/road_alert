@@ -11,7 +11,7 @@ function App() {
 
   return (
     <div style={{ padding: '20px', fontFamily: 'Arial, sans-serif' }}>
-      <h1>🚧 Road Alert - Debug Mode</h1>
+      <h1>🚧 Bantay Dalan - Debug Mode</h1>
       <div style={{ background: '#f0f0f0', padding: '10px', margin: '10px 0' }}>
         <h3>Environment Info:</h3>
         <p><strong>Mode:</strong> {import.meta.env.MODE}</p>

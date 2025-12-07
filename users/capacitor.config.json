@@ -1,6 +1,6 @@
 {
-  "appId": "com.roadalert.app",
-  "appName": "RoadAlert",
+  "appId": "com.bantaydalan.app",
+  "appName": "BantayDalan",
   "webDir": "dist",
   "server": {
     "androidScheme": "https"

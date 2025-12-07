@@ -85,7 +85,7 @@ const Dashboard = ({ token }) => {
       {/* Dashboard Header */}
       <div className="dashboard-header">
         <h1 className="dashboard-title">Dashboard</h1>
-        <p className="dashboard-subtitle">Welcome to your Road Alert dashboard</p>
+        <p className="dashboard-subtitle">Welcome to your BantayDalan dashboard</p>
       </div>
 
       {/* Stats Cards */}

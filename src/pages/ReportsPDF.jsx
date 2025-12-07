@@ -204,7 +204,7 @@ const ReportsPDF = () => {
   const downloadPDF = async () => {
     const doc = new jsPDF();
     doc.setFontSize(16);
-    doc.text('RoadAlert - Detailed Report List', 14, 16);
+    doc.text('BantayDalan - Detailed Report List', 14, 16);
     let y = 26;
     
     for (let idx = 0; idx < reports.length; idx++) {
@@ -217,7 +217,7 @@ const ReportsPDF = () => {
       doc.text(`Report #${idx + 1}`, 14, y); y += 8;
       y = await addReportToPDF(doc, r, y + 2);
     }
-    doc.save('roadalert-detailed-reports.pdf');
+    doc.save('bantaydalan-detailed-reports.pdf');
   };
 
   // Helper: Card UI for each report

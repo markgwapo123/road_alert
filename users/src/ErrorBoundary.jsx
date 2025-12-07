@@ -18,7 +18,7 @@ class ErrorBoundary extends React.Component {
     if (this.state.hasError) {
       return (
         <div style={{ padding: '20px', fontFamily: 'Arial, sans-serif' }}>
-          <h1>🚧 Road Alert - Error</h1>
+          <h1>🚧 Bantay Dalan - Error</h1>
           <div style={{ background: '#ffebee', padding: '10px', margin: '10px 0', border: '1px solid #f44336' }}>
             <h3>Something went wrong:</h3>
             <p>{this.state.error?.toString()}</p>

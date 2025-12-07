@@ -190,7 +190,7 @@ function App() {
       <nav className="navbar desktop-nav">
         <div className="navbar-left">
           <span className="logo">🚧</span>
-          <span className="app-name">ROAD ALERT</span>
+          <span className="app-name">BANTAY DALAN</span>
         </div>
       </nav>
 

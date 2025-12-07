@@ -1,4 +1,4 @@
-package com.roadalert.app;
+package com.bantaydalan.app;
 
 import com.getcapacitor.BridgeActivity;
 

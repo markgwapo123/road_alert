@@ -108,7 +108,7 @@ app.use('/uploads', (req, res, next) => {
 // Root route
 app.get('/', (req, res) => {
   res.json({
-    message: '🚀 RoadAlert Backend API',
+    message: '🚀 BantayDalan Backend API',
     status: 'Running',
     version: '1.0.0',
     endpoints: {
@@ -286,7 +286,7 @@ const initializeDatabase = async () => {
 initializeDatabase();
 
 app.listen(PORT, () => {
-  console.log(`🚀 RoadAlert Backend Server running on port ${PORT}`);
+  console.log(`🚀 BantayDalan Backend Server running on port ${PORT}`);
   console.log(`📍 Environment: ${process.env.NODE_ENV}`);
   console.log(`🗄️  Database: ${process.env.MONGODB_URI}`);
 });

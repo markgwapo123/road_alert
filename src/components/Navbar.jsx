@@ -75,7 +75,7 @@ const Navbar = () => {
           {/* Logo */}
           <div className="flex items-center space-x-2">
             <MapPinIcon className="h-6 w-6 sm:h-8 sm:w-8 text-red-600" />
-            <span className="text-lg sm:text-xl font-bold text-gray-900">RoadAlert</span>
+            <span className="text-lg sm:text-xl font-bold text-gray-900">BantayDalan</span>
           </div>
 
           {/* Desktop Navigation Links */}

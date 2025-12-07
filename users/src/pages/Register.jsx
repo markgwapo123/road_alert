@@ -122,14 +122,14 @@ const Register = ({ onRegister, switchToLogin }) => {
         <div className="mobile-mockup">
           <img 
             src="/mockup-laptop-phone.png" 
-            alt="RoadAlert on laptop and phone" 
+            alt="BantayDalan on laptop and phone" 
           />
         </div>
 
         <div className="auth-logo">
-          <img src="/roadalerlogo.png" alt="RoadAlert Logo" className="auth-logo-icon" />
+          <img src="/roadalerlogo.png" alt="BantayDalan Logo" className="auth-logo-icon" />
           <h1 className="auth-logo-text">
-            <span className="brand-name">Road</span><span className="brand-suffix">Alert</span>
+            <span className="brand-name">Bantay</span><span className="brand-suffix">Dalan</span>
           </h1>
         </div>
         

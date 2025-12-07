@@ -1,7 +1,7 @@
 {
-  "name": "roadalert-backend",
+  "name": "bantaydalan-backend",
   "version": "1.0.0",
-  "description": "Backend API for RoadAlert road hazard reporting system",
+  "description": "Backend API for BantayDalan road hazard reporting system",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
@@ -33,11 +33,11 @@
     "nodemon": "^3.0.2"
   },
   "keywords": [
-    "roadalert",
+    "bantaydalan",
     "api",
     "road-safety",
     "hazard-reporting"
   ],
-  "author": "RoadAlert Team",
+  "author": "BantayDalan Team",
   "license": "MIT"
 }

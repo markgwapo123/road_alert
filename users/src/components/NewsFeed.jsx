@@ -292,7 +292,7 @@ const NewsFeed = ({ user }) => {
             marginBottom: '-2px'
           }}
         >
-          🚨 Road Alerts ({filteredReports.length})
+          🚨 Mga Alerto ({filteredReports.length})
         </button>
         <button
           onClick={() => setActiveTab('news')}

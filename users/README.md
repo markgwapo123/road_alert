@@ -1,4 +1,4 @@
-# RoadAlert Client Web Application
+# BantayDalan Client Web Application
 
 This project is a React.js web app for users to report road hazards, view verified reports, and manage their profile. It connects to the same backend as the admin dashboard (Express.js + MongoDB).
 
