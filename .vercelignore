@@ -23,7 +23,8 @@ Thumbs.db
 .git
 .gitignore
 
-# Other workspaces (not part of users build)
+# Other workspaces (not part of admin build)
+users
 backend
 production-backend
 render-backend
