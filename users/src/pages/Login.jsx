@@ -110,7 +110,7 @@ const Login = ({ onLogin, switchToRegister }) => {
       const res = await axios.post(`${config.API_BASE_URL}/auth/forgot-password`, {
         email: loginId.trim()
       }, {
-        timeout: 5000
+        timeout: 30000 // 30 seconds for sleeping Render backend
       });
       
       setResetMessage('Password reset instructions have been sent to your email.');
@@ -142,7 +142,7 @@ const Login = ({ onLogin, switchToRegister }) => {
         email: loginId.trim(),
         password
       }, {
-        timeout: 5000
+        timeout: 30000 // 30 seconds for sleeping Render backend
       });
       onLogin(res.data.token);
     } catch (err) {
