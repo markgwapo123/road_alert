@@ -458,9 +458,19 @@ const NewsFeed = ({ user }) => {
                           <img 
                             src={(() => {
                               const imageData = report.images[0];
+                              console.log('🖼️ Image Data Debug:', {
+                                hasData: !!imageData?.data,
+                                hasFilename: !!imageData?.filename,
+                                dataType: typeof imageData,
+                                dataKeys: imageData ? Object.keys(imageData) : [],
+                                mimeType: imageData?.mimetype,
+                                dataLength: imageData?.data?.length
+                              });
                               // If it's a Base64 data URL, use it directly
                               if (imageData?.data) {
-                                return `data:${imageData.mimetype};base64,${imageData.data}`;
+                                const base64Url = `data:${imageData.mimetype};base64,${imageData.data}`;
+                                console.log('✅ Using Base64 data URL, length:', base64Url.length);
+                                return base64Url;
                               }
                               // Legacy: If filename is a full URL (Cloudinary), use it directly
                               const filename = imageData?.filename || imageData;
@@ -486,11 +496,19 @@ const NewsFeed = ({ user }) => {
                             onError={(e) => {
                               console.error('❌ Image failed to load:', e.target.src);
                               console.error('Backend URL:', config.BACKEND_URL);
-                              console.error('Image filename:', report.images[0].filename || report.images[0]);
+                              const imageData = report.images[0];
+                              const filename = imageData?.filename || (typeof imageData === 'string' ? imageData : null);
+                              console.error('Image filename:', filename);
+                              
+                              // Only try alternative URLs if we have a valid filename string
+                              if (!filename || typeof filename !== 'string') {
+                                console.error('❌ No valid filename, hiding image');
+                                e.target.style.display = 'none';
+                                return;
+                              }
                               
                               // Try alternative URLs
                               const originalSrc = e.target.src;
-                              const filename = report.images[0].filename || report.images[0];
                               
                               // Try different URL formats
                               const alternativeUrls = [

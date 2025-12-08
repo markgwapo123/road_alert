@@ -10,8 +10,8 @@ const DEVELOPMENT_API_URL = isCapacitor
 
 // Use production URL in production, development URL otherwise
 // If VITE_API_URL is set, always use it (for development with production backend)
-// TEMPORARY: Always use production URL for testing
-const BASE_URL = PRODUCTION_API_URL;
+// TEMPORARY: Use local backend for testing Base64 images
+const BASE_URL = DEVELOPMENT_API_URL;
 
 const config = {
   API_BASE_URL: `${BASE_URL}/api`,

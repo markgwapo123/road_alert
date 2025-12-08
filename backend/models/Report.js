@@ -54,7 +54,8 @@ const reportSchema = new mongoose.Schema({
     default: 'pending'
   },
   images: [{
-    filename: String,
+    filename: String,  // Legacy: For old file-based storage
+    data: String,      // Base64 encoded image data
     originalName: String,
     mimetype: String,
     size: Number,
