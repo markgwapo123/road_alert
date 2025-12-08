@@ -102,11 +102,14 @@ const ReportsManagement = () => {
   const handleDelete = async (reportId) => {
     if (!window.confirm('Are you sure you want to delete this report? This action cannot be undone.')) return;
     try {
+      console.log('🗑️ Deleting report with ID:', reportId);
       await reportsAPI.deleteReport(reportId);
       await fetchReports();
       alert('Report deleted successfully!');
     } catch (error) {
-      console.error('Failed to delete report:', error);
+      console.error('❌ Failed to delete report:', error);
+      console.error('❌ Report ID:', reportId);
+      console.error('❌ Error response:', error.response?.data);
       alert('Failed to delete report: ' + (error.response?.data?.error || error.message));
     }
   }
