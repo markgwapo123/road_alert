@@ -3,11 +3,11 @@ const isCapacitor = window.Capacitor !== undefined;
 const isWeb = !isCapacitor;
 
 // Production and development URLs
-const PRODUCTION_API_URL = import.meta.env.VITE_API_URL || 'https://roadalert-backend-xze4.onrender.com'; // Your actual Render URL
-const DEVELOPMENT_API_URL = 'http://localhost:3001'; // Only for web development
+const PRODUCTION_API_URL = import.meta.env.VITE_API_URL || 'https://roadalert-backend-xze4.onrender.com';
+const DEVELOPMENT_API_URL = 'http://localhost:3001';
 
-// IMPORTANT: Use production backend for mobile app
-// Mobile apps cannot access localhost, they need the real server
+// IMPORTANT: Mobile app MUST use production backend (cannot access localhost)
+// Web app can use localhost for development
 const BASE_URL = isCapacitor ? PRODUCTION_API_URL : DEVELOPMENT_API_URL;
 
 const config = {
@@ -18,7 +18,7 @@ const config = {
   IS_WEB: isWeb
 };
 
-// Debug logging for profile image issues
+// Debug logging
 console.log('🔧 Config Debug Info:', {
   BASE_URL,
   API_BASE_URL: config.API_BASE_URL,
