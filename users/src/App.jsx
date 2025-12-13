@@ -257,7 +257,6 @@ function App() {
                 setShowReport(false);
               }}
             />
-            />
           </div>
         )}
         

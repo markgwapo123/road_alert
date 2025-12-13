@@ -4,14 +4,11 @@ const isWeb = !isCapacitor;
 
 // Production and development URLs
 const PRODUCTION_API_URL = import.meta.env.VITE_API_URL || 'https://roadalert-backend-xze4.onrender.com'; // Your actual Render URL
-const DEVELOPMENT_API_URL = isCapacitor 
-  ? 'http://192.168.1.150:3001' 
-  : 'http://localhost:3001';
+const DEVELOPMENT_API_URL = 'http://localhost:3001'; // Only for web development
 
-// Use production URL in production, development URL otherwise
-// If VITE_API_URL is set, always use it (for development with production backend)
-// TEMPORARY: Use local backend for testing Base64 images
-const BASE_URL = DEVELOPMENT_API_URL;
+// IMPORTANT: Use production backend for mobile app
+// Mobile apps cannot access localhost, they need the real server
+const BASE_URL = isCapacitor ? PRODUCTION_API_URL : DEVELOPMENT_API_URL;
 
 const config = {
   API_BASE_URL: `${BASE_URL}/api`,
