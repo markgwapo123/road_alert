@@ -124,6 +124,11 @@ function App() {
     }
   };
 
+  const handleNewReportClick = () => {
+    // Directly open report form (location toggle is now inside the form)
+    setShowReport(true);
+  };
+
   const handleSuccessfulReport = () => {
     setShowReport(false);
     setCurrentView('myreports');
@@ -212,7 +217,7 @@ function App() {
         
         <button 
           className="nav-btn add-btn"
-          onClick={() => setShowReport(true)}
+          onClick={handleNewReportClick}
         >
           <span className="nav-icon">✚</span>
         </button>
@@ -236,6 +241,7 @@ function App() {
       </nav>
 
       <main>
+        {/* Report Form */}
         {showReport && (
           <div 
             className="report-form-fullscreen-overlay"
@@ -247,7 +253,10 @@ function App() {
           >
             <ReportForm 
               onReport={handleSuccessfulReport} 
-              onClose={() => setShowReport(false)}
+              onClose={() => {
+                setShowReport(false);
+              }}
+            />
             />
           </div>
         )}
@@ -387,7 +396,7 @@ function App() {
               </button>
 
               <button
-                onClick={() => setShowReport(true)}
+                onClick={handleNewReportClick}
                 style={{
                   width: '100%',
                   padding: '12px 16px',

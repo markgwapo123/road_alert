@@ -4,6 +4,8 @@ import config from '../config/index.js';
 import { NEGROS_PROVINCES, NEGROS_CITIES, NEGROS_BARANGAYS } from '../data/negrosLocations.js';
 import exifr from 'exifr';
 import { applyPrivacyProtection } from '../utils/privacyProtection.js';
+import { getReverseGeocode } from '../services/geocoding.js';
+import { processGeocodedAddress } from '../utils/addressMatcher.js';
 
 const ALERT_TYPES = [
   { value: 'emergency', label: 'Emergency Alert', example: 'ROAD CLOSED - Accident Ahead' },
@@ -32,6 +34,10 @@ const ReportForm = ({ onReport, onClose }) => {
   const [success, setSuccess] = useState('');
   const [submitting, setSubmitting] = useState(false);
   
+  // Location toggle state
+  const [locationEnabled, setLocationEnabled] = useState(false);
+  const [detectingLocation, setDetectingLocation] = useState(false);
+  
   // Confirmation modal state
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [confirmMessage, setConfirmMessage] = useState('');
@@ -45,76 +51,157 @@ const ReportForm = ({ onReport, onClose }) => {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
 
-  // Mobile location detection helper
-  useEffect(() => {
-    // Check if this is a mobile device
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  // Handle location toggle
+  const handleLocationToggle = async () => {
+    const newState = !locationEnabled;
+    setLocationEnabled(newState);
     
-    if (isMobile && !form.location) {
-      // Show helpful message for mobile users
-      setTimeout(() => {
-        if (!form.location) {
-          setSuccess('💡 Tip: For best results, ensure location services are enabled on your device before clicking "Use Current Location"');
-        }
-      }, 2000);
-    }
-  }, [form.location]);
+    if (newState) {
+      // Toggle ON - Get location
+      setDetectingLocation(true);
+      setError('');
+      setSuccess('🔍 Getting your location...');
+      
+      if (!navigator.geolocation) {
+        setError('❌ Geolocation not supported on this device');
+        setLocationEnabled(false);
+        setDetectingLocation(false);
+        return;
+      }
 
-  // Get geolocation with better mobile support
-  const getLocation = () => {
-    if (!navigator.geolocation) {
-      setError('Geolocation not supported on this device');
-      return;
-    }
+      const options = {
+        enableHighAccuracy: true,
+        timeout: 15000,
+        maximumAge: 0
+      };
 
-    setError(''); // Clear any previous errors
-    setSuccess('🔍 Getting your location...');
-
-    const options = {
-      enableHighAccuracy: true, // Use GPS if available
-      timeout: 15000, // 15 second timeout
-      maximumAge: 60000 // Accept cached location if less than 1 minute old
-    };
-
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        console.log('📍 Location detected:', pos.coords);
-        setForm(f => ({ 
-          ...f, 
-          location: {
-            lat: pos.coords.latitude,
-            lng: pos.coords.longitude,
-            accuracy: pos.coords.accuracy,
-            source: 'current_location'
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          try {
+            const { latitude, longitude, accuracy } = position.coords;
+            console.log('📍 GPS Location:', { latitude, longitude, accuracy });
+            
+            setSuccess('✅ Location detected! Getting address...');
+            
+            // Get address from coordinates
+            const addressData = await getReverseGeocode(latitude, longitude);
+            console.log('🗺️ Full geocoded response:', addressData);
+            console.log('🏷️ Raw labels:', {
+              province: addressData.provinceLabel,
+              city: addressData.cityLabel,
+              barangay: addressData.barangayLabel
+            });
+            
+            if (addressData && !addressData.error) {
+              // Process and validate address
+              let processedAddress = processGeocodedAddress(addressData);
+              console.log('✅ Processed/matched address:', processedAddress);
+              
+              // SMART FALLBACK: If in Negros but city didn't match, help user
+              if (!processedAddress.city && addressData.provinceLabel?.toLowerCase().includes('negros')) {
+                console.log('⚠️ Detected Negros but city not matched. Showing province only.');
+                processedAddress = {
+                  ...processedAddress,
+                  province: processedAddress.province || 'negros-occidental',
+                  provinceLabel: addressData.provinceLabel
+                };
+              }
+              
+              console.log('📋 Will set form to:', {
+                province: processedAddress.province || 'EMPTY',
+                city: processedAddress.city || 'EMPTY',
+                barangay: processedAddress.barangay || 'EMPTY'
+              });
+              
+              // Update form with location data
+              setForm(prevForm => ({
+                ...prevForm,
+                province: processedAddress.province || '',
+                city: processedAddress.city || '',
+                barangay: processedAddress.barangay || '',
+                location: {
+                  lat: latitude,
+                  lng: longitude,
+                  accuracy: accuracy,
+                  address: addressData.fullAddress,
+                  source: 'gps'
+                }
+              }));
+              
+              // Show success message
+              const filledFields = [];
+              if (processedAddress.province) filledFields.push('Province');
+              if (processedAddress.city) filledFields.push('City');
+              if (processedAddress.barangay) filledFields.push('Barangay');
+              
+              if (filledFields.length > 0) {
+                setSuccess(`✅ Location detected! Auto-filled: ${filledFields.join(', ')}`);
+              } else {
+                // Show what was detected even if not in our dropdown options
+                const detectedLocation = [
+                  addressData.provinceLabel,
+                  addressData.cityLabel,
+                  addressData.barangayLabel
+                ].filter(Boolean).join(', ');
+                
+                setSuccess(`✅ Location detected: ${detectedLocation}. ${
+                  detectedLocation.toLowerCase().includes('negros') 
+                    ? 'Please select the exact match from dropdowns below.' 
+                    : '⚠️ You are outside Negros region. Please manually select your address or move to Negros area.'
+                }`);
+              }
+            } else {
+              setSuccess('✅ GPS location obtained. Please manually select your address.');
+            }
+            
+            setDetectingLocation(false);
+          } catch (error) {
+            console.error('❌ Geocoding error:', error);
+            setError('❌ Failed to get address details. Please select manually.');
+            setDetectingLocation(false);
           }
-        }));
-        setSuccess('✅ Location detected successfully!');
-        setError(''); // Clear any errors
-      },
-      (err) => {
-        console.error('Location error:', err);
-        let errorMessage = '';
-        
-        switch(err.code) {
-          case err.PERMISSION_DENIED:
-            errorMessage = '❌ Location access denied. Please enable location permissions in your browser settings and try again.';
-            break;
-          case err.POSITION_UNAVAILABLE:
-            errorMessage = '❌ Location unavailable. Please check if location services are enabled on your device.';
-            break;
-          case err.TIMEOUT:
-            errorMessage = '❌ Location request timed out. Please try again or check your GPS signal.';
-            break;
-          default:
-            errorMessage = '❌ Failed to get location. Please ensure location services are enabled.';
-            break;
-        }
-        
-        setError(errorMessage);
-        setSuccess('');
-      },
-      options
-    );
+        },
+        (error) => {
+          console.error('❌ Geolocation error:', error);
+          let errorMessage = '';
+          
+          switch(error.code) {
+            case error.PERMISSION_DENIED:
+              errorMessage = '❌ Location access denied. Please enable location permissions and try again.';
+              break;
+            case error.POSITION_UNAVAILABLE:
+              errorMessage = '❌ Location unavailable. Please check if location services are enabled.';
+              break;
+            case error.TIMEOUT:
+              errorMessage = '❌ Location request timed out. Please try again.';
+              break;
+            default:
+              errorMessage = '❌ Failed to get location. Please try again.';
+              break;
+          }
+          
+          setError(errorMessage);
+          setSuccess('');
+          setLocationEnabled(false);
+          setDetectingLocation(false);
+        },
+        options
+      );
+    } else {
+      // Toggle OFF - Clear location data
+      setSuccess('');
+      setError('');
+      setDetectingLocation(false);
+      // Optional: Clear location fields or keep them for manual editing
+      // Uncomment below to clear fields when toggle is turned off
+      // setForm(prevForm => ({
+      //   ...prevForm,
+      //   province: '',
+      //   city: '',
+      //   barangay: '',
+      //   location: null
+      // }));
+    }
   };
 
   // Camera functions
@@ -245,7 +332,27 @@ const ReportForm = ({ onReport, onClose }) => {
             source: 'image_exif' // Track the source of coordinates
           }}));
           
-          setSuccess('📍 Location automatically detected from photo GPS data!');
+          setSuccess('📍 Location from photo! Getting address...');
+          
+          // Get address from coordinates
+          const addressData = await getReverseGeocode(exifData.latitude, exifData.longitude);
+          
+          if (addressData && !addressData.error) {
+            setForm(f => ({ 
+              ...f,
+              province: addressData.province,
+              city: addressData.city,
+              barangay: addressData.barangay,
+              location: {
+                ...f.location,
+                address: addressData.fullAddress
+              }
+            }));
+            setSuccess(`📍 Photo location: ${addressData.city}, ${addressData.province}`);
+          } else {
+            setSuccess('📍 Location from photo GPS data (manual address entry required)');
+          }
+          
           setError(''); // Clear any previous errors
           
           return {
@@ -323,7 +430,7 @@ const ReportForm = ({ onReport, onClose }) => {
     setSubmitting(true);
     
     if (!form.location) {
-      setError('📍 Location is required. Please click "Use Current Location" and allow location access in your browser.'); 
+      setError('📍 Location is required. Please turn on "Auto-Detect Location" toggle to get your GPS coordinates, or take a photo with GPS enabled.'); 
       setSubmitting(false); 
       return;
     }
@@ -467,6 +574,23 @@ const ReportForm = ({ onReport, onClose }) => {
     setSubmitting(false);
   };
 
+  // TEST MODE: Simulate Kabankalan location
+  const handleTestLocation = () => {
+    const testData = {
+      province: 'negros-occidental',
+      city: 'kabankalan',
+      barangay: 'tagoc'
+    };
+    console.log('🧪 TEST MODE: Setting form to Kabankalan, Tagoc:', testData);
+    setForm(prevForm => ({
+      ...prevForm,
+      province: testData.province,
+      city: testData.city,
+      barangay: testData.barangay
+    }));
+    alert(`TEST MODE: Set location to:\nProvince: Negros Occidental\nCity: Kabankalan\nBarangay: Tagoc`);
+  };
+
   return (
     <div className="report-form-container">
       <div className="form-header">
@@ -485,6 +609,109 @@ const ReportForm = ({ onReport, onClose }) => {
       <p className="form-subtitle">
         Help keep our roads safe by reporting hazards, construction, or incidents in your area.
       </p>
+      
+      {/* LOCATION TOGGLE */}
+      <div style={{ 
+        marginBottom: '1.5rem', 
+        padding: '1rem', 
+        background: '#f0f9ff', 
+        border: '2px solid #3b82f6', 
+        borderRadius: '8px' 
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <span style={{ fontSize: '1.5rem' }}>📍</span>
+            <div>
+              <div style={{ fontWeight: 'bold', fontSize: '1rem', color: '#1e40af' }}>
+                Auto-Detect Location
+              </div>
+              <div style={{ fontSize: '0.85rem', color: '#64748b', marginTop: '0.25rem' }}>
+                {locationEnabled ? 'Automatically fill address fields using GPS' : 'Turn on to auto-fill province, city, and barangay'}
+              </div>
+            </div>
+          </div>
+          
+          {/* Toggle Switch */}
+          <label style={{ 
+            position: 'relative', 
+            display: 'inline-block', 
+            width: '60px', 
+            height: '34px',
+            cursor: 'pointer'
+          }}>
+            <input 
+              type="checkbox" 
+              checked={locationEnabled}
+              onChange={handleLocationToggle}
+              disabled={detectingLocation}
+              style={{ opacity: 0, width: 0, height: 0 }}
+            />
+            <span style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: locationEnabled ? '#3b82f6' : '#cbd5e1',
+              transition: '0.4s',
+              borderRadius: '34px',
+              cursor: detectingLocation ? 'not-allowed' : 'pointer'
+            }}>
+              <span style={{
+                position: 'absolute',
+                content: '',
+                height: '26px',
+                width: '26px',
+                left: locationEnabled ? '30px' : '4px',
+                bottom: '4px',
+                backgroundColor: 'white',
+                transition: '0.4s',
+                borderRadius: '50%'
+              }}></span>
+            </span>
+          </label>
+        </div>
+        
+        {/* Status Messages */}
+        {detectingLocation && (
+          <div style={{ 
+            marginTop: '0.75rem', 
+            padding: '0.5rem', 
+            background: '#fef3c7', 
+            borderRadius: '4px',
+            fontSize: '0.9rem',
+            color: '#92400e'
+          }}>
+            🔍 Detecting your location...
+          </div>
+        )}
+        
+        {success && !detectingLocation && (
+          <div style={{ 
+            marginTop: '0.75rem', 
+            padding: '0.5rem', 
+            background: '#d1fae5', 
+            borderRadius: '4px',
+            fontSize: '0.9rem',
+            color: '#065f46'
+          }}>
+            {success}
+          </div>
+        )}
+        
+        {error && !detectingLocation && (
+          <div style={{ 
+            marginTop: '0.75rem', 
+            padding: '0.5rem', 
+            background: '#fee2e2', 
+            borderRadius: '4px',
+            fontSize: '0.9rem',
+            color: '#991b1b'
+          }}>
+            {error}
+          </div>
+        )}
+      </div>
       
       <form onSubmit={handleSubmit}>
         {/* Alert Type Selection */}
@@ -702,6 +929,7 @@ const ReportForm = ({ onReport, onClose }) => {
         </div>
 
         {/* Location Detection */}
+        {/* Location Display (read-only, controlled by toggle above) */}
         <div className="form-group">
           <label>
             <span className="label-icon">📍</span>
@@ -709,45 +937,17 @@ const ReportForm = ({ onReport, onClose }) => {
             <span className="label-required">*</span>
           </label>
           <div className="location-section">
-            <button 
-              type="button" 
-              className="location-button"
-              onClick={getLocation} 
-              disabled={submitting}
-            >
-              <span className="location-icon">
-                {form.location && form.location.source !== 'image_exif' ? '✅' : '📍'}
-              </span>
-              {form.location && form.location.source !== 'image_exif' 
-                ? `Current Location Detected ${form.location.accuracy ? `(±${Math.round(form.location.accuracy)}m)` : ''}` 
-                : 'Use Current Location'
-              }
-            </button>
-            
-            {form.location && form.location.source === 'image_exif' && (
-              <button 
-                type="button" 
-                className="location-button secondary"
-                onClick={() => {
-                  setForm(f => ({ ...f, location: null }));
-                  setSuccess('');
-                }}
-                disabled={submitting}
-                style={{ marginLeft: '10px', background: '#6b7280' }}
-              >
-                📍 Use Current Location Instead
-              </button>
-            )}
-            
-            {form.location && (
+            {form.location ? (
               <div className="location-display">
                 <span className="location-pin">
-                  {form.location.source === 'image_exif' ? '�' : '�📍'}
+                  {form.location.source === 'image_exif' ? '📷' : '📍'}
                 </span>
                 <div>
                   <div>
                     {form.location.source === 'image_exif' 
                       ? 'Location from photo GPS data' 
+                      : form.location.source === 'gps'
+                      ? `GPS Location Detected ${form.location.accuracy ? `(±${Math.round(form.location.accuracy)}m)` : ''}`
                       : 'Location confirmed'
                     }
                   </div>
@@ -761,10 +961,21 @@ const ReportForm = ({ onReport, onClose }) => {
                   )}
                 </div>
               </div>
+            ) : (
+              <div style={{ 
+                padding: '1rem', 
+                background: '#fef3c7', 
+                border: '1px solid #f59e0b', 
+                borderRadius: '6px',
+                fontSize: '0.9rem',
+                color: '#92400e'
+              }}>
+                ⚠️ Location required. Please turn on the <strong>"Auto-Detect Location"</strong> toggle above to get your GPS location, or take a photo with GPS enabled.
+              </div>
             )}
           </div>
           <div className="help-text">
-            📍 Location will be automatically detected from photo GPS data if available, or you can manually detect your current location. <strong>On mobile: Make sure to allow location access when prompted by your browser.</strong> Your location will only be used for this report.
+            📍 Location will be automatically detected when you enable the toggle above, or from photo GPS data if available. Your location will only be used for this report.
           </div>
         </div>
 
