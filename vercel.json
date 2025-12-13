@@ -1,7 +1,6 @@
 {
-  "buildCommand": "cd users && npm install && npm run build",
-  "outputDirectory": "users/dist",
-  "installCommand": "npm install --prefix users",
+  "buildCommand": "npm install && npm run build",
+  "outputDirectory": "dist",
   "framework": "vite",
   "rewrites": [
     {
