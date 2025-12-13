@@ -1,12 +1,29 @@
 import axios from 'axios';
 
-// Use local backend URLs by default
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
+// IMPORTANT: Use production backend for deployed app
+// Localhost only works for local development on your PC
+const isCapacitor = window.Capacitor !== undefined;
+const PRODUCTION_API_URL = 'https://roadalert-backend-xze4.onrender.com/api';
+const PRODUCTION_BACKEND_URL = 'https://roadalert-backend-xze4.onrender.com';
+const DEVELOPMENT_API_URL = 'http://localhost:3001/api';
+const DEVELOPMENT_BACKEND_URL = 'http://localhost:3001';
+
+// Use production URLs for mobile or when VITE env vars are not set to localhost
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 
+  (isCapacitor || typeof window !== 'undefined' && window.location.hostname !== 'localhost' 
+    ? PRODUCTION_API_URL 
+    : DEVELOPMENT_API_URL);
+
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 
+  (isCapacitor || typeof window !== 'undefined' && window.location.hostname !== 'localhost' 
+    ? PRODUCTION_BACKEND_URL 
+    : DEVELOPMENT_BACKEND_URL);
 
 console.log('🔗 API Configuration:', {
   API_BASE_URL,
   BACKEND_URL,
+  hostname: typeof window !== 'undefined' ? window.location.hostname : 'N/A',
+  isCapacitor,
   environment: import.meta.env.MODE
 });
 
