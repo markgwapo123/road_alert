@@ -1,7 +1,7 @@
 {
-  "installCommand": "npm install",
-  "buildCommand": "npm run build",
-  "outputDirectory": "dist",
+  "buildCommand": "cd users && npm install && npm run build",
+  "outputDirectory": "users/dist",
+  "installCommand": "npm install --prefix users",
   "framework": "vite",
   "rewrites": [
     {
@@ -20,6 +20,10 @@
         {
           "key": "X-Content-Type-Options",
           "value": "nosniff"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
         }
       ]
     }
