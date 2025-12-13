@@ -969,9 +969,6 @@ const ReportForm = ({ onReport, onClose }) => {
                       : 'Location confirmed'
                     }
                   </div>
-                  <div className="location-coordinates">
-                    {form.location.lat.toFixed(6)}, {form.location.lng.toFixed(6)}
-                  </div>
                   {form.location.source === 'image_exif' && (
                     <div className="location-source">
                       📍 GPS coordinates extracted from image EXIF data
