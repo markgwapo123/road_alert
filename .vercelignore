@@ -24,7 +24,8 @@ Thumbs.db
 .gitignore
 
 # Other workspaces (not part of admin build)
-users
+# NOTE: Comment out 'users' if deploying users app separately
+# users
 backend
 production-backend
 render-backend

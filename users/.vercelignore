@@ -1,0 +1,28 @@
+# Users App - Vercel Ignore
+
+# Node modules (will be installed during build)
+node_modules
+
+# Development files
+.env.local
+.env.development
+
+# Build cache
+.vite
+.cache
+dist
+
+# Editor
+.vscode
+.idea
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Android build files (Capacitor)
+android
+
+# Test files
+*.test.js
+*.spec.js
