@@ -69,33 +69,54 @@ const ReportForm = ({ onReport, onClose }) => {
         return;
       }
 
-      const options = {
-        enableHighAccuracy: true,
-        timeout: 15000,
-        maximumAge: 0
+      // Try high accuracy first, then fallback to lower accuracy
+      const tryGetLocation = (enableHighAccuracy, timeoutDuration) => {
+        return new Promise((resolve, reject) => {
+          const options = {
+            enableHighAccuracy,
+            timeout: timeoutDuration,
+            maximumAge: 0
+          };
+          
+          navigator.geolocation.getCurrentPosition(resolve, reject, options);
+        });
       };
 
-      navigator.geolocation.getCurrentPosition(
-        async (position) => {
-          try {
-            const { latitude, longitude, accuracy } = position.coords;
-            console.log('📍 GPS Location:', { latitude, longitude, accuracy });
-            
-            setSuccess('✅ Location detected! Getting address...');
-            
-            // Get address from coordinates
-            const addressData = await getReverseGeocode(latitude, longitude);
-            console.log('🗺️ Full geocoded response:', addressData);
-            console.log('🏷️ Raw labels:', {
-              province: addressData.provinceLabel,
-              city: addressData.cityLabel,
-              barangay: addressData.barangayLabel
-            });
-            
-            if (addressData && !addressData.error) {
-              // Process and validate address
-              let processedAddress = processGeocodedAddress(addressData);
-              console.log('✅ Processed/matched address:', processedAddress);
+      try {
+        let position;
+        try {
+          // First attempt: High accuracy with 30 second timeout
+          setSuccess('🔍 Getting precise location (this may take up to 30 seconds)...');
+          position = await tryGetLocation(true, 30000);
+        } catch (firstError) {
+          if (firstError.code === 3) { // TIMEOUT
+            // Second attempt: Lower accuracy with 10 second timeout
+            setSuccess('🔍 Trying faster location detection...');
+            position = await tryGetLocation(false, 10000);
+          } else {
+            throw firstError; // Re-throw other errors
+          }
+        }
+
+        // Process the position we got
+        const { latitude, longitude, accuracy } = position.coords;
+        console.log('📍 GPS Location:', { latitude, longitude, accuracy });
+        
+        setSuccess('✅ Location detected! Getting address...');
+        
+        // Get address from coordinates
+        const addressData = await getReverseGeocode(latitude, longitude);
+        console.log('🗺️ Full geocoded response:', addressData);
+        console.log('🏷️ Raw labels:', {
+          province: addressData.provinceLabel,
+          city: addressData.cityLabel,
+          barangay: addressData.barangayLabel
+        });
+        
+        if (addressData && !addressData.error) {
+          // Process and validate address
+          let processedAddress = processGeocodedAddress(addressData);
+          console.log('✅ Processed/matched address:', processedAddress);
               
               // SMART FALLBACK: If in Negros but city didn't match, help user
               if (!processedAddress.city && addressData.provinceLabel?.toLowerCase().includes('negros')) {
@@ -154,39 +175,36 @@ const ReportForm = ({ onReport, onClose }) => {
               setSuccess('✅ GPS location obtained. Please manually select your address.');
             }
             
-            setDetectingLocation(false);
-          } catch (error) {
-            console.error('❌ Geocoding error:', error);
-            setError('❌ Failed to get address details. Please select manually.');
-            setDetectingLocation(false);
-          }
-        },
-        (error) => {
-          console.error('❌ Geolocation error:', error);
-          let errorMessage = '';
-          
+        setDetectingLocation(false);
+      } catch (error) {
+        console.error('❌ Location error:', error);
+        let errorMessage = '';
+        
+        if (error.code) {
           switch(error.code) {
-            case error.PERMISSION_DENIED:
-              errorMessage = '❌ Location access denied. Please enable location permissions and try again.';
+            case 1: // PERMISSION_DENIED
+              errorMessage = '❌ Location access denied. Please enable location permissions in your browser settings and try again.';
               break;
-            case error.POSITION_UNAVAILABLE:
-              errorMessage = '❌ Location unavailable. Please check if location services are enabled.';
+            case 2: // POSITION_UNAVAILABLE
+              errorMessage = '❌ Location unavailable. Please ensure GPS/Location Services are enabled on your device.';
               break;
-            case error.TIMEOUT:
-              errorMessage = '❌ Location request timed out. Please try again.';
+            case 3: // TIMEOUT
+              errorMessage = '⏱️ Location detection is taking longer than usual. Please ensure you have a clear view of the sky and try again. You may also select your location manually.';
               break;
             default:
-              errorMessage = '❌ Failed to get location. Please try again.';
+              errorMessage = '❌ Failed to get location. Please select your address manually.';
               break;
           }
-          
-          setError(errorMessage);
-          setSuccess('');
-          setLocationEnabled(false);
-          setDetectingLocation(false);
-        },
-        options
-      );
+        } else {
+          // Geocoding error
+          errorMessage = '❌ Failed to get address details. Please select manually.';
+        }
+        
+        setError(errorMessage);
+        setSuccess('');
+        setLocationEnabled(false);
+        setDetectingLocation(false);
+      }
     } else {
       // Toggle OFF - Clear location data
       setSuccess('');
