@@ -19,6 +19,7 @@ const ReportsOverviewMap = () => {
   const [reports, setReports] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isPopupOpen, setIsPopupOpen] = useState(false); // Track popup state
 
   // Fetch all verified reports
   useEffect(() => {
@@ -176,9 +177,34 @@ const ReportsOverviewMap = () => {
           { icon: getMarkerIcon(report.alertType) }
         );
 
-        // Create popup content
+        // Create popup content with report image
+        const getImageUrl = (report) => {
+          if (report.images && report.images.length > 0) {
+            const firstImage = report.images[0];
+            // Check if it's base64 data
+            if (firstImage.data) {
+              return `data:${firstImage.mimetype || 'image/jpeg'};base64,${firstImage.data}`;
+            }
+            // Otherwise use filename from backend
+            return `${config.BACKEND_URL}/uploads/${firstImage.filename}`;
+          }
+          return null;
+        };
+
+        const imageUrl = getImageUrl(report);
+        
         const popupContent = `
-          <div style="min-width: 200px;">
+          <div style="min-width: 250px; max-width: 300px;">
+            ${imageUrl ? `
+              <div style="margin-bottom: 8px; border-radius: 8px; overflow: hidden;">
+                <img 
+                  src="${imageUrl}" 
+                  alt="Report Image"
+                  style="width: 100%; height: 150px; object-fit: cover; display: block;"
+                  onerror="this.style.display='none'"
+                />
+              </div>
+            ` : ''}
             <h4 style="margin: 0 0 8px 0; color: #1f2937; font-size: 14px; font-weight: 600;">
               ${report.alertType || 'Report'}
             </h4>
@@ -186,7 +212,7 @@ const ReportsOverviewMap = () => {
               📍 ${report.barangay}, ${report.city}
             </p>
             ${report.description ? `
-              <p style="margin: 0 0 6px 0; color: #374151; font-size: 12px;">
+              <p style="margin: 0 0 8px 0; color: #374151; font-size: 12px; line-height: 1.4;">
                 ${report.description.substring(0, 100)}${report.description.length > 100 ? '...' : ''}
               </p>
             ` : ''}
@@ -202,15 +228,39 @@ const ReportsOverviewMap = () => {
         `;
 
         marker.bindPopup(popupContent);
+        
+        // Add event listeners for popup open/close
+        marker.on('popupopen', () => setIsPopupOpen(true));
+        marker.on('popupclose', () => setIsPopupOpen(false));
+        
         markersLayerRef.current.addLayer(marker);
       });
 
-      // Fit map to show all markers
+      // Fit map to show all markers with better centering
       if (reportsWithLocation.length > 0) {
         const bounds = L.latLngBounds(
           reportsWithLocation.map(r => [r.location.lat, r.location.lng])
         );
-        mapInstanceRef.current.fitBounds(bounds, { padding: [50, 50], maxZoom: 13 });
+        
+        // Use setTimeout to ensure map is fully loaded
+        setTimeout(() => {
+          if (mapInstanceRef.current) {
+            if (reportsWithLocation.length === 1) {
+              // If only one marker, center on it with good zoom
+              mapInstanceRef.current.setView(
+                [reportsWithLocation[0].location.lat, reportsWithLocation[0].location.lng],
+                14
+              );
+            } else {
+              // Multiple markers - fit all with padding
+              mapInstanceRef.current.fitBounds(bounds, { 
+                padding: [30, 30],
+                maxZoom: 13,
+                animate: true
+              });
+            }
+          }
+        }, 100);
       }
     }
   }, [reports]);
@@ -226,10 +276,24 @@ const ReportsOverviewMap = () => {
     if (mapInstanceRef.current && reports.length > 0) {
       const reportsWithLocation = reports.filter(r => r.location?.lat && r.location?.lng);
       if (reportsWithLocation.length > 0) {
-        const bounds = L.latLngBounds(
-          reportsWithLocation.map(r => [r.location.lat, r.location.lng])
-        );
-        mapInstanceRef.current.fitBounds(bounds, { padding: [50, 50], maxZoom: 13 });
+        if (reportsWithLocation.length === 1) {
+          // Center on single marker
+          mapInstanceRef.current.setView(
+            [reportsWithLocation[0].location.lat, reportsWithLocation[0].location.lng],
+            14,
+            { animate: true }
+          );
+        } else {
+          // Fit multiple markers
+          const bounds = L.latLngBounds(
+            reportsWithLocation.map(r => [r.location.lat, r.location.lng])
+          );
+          mapInstanceRef.current.fitBounds(bounds, { 
+            padding: [30, 30], 
+            maxZoom: 13,
+            animate: true
+          });
+        }
       }
     }
   };
@@ -278,25 +342,27 @@ const ReportsOverviewMap = () => {
           )}
         </div>
 
-        {/* Map Controls */}
-        <div className="map-controls">
-          <button onClick={handleResetView} className="map-control-btn reset-btn" title="Reset View">
-            <span className="btn-icon">🔄</span>
-            Reset View
-          </button>
-          <button onClick={handleFitAll} className="map-control-btn fit-btn" title="Fit All Markers">
-            <span className="btn-icon">📍</span>
-            Fit All
-          </button>
-          <button onClick={handleZoomIn} className="map-control-btn zoom-btn" title="Zoom In">
-            <span className="btn-icon">+</span>
-            Zoom In
-          </button>
-          <button onClick={handleZoomOut} className="map-control-btn zoom-btn" title="Zoom Out">
-            <span className="btn-icon">−</span>
-            Zoom Out
-          </button>
-        </div>
+        {/* Map Controls - Hide when popup is open */}
+        {!isPopupOpen && (
+          <div className="map-controls">
+            <button onClick={handleResetView} className="map-control-btn reset-btn" title="Reset View">
+              <span className="btn-icon">🔄</span>
+              Reset View
+            </button>
+            <button onClick={handleFitAll} className="map-control-btn fit-btn" title="Fit All Markers">
+              <span className="btn-icon">📍</span>
+              Fit All
+            </button>
+            <button onClick={handleZoomIn} className="map-control-btn zoom-btn" title="Zoom In">
+              <span className="btn-icon">+</span>
+              Zoom In
+            </button>
+            <button onClick={handleZoomOut} className="map-control-btn zoom-btn" title="Zoom Out">
+              <span className="btn-icon">−</span>
+              Zoom Out
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
