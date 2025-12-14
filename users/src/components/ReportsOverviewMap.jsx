@@ -12,7 +12,7 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 });
 
-const ReportsOverviewMap = () => {
+const ReportsOverviewMap = ({ searchQuery = '' }) => {
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const markersLayerRef = useRef(null);
@@ -138,9 +138,23 @@ const ReportsOverviewMap = () => {
       markersLayerRef.current.clearLayers();
 
       // Filter reports with valid location data
-      const reportsWithLocation = reports.filter(
+      let reportsWithLocation = reports.filter(
         report => report.location?.lat && report.location?.lng
       );
+
+      // Apply search filter if searchQuery exists
+      if (searchQuery && searchQuery.trim() !== '') {
+        const query = searchQuery.toLowerCase();
+        reportsWithLocation = reportsWithLocation.filter(report => {
+          const matchesCity = report.city?.toLowerCase().includes(query);
+          const matchesBarangay = report.barangay?.toLowerCase().includes(query);
+          const matchesProvince = report.province?.toLowerCase().includes(query);
+          const matchesDescription = report.description?.toLowerCase().includes(query);
+          const matchesAlertType = report.alertType?.toLowerCase().includes(query);
+          
+          return matchesCity || matchesBarangay || matchesProvince || matchesDescription || matchesAlertType;
+        });
+      }
 
       if (reportsWithLocation.length === 0) {
         return;
@@ -263,7 +277,7 @@ const ReportsOverviewMap = () => {
         }, 100);
       }
     }
-  }, [reports]);
+  }, [reports, searchQuery]); // Re-run when reports or searchQuery changes
 
   // Map control functions
   const handleResetView = () => {

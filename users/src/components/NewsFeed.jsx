@@ -371,7 +371,7 @@ const NewsFeed = ({ user }) => {
 
       {/* Reports Overview Map - Shows all reports with pins */}
       {activeTab === 'reports' && (
-        <ReportsOverviewMap />
+        <ReportsOverviewMap searchQuery={searchQuery} />
       )}
       
       {/* Reports Map - Only show on Reports tab */}
