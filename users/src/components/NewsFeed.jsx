@@ -3,6 +3,8 @@ import axios from 'axios';
 import config from '../config/index.js';
 import ReportDetailModal from './ReportDetailModal.jsx';
 import NewsPostModal from './NewsPostModal.jsx';
+import ReportsMap from './ReportsMap.jsx';
+import ReportsOverviewMap from './ReportsOverviewMap.jsx';
 
 // Color configurations based on professional road & safety alert standards
 const ALERT_COLORS = {
@@ -366,6 +368,16 @@ const NewsFeed = ({ user }) => {
           </div>
         )}
       </div>
+
+      {/* Reports Overview Map - Shows all reports with pins */}
+      {activeTab === 'reports' && (
+        <ReportsOverviewMap />
+      )}
+      
+      {/* Reports Map - Only show on Reports tab */}
+      {activeTab === 'reports' && filteredReports.length > 0 && (
+        <ReportsMap reports={filteredReports} />
+      )}
       
       {/* Content Area */}
       {activeTab === 'reports' ? (
