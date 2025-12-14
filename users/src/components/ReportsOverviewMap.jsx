@@ -57,18 +57,37 @@ const ReportsOverviewMap = () => {
         }
         
         // Filter reports that have valid location data
-        const validReports = data.filter(report => 
-          report.location && 
-          report.location.lat && 
-          report.location.lng &&
-          !isNaN(report.location.lat) &&
-          !isNaN(report.location.lng)
-        );
+        const validReports = data.filter(report => {
+          // Check both possible location structures
+          const hasNewFormat = report.location?.lat && report.location?.lng;
+          const hasOldFormat = report.location?.coordinates?.latitude && report.location?.coordinates?.longitude;
+          
+          console.log('🔍 Checking report:', {
+            id: report._id,
+            location: report.location,
+            hasNewFormat,
+            hasOldFormat
+          });
+          
+          return (hasNewFormat && !isNaN(report.location.lat) && !isNaN(report.location.lng)) ||
+                 (hasOldFormat && !isNaN(report.location.coordinates.latitude) && !isNaN(report.location.coordinates.longitude));
+        });
         
-        console.log('📍 Valid reports with location:', validReports.length);
+        // Normalize location format
+        const normalizedReports = validReports.map(report => ({
+          ...report,
+          location: {
+            ...report.location,
+            lat: report.location.lat || report.location.coordinates?.latitude,
+            lng: report.location.lng || report.location.coordinates?.longitude
+          }
+        }));
         
-        console.log(`✅ ${validReports.length} reports with valid locations`);
-        setReports(validReports);
+        console.log('📍 Valid reports with location:', normalizedReports.length);
+        console.log('📍 Valid reports details:', normalizedReports);
+        
+        console.log(`✅ ${normalizedReports.length} reports with valid locations`);
+        setReports(normalizedReports);
         setError(null);
       } catch (err) {
         console.error('❌ Error fetching reports:', err);
