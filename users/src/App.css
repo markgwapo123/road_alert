@@ -7127,6 +7127,13 @@ main h1 {
   font-size: 12px;
 }
 
+.form-group .label-optional {
+  color: #9ca3af;
+  font-size: 12px;
+  font-weight: 400;
+  margin-left: 4px;
+}
+
 /* Modern Select Styling */
 .report-form-container select {
   padding: 16px 20px;

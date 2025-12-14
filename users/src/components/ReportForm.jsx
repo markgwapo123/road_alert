@@ -459,13 +459,14 @@ const ReportForm = ({ onReport, onClose }) => {
       return;
     }
     
-    if (form.description.length < 10) {
+    // Description is now optional, only validate if provided
+    if (form.description && form.description.length < 10) {
       setError('Description must be at least 10 characters long');
       setSubmitting(false);
       return;
     }
     
-    if (form.description.length > 500) {
+    if (form.description && form.description.length > 500) {
       setError('Description must be less than 500 characters');
       setSubmitting(false);
       return;
@@ -833,14 +834,13 @@ const ReportForm = ({ onReport, onClose }) => {
           <label>
             <span className="label-icon">📝</span>
             Description
-            <span className="label-required">*</span>
+            <span className="label-optional">(Optional)</span>
           </label>
           <textarea 
             name="description" 
             placeholder="Provide detailed information about the road condition or incident. Include landmarks, direction of travel, and any other relevant details..." 
             value={form.description} 
             onChange={handleChange} 
-            required 
           />
           <div className="help-text">
             Be as specific as possible. Good descriptions help other drivers prepare and authorities respond quickly.
@@ -940,7 +940,7 @@ const ReportForm = ({ onReport, onClose }) => {
             </div>
           )}
 
-          <div className="help-text">
+          <div className="help-text" style={{ display: 'none' }}>
             A clear photo helps verify the report and provides visual context. Please ensure the image shows the road condition clearly. 
             <strong>🔒 Privacy Protected:</strong> Faces and license plates will be automatically blurred for everyone's safety.
           </div>
@@ -989,7 +989,7 @@ const ReportForm = ({ onReport, onClose }) => {
               </div>
             )}
           </div>
-          <div className="help-text">
+          <div className="help-text" style={{ display: 'none' }}>
             📍 Location will be automatically detected when you enable the toggle above, or from photo GPS data if available. Your location will only be used for this report.
           </div>
         </div>
