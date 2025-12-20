@@ -582,28 +582,34 @@ router.patch('/:id/status', auth, async (req, res) => {
 // @access  Private (Admin only)
 router.post('/:id/resolve', auth, upload.single('evidencePhoto'), async (req, res) => {
   try {
+    console.log('📝 Resolve request received for report:', req.params.id);
     const { adminFeedback } = req.body;
 
     // Validate feedback
     if (!adminFeedback || adminFeedback.trim().length < 10) {
+      console.log('❌ Validation failed: Feedback too short or missing');
       return res.status(400).json({
         error: 'Admin feedback is required (minimum 10 characters)'
       });
     }
 
     // Find the report
+    console.log('🔍 Finding report...');
     const report = await Report.findById(req.params.id);
     if (!report) {
+      console.log('❌ Report not found:', req.params.id);
       return res.status(404).json({
         error: 'Report not found'
       });
     }
 
+    console.log('✅ Report found:', report._id);
     const oldStatus = report.status;
 
     // Process evidence photo if uploaded
     let evidencePhoto = null;
     if (req.file) {
+      console.log('📸 Processing evidence photo:', req.file.originalname);
       evidencePhoto = {
         data: req.file.buffer.toString('base64'),
         originalName: req.file.originalname,
@@ -614,33 +620,62 @@ router.post('/:id/resolve', auth, upload.single('evidencePhoto'), async (req, re
     }
 
     // Update report with resolution details
+    console.log('💾 Updating report status to resolved...');
     report.status = 'resolved';
     report.resolvedAt = new Date();
     report.adminFeedback = adminFeedback;
-    report.evidencePhoto = evidencePhoto;
+    if (evidencePhoto) {
+      report.evidencePhoto = evidencePhoto;
+    }
     report.resolvedBy = req.user.id;
 
     await report.save();
+    console.log('✅ Report saved successfully');
 
     // Populate for response
+    console.log('📊 Populating report fields...');
     await report.populate('verifiedBy', 'username');
     await report.populate('reportedBy', 'username email profile');
     await report.populate('resolvedBy', 'username');
 
     // Send notification to user
-    if (report.reportedBy && report.reportedBy.username) {
-      const user = await User.findOne({ username: report.reportedBy.username });
-      if (user) {
-        await NotificationService.createReportResolvedNotification({
-          userId: user._id,
-          reportId: report._id,
-          reportType: report.type,
-          adminFeedback,
-          hasEvidence: !!evidencePhoto
-        });
+    console.log('📧 Attempting to send notification...');
+    try {
+      if (report.reportedBy && (report.reportedBy.username || report.reportedBy.id)) {
+        let user = null;
+        
+        // Try to find user by username first
+        if (report.reportedBy.username) {
+          user = await User.findOne({ username: report.reportedBy.username });
+        }
+        
+        // If not found, try by ID
+        if (!user && report.reportedBy.id) {
+          user = await User.findById(report.reportedBy.id);
+        }
+        
+        if (user) {
+          console.log('✅ User found, creating notification...');
+          await NotificationService.createReportResolvedNotification({
+            userId: user._id,
+            reportId: report._id,
+            reportType: report.type,
+            adminFeedback,
+            hasEvidence: !!evidencePhoto
+          });
+          console.log('✅ Notification created successfully');
+        } else {
+          console.log('⚠️ User not found for notification, but report resolved');
+        }
+      } else {
+        console.log('⚠️ No reporter info available for notification');
       }
+    } catch (notifError) {
+      console.error('⚠️ Notification error (non-critical):', notifError.message);
+      // Don't fail the whole request if notification fails
     }
 
+    console.log('✅ Resolve complete, sending response');
     res.json({
       success: true,
       message: 'Report marked as resolved successfully',
@@ -648,9 +683,11 @@ router.post('/:id/resolve', auth, upload.single('evidencePhoto'), async (req, re
     });
 
   } catch (error) {
-    console.error('Resolve report error:', error);
+    console.error('❌ Resolve report error:', error);
+    console.error('❌ Error stack:', error.stack);
     res.status(500).json({
-      error: 'Server error while resolving report'
+      error: 'Server error while resolving report',
+      details: error.message
     });
   }
 });
