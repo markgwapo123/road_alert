@@ -12,6 +12,8 @@ const EditReportModal = ({ isOpen, onClose, report, onUpdate }) => {
     severity: '',
     priority: ''
   })
+  const [isLoading, setIsLoading] = useState(false)
+  const [showSuccess, setShowSuccess] = useState(false)
 
   useEffect(() => {
     if (report) {
@@ -28,12 +30,29 @@ const EditReportModal = ({ isOpen, onClose, report, onUpdate }) => {
     }
   }, [report])
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    onUpdate({
-      ...report,
-      ...formData
-    })
+    setIsLoading(true)
+    
+    try {
+      await onUpdate({
+        ...report,
+        ...formData
+      })
+      
+      // Show success message
+      setShowSuccess(true)
+      
+      // Close modal and reset after 2 seconds
+      setTimeout(() => {
+        setShowSuccess(false)
+        setIsLoading(false)
+        onClose()
+      }, 2000)
+    } catch (error) {
+      setIsLoading(false)
+      // Error is handled by parent component
+    }
   }
 
   const handleChange = (e) => {
@@ -211,18 +230,55 @@ const EditReportModal = ({ isOpen, onClose, report, onUpdate }) => {
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                disabled={isLoading}
+                className={`px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 ${
+                  isLoading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'
+                } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500`}
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 bg-blue-600 border border-transparent rounded-md text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                disabled={isLoading}
+                className={`px-4 py-2 border border-transparent rounded-md text-sm font-medium text-white ${
+                  isLoading 
+                    ? 'bg-blue-400 cursor-not-allowed' 
+                    : 'bg-blue-600 hover:bg-blue-700'
+                } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 flex items-center gap-2`}
               >
-                Save Changes
+                {isLoading ? (
+                  <>
+                    <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Updating...
+                  </>
+                ) : (
+                  'Save Changes'
+                )}
               </button>
             </div>
           </form>
+
+          {/* Success Modal Overlay */}
+          {showSuccess && (
+            <div className="absolute inset-0 bg-white bg-opacity-95 flex items-center justify-center z-[10001]">
+              <div className="text-center">
+                <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-green-100 mb-4">
+                  <svg className="h-10 w-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                  </svg>
+                </div>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">
+                  Report Updated Successfully!
+                </h3>
+                <p className="text-sm text-gray-500">
+                  The report has been updated with the new information.
+                </p>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
