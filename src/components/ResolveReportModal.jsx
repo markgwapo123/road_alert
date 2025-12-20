@@ -62,12 +62,27 @@ const ResolveReportModal = ({ report, onClose, onResolve }) => {
         formData.append('evidencePhoto', evidencePhoto);
       }
 
+      console.log('🚀 Submitting resolve request for report:', report._id);
+      console.log('📝 Feedback:', adminFeedback);
+      console.log('📸 Has photo:', !!evidencePhoto);
+
       await onResolve(report._id, formData);
       
       setShowSuccess(true);
       setTimeout(() => {
         setShowSuccess(false);
         onClose();
+      }, 2000);
+    } catch (err) {
+      console.error('❌ Resolve error:', err);
+      console.error('❌ Error response:', err.response?.data);
+      const errorMessage = err.response?.data?.error || 
+                          err.message || 
+                          'Failed to resolve report. The backend may still be deploying. Please wait a few minutes and try again.';
+      setError(errorMessage);
+      setIsLoading(false);
+    }
+  };
       }, 2000);
     } catch (err) {
       setError(err.message || 'Failed to resolve report');
