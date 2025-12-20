@@ -83,12 +83,6 @@ const ResolveReportModal = ({ report, onClose, onResolve }) => {
       setIsLoading(false);
     }
   };
-      }, 2000);
-    } catch (err) {
-      setError(err.message || 'Failed to resolve report');
-      setIsLoading(false);
-    }
-  };
 
   if (showSuccess) {
     return (
