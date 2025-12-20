@@ -3,6 +3,7 @@ import { useLocation, useSearchParams } from 'react-router-dom'
 import { MagnifyingGlassIcon, FunnelIcon } from '@heroicons/react/24/outline'
 import { reportsAPI } from '../services/api'
 import config from '../config/index.js'
+import EditReportModal from '../components/EditReportModal'
 
 const ReportsManagement = () => {
   const location = useLocation()
@@ -12,6 +13,8 @@ const ReportsManagement = () => {
   const [filterStatus, setFilterStatus] = useState('all')
   const [reports, setReports] = useState([])
   const [loading, setLoading] = useState(true)
+  const [editModalOpen, setEditModalOpen] = useState(false)
+  const [selectedReport, setSelectedReport] = useState(null)
   
   // Set initial filter from URL parameter
   useEffect(() => {
@@ -111,6 +114,25 @@ const ReportsManagement = () => {
       console.error('❌ Report ID:', reportId);
       console.error('❌ Error response:', error.response?.data);
       alert('Failed to delete report: ' + (error.response?.data?.error || error.message));
+    }
+  }
+
+  const handleEdit = (report) => {
+    setSelectedReport(report)
+    setEditModalOpen(true)
+  }
+
+  const handleUpdateReport = async (updatedReport) => {
+    try {
+      console.log('📝 Updating report:', updatedReport._id)
+      await reportsAPI.updateReport(updatedReport._id, updatedReport)
+      await fetchReports()
+      setEditModalOpen(false)
+      setSelectedReport(null)
+      alert('Report updated successfully!')
+    } catch (error) {
+      console.error('❌ Failed to update report:', error)
+      alert('Failed to update report: ' + (error.response?.data?.error || error.message))
     }
   }
 
@@ -426,7 +448,14 @@ const ReportsManagement = () => {
                 {report.status === 'pending' ? (
                   <div className="space-y-3">
                     <p className="text-xs font-bold text-gray-700 text-center">Action Required</p>
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="grid grid-cols-4 gap-2">
+                      <button
+                        onClick={() => handleEdit(report)}
+                        className="px-3 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 transition-colors font-medium text-center flex flex-col items-center justify-center"
+                      >
+                        <span className="text-base mb-1">✏️</span>
+                        <span className="text-xs">Edit</span>
+                      </button>
                       <button
                         onClick={() => handleAccept(report._id)}
                         className="px-3 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 focus:ring-2 focus:ring-green-500 focus:ring-offset-1 transition-colors font-medium text-center flex flex-col items-center justify-center"
@@ -460,12 +489,20 @@ const ReportsManagement = () => {
                         {report.status === 'verified' ? 'Verified & Published' : 'Rejected'}
                       </span>
                     </div>
-                    <button
-                      onClick={() => handleDelete(report._id)}
-                      className="px-3 py-1.5 bg-gray-600 text-white text-xs rounded-md hover:bg-gray-700 transition-colors"
-                    >
-                      Delete
-                    </button>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleEdit(report)}
+                        className="px-3 py-1.5 bg-blue-600 text-white text-xs rounded-md hover:bg-blue-700 transition-colors"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleDelete(report._id)}
+                        className="px-3 py-1.5 bg-gray-600 text-white text-xs rounded-md hover:bg-gray-700 transition-colors"
+                      >
+                        Delete
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
@@ -473,6 +510,17 @@ const ReportsManagement = () => {
           ))
         )}
       </div>
+
+      {/* Edit Report Modal */}
+      <EditReportModal
+        isOpen={editModalOpen}
+        onClose={() => {
+          setEditModalOpen(false)
+          setSelectedReport(null)
+        }}
+        report={selectedReport}
+        onUpdate={handleUpdateReport}
+      />
     </div>
   )
 }

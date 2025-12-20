@@ -80,6 +80,12 @@ export const reportsAPI = {
   updateReportStatus: (id, status) => 
     api.patch(`/reports/${id}/status`, { status }),
   
+  // Update report details
+  updateReport: (id, data) => {
+    console.log('📝 updateReport called with ID:', id, 'Data:', data)
+    return api.put(`/reports/${id}`, data)
+  },
+  
   // Delete report
   deleteReport: (id) => api.delete(`/reports/${id}`),
   

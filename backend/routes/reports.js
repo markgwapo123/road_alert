@@ -417,6 +417,66 @@ router.get('/:id', async (req, res) => {
   }
 });
 
+// @route   PUT /api/reports/:id
+// @desc    Update report details (admin only)
+// @access  Private (requires authentication)
+router.put('/:id', auth, async (req, res) => {
+  try {
+    console.log('📝 Report update request received:');
+    console.log('  - Report ID:', req.params.id);
+    console.log('  - Update data:', JSON.stringify(req.body));
+
+    const { type, description, province, city, barangay, status, severity, priority } = req.body;
+
+    // Find the report
+    const report = await Report.findById(req.params.id);
+    if (!report) {
+      return res.status(404).json({ error: 'Report not found' });
+    }
+
+    // Update fields if provided
+    if (type) report.type = type;
+    if (description !== undefined) report.description = description; // Allow empty description
+    if (province) report.province = province;
+    if (city) report.city = city;
+    if (barangay) report.barangay = barangay;
+    if (status) report.status = status;
+    if (severity) report.severity = severity;
+    if (priority) report.priority = priority;
+
+    // Save the updated report
+    await report.save();
+
+    console.log('✅ Report updated successfully:', report._id);
+
+    // Send notification if status changed to verified
+    if (status === 'verified' && report.reportedBy && report.reportedBy.id) {
+      try {
+        await NotificationService.sendNotification(
+          report.reportedBy.id,
+          'report_verified',
+          `Your report "${report.description.substring(0, 30)}..." has been verified`,
+          { reportId: report._id }
+        );
+      } catch (notifError) {
+        console.error('Failed to send notification:', notifError);
+      }
+    }
+
+    res.json({
+      success: true,
+      message: 'Report updated successfully',
+      report
+    });
+  } catch (error) {
+    console.error('❌ Error updating report:', error);
+    res.status(500).json({
+      error: 'Failed to update report',
+      details: error.message
+    });
+  }
+});
+
 // @route   PATCH /api/reports/:id/status
 // @desc    Update report status
 // @access  Public (for admin dashboard)
