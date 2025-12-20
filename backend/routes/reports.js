@@ -627,7 +627,7 @@ router.post('/:id/resolve', auth, upload.single('evidencePhoto'), async (req, re
     if (evidencePhoto) {
       report.evidencePhoto = evidencePhoto;
     }
-    report.resolvedBy = req.user.id;
+    report.resolvedBy = req.admin ? req.admin.id : req.user?.id;
 
     await report.save();
     console.log('✅ Report saved successfully');

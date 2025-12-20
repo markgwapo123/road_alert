@@ -157,7 +157,14 @@ const ReportsManagement = () => {
   const handleResolveReport = async (reportId, formData) => {
     try {
       console.log('✅ Resolving report:', reportId)
-      await reportsAPI.resolveReport(reportId, formData)
+      console.log('📋 FormData contents:');
+      for (let pair of formData.entries()) {
+        console.log('  ', pair[0], ':', pair[1] instanceof File ? `File: ${pair[1].name}` : pair[1]);
+      }
+      
+      const response = await reportsAPI.resolveReport(reportId, formData)
+      console.log('✅ Resolve response:', response.data)
+      
       await fetchReports()
       
       // Show success modal
@@ -169,6 +176,9 @@ const ReportsManagement = () => {
       setSelectedReport(null)
     } catch (error) {
       console.error('❌ Failed to resolve report:', error)
+      console.error('❌ Error response:', error.response)
+      console.error('❌ Error data:', error.response?.data)
+      console.error('❌ Error status:', error.response?.status)
       throw error
     }
   }
