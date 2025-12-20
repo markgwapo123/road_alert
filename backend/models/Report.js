@@ -85,6 +85,24 @@ const reportSchema = new mongoose.Schema({
   },
   verifiedAt: Date,
   resolvedAt: Date,
+  resolvedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Admin'
+  },
+  adminFeedback: {
+    type: String,
+    maxLength: 1000
+  },
+  evidencePhoto: {
+    data: String,      // Base64 encoded image data
+    originalName: String,
+    mimetype: String,
+    size: Number,
+    uploadDate: {
+      type: Date,
+      default: Date.now
+    }
+  },
   priority: {
     type: String,
     enum: ['low', 'medium', 'high', 'urgent'],

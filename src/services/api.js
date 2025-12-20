@@ -86,6 +86,16 @@ export const reportsAPI = {
     return api.put(`/reports/${id}`, data)
   },
   
+  // Resolve report with admin feedback and evidence
+  resolveReport: (id, formData) => {
+    console.log('✅ resolveReport called with ID:', id)
+    return api.post(`/reports/${id}/resolve`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    })
+  },
+  
   // Delete report
   deleteReport: (id) => api.delete(`/reports/${id}`),
   

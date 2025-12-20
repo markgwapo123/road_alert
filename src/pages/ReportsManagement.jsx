@@ -4,6 +4,7 @@ import { MagnifyingGlassIcon, FunnelIcon } from '@heroicons/react/24/outline'
 import { reportsAPI } from '../services/api'
 import config from '../config/index.js'
 import EditReportModal from '../components/EditReportModal'
+import ResolveReportModal from '../components/ResolveReportModal'
 
 const ReportsManagement = () => {
   const location = useLocation()
@@ -14,6 +15,7 @@ const ReportsManagement = () => {
   const [reports, setReports] = useState([])
   const [loading, setLoading] = useState(true)
   const [editModalOpen, setEditModalOpen] = useState(false)
+  const [resolveModalOpen, setResolveModalOpen] = useState(false)
   const [selectedReport, setSelectedReport] = useState(null)
   const [actionLoading, setActionLoading] = useState(false)
   const [showSuccessModal, setShowSuccessModal] = useState(false)
@@ -147,6 +149,30 @@ const ReportsManagement = () => {
     setEditModalOpen(true)
   }
 
+  const handleResolve = (report) => {
+    setSelectedReport(report)
+    setResolveModalOpen(true)
+  }
+
+  const handleResolveReport = async (reportId, formData) => {
+    try {
+      console.log('✅ Resolving report:', reportId)
+      await reportsAPI.resolveReport(reportId, formData)
+      await fetchReports()
+      
+      // Show success modal
+      setSuccessMessage('✅ Report resolved and user notified!')
+      setShowSuccessModal(true)
+      setTimeout(() => setShowSuccessModal(false), 2000)
+      
+      setResolveModalOpen(false)
+      setSelectedReport(null)
+    } catch (error) {
+      console.error('❌ Failed to resolve report:', error)
+      throw error
+    }
+  }
+
   const handleUpdateReport = async (updatedReport) => {
     try {
       console.log('📝 Updating report:', updatedReport._id)
@@ -166,6 +192,7 @@ const ReportsManagement = () => {
       case 'pending': return 'text-yellow-600 bg-yellow-100'
       case 'verified': return 'text-green-600 bg-green-100'
       case 'rejected': return 'text-red-600 bg-red-100'
+      case 'resolved': return 'text-blue-600 bg-blue-100'
       default: return 'text-gray-600 bg-gray-100'
     }
   }
@@ -251,6 +278,7 @@ const ReportsManagement = () => {
             <option value="pending">Pending</option>
             <option value="verified">Verified</option>
             <option value="rejected">Rejected</option>
+            <option value="resolved">Resolved</option>
           </select>
         </div>
       </div>
@@ -508,13 +536,23 @@ const ReportsManagement = () => {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
                       <div className={`w-2 h-2 rounded-full ${
-                        report.status === 'verified' ? 'bg-green-500' : 'bg-red-500'
+                        report.status === 'verified' ? 'bg-green-500' : 
+                        report.status === 'resolved' ? 'bg-blue-500' : 'bg-red-500'
                       }`}></div>
                       <span className="text-sm font-medium text-gray-700">
-                        {report.status === 'verified' ? 'Verified & Published' : 'Rejected'}
+                        {report.status === 'verified' ? 'Verified & Published' : 
+                         report.status === 'resolved' ? '✅ Issue Resolved' : 'Rejected'}
                       </span>
                     </div>
                     <div className="flex gap-2">
+                      {report.status === 'verified' && (
+                        <button
+                          onClick={() => handleResolve(report)}
+                          className="px-3 py-1.5 bg-green-600 text-white text-xs rounded-md hover:bg-green-700 transition-colors font-medium"
+                        >
+                          ✅ Mark Resolved
+                        </button>
+                      )}
                       <button
                         onClick={() => handleEdit(report)}
                         className="px-3 py-1.5 bg-blue-600 text-white text-xs rounded-md hover:bg-blue-700 transition-colors"
@@ -546,6 +584,18 @@ const ReportsManagement = () => {
         report={selectedReport}
         onUpdate={handleUpdateReport}
       />
+
+      {/* Resolve Report Modal */}
+      {resolveModalOpen && selectedReport && (
+        <ResolveReportModal
+          report={selectedReport}
+          onClose={() => {
+            setResolveModalOpen(false)
+            setSelectedReport(null)
+          }}
+          onResolve={handleResolveReport}
+        />
+      )}
 
       {/* Loading Overlay */}
       {actionLoading && (

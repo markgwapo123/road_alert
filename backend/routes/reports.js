@@ -577,6 +577,84 @@ router.patch('/:id/status', auth, async (req, res) => {
   }
 });
 
+// @route   POST /api/reports/:id/resolve
+// @desc    Mark report as resolved with admin feedback and evidence photo
+// @access  Private (Admin only)
+router.post('/:id/resolve', auth, upload.single('evidencePhoto'), async (req, res) => {
+  try {
+    const { adminFeedback } = req.body;
+
+    // Validate feedback
+    if (!adminFeedback || adminFeedback.trim().length < 10) {
+      return res.status(400).json({
+        error: 'Admin feedback is required (minimum 10 characters)'
+      });
+    }
+
+    // Find the report
+    const report = await Report.findById(req.params.id);
+    if (!report) {
+      return res.status(404).json({
+        error: 'Report not found'
+      });
+    }
+
+    const oldStatus = report.status;
+
+    // Process evidence photo if uploaded
+    let evidencePhoto = null;
+    if (req.file) {
+      evidencePhoto = {
+        data: req.file.buffer.toString('base64'),
+        originalName: req.file.originalname,
+        mimetype: req.file.mimetype,
+        size: req.file.size,
+        uploadDate: new Date()
+      };
+    }
+
+    // Update report with resolution details
+    report.status = 'resolved';
+    report.resolvedAt = new Date();
+    report.adminFeedback = adminFeedback;
+    report.evidencePhoto = evidencePhoto;
+    report.resolvedBy = req.user.id;
+
+    await report.save();
+
+    // Populate for response
+    await report.populate('verifiedBy', 'username');
+    await report.populate('reportedBy', 'username email profile');
+    await report.populate('resolvedBy', 'username');
+
+    // Send notification to user
+    if (report.reportedBy && report.reportedBy.username) {
+      const user = await User.findOne({ username: report.reportedBy.username });
+      if (user) {
+        await NotificationService.createReportResolvedNotification({
+          userId: user._id,
+          reportId: report._id,
+          reportType: report.type,
+          adminFeedback,
+          hasEvidence: !!evidencePhoto
+        });
+      }
+    }
+
+    res.json({
+      success: true,
+      message: 'Report marked as resolved successfully',
+      data: report
+    });
+
+  } catch (error) {
+    console.error('Resolve report error:', error);
+    res.status(500).json({
+      error: 'Server error while resolving report'
+    });
+  }
+});
+
 // @route   DELETE /api/reports/:id
 // @desc    Delete report
 // @access  Private

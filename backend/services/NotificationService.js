@@ -93,6 +93,46 @@ class NotificationService {
   }
 
   /**
+   * Create a notification for report resolved with admin feedback
+   * @param {Object} params - Notification parameters
+   * @param {String} params.userId - User ID who submitted the report
+   * @param {String} params.reportId - Report ID
+   * @param {String} params.reportType - Type of report
+   * @param {String} params.adminFeedback - Admin feedback message
+   * @param {Boolean} params.hasEvidence - Whether evidence photo was uploaded
+   */
+  static async createReportResolvedNotification({
+    userId,
+    reportId,
+    reportType,
+    adminFeedback,
+    hasEvidence
+  }) {
+    try {
+      const reportTypeDisplay = reportType.charAt(0).toUpperCase() + reportType.slice(1);
+      
+      const notification = new Notification({
+        userId,
+        reportId,
+        type: 'report_resolved',
+        title: `✅ Issue Fixed: ${reportTypeDisplay}`,
+        message: `Great news! The ${reportType} issue you reported has been resolved. Admin feedback: ${adminFeedback}${hasEvidence ? ' (Evidence photo attached)' : ''}`,
+        status: 'resolved',
+        isRead: false
+      });
+
+      await notification.save();
+      console.log(`📧 Resolution notification created for user ${userId}`);
+      
+      return notification;
+
+    } catch (error) {
+      console.error('Failed to create resolution notification:', error);
+      return null;
+    }
+  }
+
+  /**
    * Get unread notification count for a user
    */
   static async getUnreadCount(userId) {
