@@ -318,7 +318,7 @@ const NewsFeed = ({ user }) => {
           onClick={() => setActiveTab('reports')}
           style={{
             flex: '1',
-            padding: '14px 12px',
+            padding: '10px 8px',
             border: 'none',
             background: activeTab === 'reports' ? '#007bff' : '#f8f9fa',
             color: activeTab === 'reports' ? 'white' : '#495057',
@@ -331,7 +331,7 @@ const NewsFeed = ({ user }) => {
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
-            gap: '4px',
+            gap: '3px',
             boxShadow: activeTab === 'reports' ? '0 -2px 8px rgba(0,123,255,0.2)' : 'none',
             border: activeTab === 'reports' ? '2px solid #007bff' : '2px solid transparent',
             borderBottom: 'none'
@@ -347,16 +347,16 @@ const NewsFeed = ({ user }) => {
             }
           }}
         >
-          <span style={{ fontSize: '20px' }}>🚨</span>
-          <span style={{ fontSize: '12px', whiteSpace: 'nowrap' }}>Mga Alerto</span>
+          <span style={{ fontSize: '18px' }}>🚨</span>
+          <span style={{ fontSize: '11px', whiteSpace: 'nowrap' }}>Mga Alerto</span>
           <span style={{ 
-            fontSize: '11px', 
+            fontSize: '10px', 
             fontWeight: '700',
             backgroundColor: activeTab === 'reports' ? 'rgba(255,255,255,0.2)' : '#007bff',
             color: activeTab === 'reports' ? 'white' : 'white',
-            padding: '2px 8px',
+            padding: '2px 6px',
             borderRadius: '10px',
-            minWidth: '24px',
+            minWidth: '20px',
             textAlign: 'center'
           }}>
             {filteredReports.length}
@@ -366,7 +366,7 @@ const NewsFeed = ({ user }) => {
           onClick={() => setActiveTab('resolved')}
           style={{
             flex: '1',
-            padding: '14px 12px',
+            padding: '10px 8px',
             border: 'none',
             background: activeTab === 'resolved' ? '#10b981' : '#f8f9fa',
             color: activeTab === 'resolved' ? 'white' : '#495057',
@@ -379,7 +379,7 @@ const NewsFeed = ({ user }) => {
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
-            gap: '4px',
+            gap: '3px',
             boxShadow: activeTab === 'resolved' ? '0 -2px 8px rgba(16,185,129,0.2)' : 'none',
             border: activeTab === 'resolved' ? '2px solid #10b981' : '2px solid transparent',
             borderBottom: 'none'
@@ -395,16 +395,16 @@ const NewsFeed = ({ user }) => {
             }
           }}
         >
-          <span style={{ fontSize: '20px' }}>✅</span>
-          <span style={{ fontSize: '12px', whiteSpace: 'nowrap' }}>Resolved</span>
+          <span style={{ fontSize: '18px' }}>✅</span>
+          <span style={{ fontSize: '11px', whiteSpace: 'nowrap' }}>Resolved</span>
           <span style={{ 
-            fontSize: '11px', 
+            fontSize: '10px', 
             fontWeight: '700',
             backgroundColor: activeTab === 'resolved' ? 'rgba(255,255,255,0.2)' : '#10b981',
             color: 'white',
-            padding: '2px 8px',
+            padding: '2px 6px',
             borderRadius: '10px',
-            minWidth: '24px',
+            minWidth: '20px',
             textAlign: 'center'
           }}>
             {filteredResolvedReports.length}
@@ -414,7 +414,7 @@ const NewsFeed = ({ user }) => {
           onClick={() => setActiveTab('news')}
           style={{
             flex: '1',
-            padding: '14px 12px',
+            padding: '10px 8px',
             border: 'none',
             background: activeTab === 'news' ? '#007bff' : '#f8f9fa',
             color: activeTab === 'news' ? 'white' : '#495057',
@@ -427,7 +427,7 @@ const NewsFeed = ({ user }) => {
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
-            gap: '4px',
+            gap: '3px',
             boxShadow: activeTab === 'news' ? '0 -2px 8px rgba(0,123,255,0.2)' : 'none',
             border: activeTab === 'news' ? '2px solid #007bff' : '2px solid transparent',
             borderBottom: 'none'
@@ -443,16 +443,16 @@ const NewsFeed = ({ user }) => {
             }
           }}
         >
-          <span style={{ fontSize: '20px' }}>📰</span>
-          <span style={{ fontSize: '12px', whiteSpace: 'nowrap' }}>News</span>
+          <span style={{ fontSize: '18px' }}>📰</span>
+          <span style={{ fontSize: '11px', whiteSpace: 'nowrap' }}>News</span>
           <span style={{ 
-            fontSize: '11px', 
+            fontSize: '10px', 
             fontWeight: '700',
             backgroundColor: activeTab === 'news' ? 'rgba(255,255,255,0.2)' : '#007bff',
             color: 'white',
-            padding: '2px 8px',
+            padding: '2px 6px',
             borderRadius: '10px',
-            minWidth: '24px',
+            minWidth: '20px',
             textAlign: 'center'
           }}>
             {filteredNews.length}
