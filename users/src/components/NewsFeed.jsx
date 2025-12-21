@@ -37,6 +37,7 @@ const ALERT_COLORS = {
 
 const NewsFeed = ({ user }) => {
   const [reports, setReports] = useState([]);
+  const [resolvedReports, setResolvedReports] = useState([]);
   const [newsPosts, setNewsPosts] = useState([]);
   const [filteredReports, setFilteredReports] = useState([]);
   const [filteredNews, setFilteredNews] = useState([]);
@@ -105,12 +106,19 @@ const NewsFeed = ({ user }) => {
         
         // Separate active (verified) and resolved reports
         const activeReports = reportsData.filter(r => r.status === 'verified');
-        const resolvedReports = reportsData.filter(r => r.status === 'resolved');
+        const resolvedReportsData = reportsData.filter(r => r.status === 'resolved');
+        
+        console.log('📊 Reports loaded:', {
+          total: reportsData.length,
+          active: activeReports.length,
+          resolved: resolvedReportsData.length
+        });
         
         setReports(activeReports);
+        setResolvedReports(resolvedReportsData);
         setNewsPosts(newsData);
         setFilteredReports(activeReports);
-        setFilteredResolvedReports(resolvedReports);
+        setFilteredResolvedReports(resolvedReportsData);
         setFilteredNews(newsData);
       } catch (err) {
         setError('Failed to load content');
@@ -127,15 +135,12 @@ const NewsFeed = ({ user }) => {
   const filterContent = (query) => {
     if (!query.trim()) {
       setFilteredReports(reports);
-      setFilteredResolvedReports(reports.filter(r => r.status === 'resolved'));
+      setFilteredResolvedReports(resolvedReports);
       setFilteredNews(newsPosts);
       return;
     }
 
     const searchTerm = query.toLowerCase().trim();
-    
-    // Get all reports including resolved
-    const allReports = [...reports, ...reports.filter(r => r.status === 'resolved')];
     
     // Filter active reports
     const filteredReportsData = reports.filter(report => {
@@ -153,9 +158,7 @@ const NewsFeed = ({ user }) => {
     });
     
     // Filter resolved reports
-    const filteredResolvedData = allReports.filter(report => {
-      if (report.status !== 'resolved') return false;
-      
+    const filteredResolvedData = resolvedReports.filter(report => {
       const city = report.city?.toLowerCase() || '';
       const barangay = report.barangay?.toLowerCase() || '';
       const province = report.province?.toLowerCase() || '';
@@ -197,7 +200,7 @@ const NewsFeed = ({ user }) => {
   // Update filtered content when data changes
   useEffect(() => {
     filterContent(searchQuery);
-  }, [reports, newsPosts, searchQuery]);
+  }, [reports, resolvedReports, newsPosts, searchQuery]);
 
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString('en-US', {
