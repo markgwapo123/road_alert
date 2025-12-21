@@ -29,9 +29,10 @@ const loadLibraries = async () => {
     import('@tensorflow-models/coco-ssd')
   ]);
   
-  tf = tfModule;
-  blazeface = blazefaceModule;
-  cocoSsd = cocoSsdModule;
+  // Handle both default and named exports
+  tf = tfModule.default || tfModule;
+  blazeface = blazefaceModule.default || blazefaceModule;
+  cocoSsd = cocoSsdModule.default || cocoSsdModule;
   
   console.log('✅ AI libraries loaded');
   return { tf, blazeface, cocoSsd };
@@ -169,14 +170,14 @@ const applyGaussianBlur = (context, x, y, width, height, blurRadius = 40) => {
 export const detectFaces = async (canvas) => {
   try {
     // Ensure libraries and models are loaded
-    if (!faceModel) {
+    if (!faceModel || !tf) {
       await loadFaceDetectionModel();
     }
     
     console.log('🔍 Detecting faces in image...');
     
     // Convert canvas to tensor for the model
-    const image = tf.browser.fromPixels(canvas);
+    const image = tf.default ? tf.default.browser.fromPixels(canvas) : tf.browser.fromPixels(canvas);
     
     // Run face detection with returnTensors=false for better performance
     const predictions = await faceModel.estimateFaces(image, false);
