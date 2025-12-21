@@ -441,18 +441,6 @@ const ReportDetailModal = ({ report, isOpen, onClose, reportUser }) => {
                     parent.appendChild(fallback);
                   }}
                 />
-                <div style={{
-                  position: 'absolute',
-                  bottom: '8px',
-                  right: '8px',
-                  background: 'rgba(0, 0, 0, 0.7)',
-                  color: 'white',
-                  padding: '4px 8px',
-                  borderRadius: '4px',
-                  fontSize: '12px'
-                }}>
-                  Click to enlarge
-                </div>
               </div>
             </div>
           )}
@@ -569,18 +557,6 @@ const ReportDetailModal = ({ report, isOpen, onClose, reportUser }) => {
                           parent.appendChild(fallback);
                         }}
                       />
-                      <div style={{
-                        position: 'absolute',
-                        bottom: '8px',
-                        right: '8px',
-                        background: 'rgba(0, 0, 0, 0.7)',
-                        color: 'white',
-                        padding: '4px 8px',
-                        borderRadius: '4px',
-                        fontSize: '12px'
-                      }}>
-                        Click to enlarge
-                      </div>
                     </div>
                   </div>
                 )}
