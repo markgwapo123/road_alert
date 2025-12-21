@@ -3,7 +3,7 @@ import axios from 'axios';
 import config from '../config/index.js';
 import { NEGROS_PROVINCES, NEGROS_CITIES, NEGROS_BARANGAYS } from '../data/negrosLocations.js';
 import exifr from 'exifr';
-import { applyPrivacyProtection } from '../utils/privacyProtection.js';
+import { applyAIPrivacyProtection, preloadModel } from '../utils/aiPrivacyProtection.js';
 import { getReverseGeocode } from '../services/geocoding.js';
 import { processGeocodedAddress } from '../utils/addressMatcher.js';
 
@@ -50,6 +50,13 @@ const ReportForm = ({ onReport, onClose }) => {
   const [processingImage, setProcessingImage] = useState(false);
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
+
+  // Preload AI face detection model on component mount
+  useEffect(() => {
+    preloadModel().catch(err => {
+      console.warn('⚠️ Failed to preload face detection model:', err);
+    });
+  }, []);
 
   // Handle location toggle
   const handleLocationToggle = async () => {
@@ -254,7 +261,7 @@ const ReportForm = ({ onReport, onClose }) => {
     if (!videoRef.current || !canvasRef.current) return;
     
     setProcessingImage(true);
-    setSuccess('🔒 Processing image with privacy protection...');
+    setSuccess('🤖 Processing image with AI-powered privacy protection...');
     
     const video = videoRef.current;
     const canvas = canvasRef.current;
@@ -267,11 +274,17 @@ const ReportForm = ({ onReport, onClose }) => {
     // Draw the current video frame to canvas
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
     
-    // Apply privacy protection (blur faces and hide license plates)
+    // Apply AI-powered privacy protection (detect and blur faces)
     try {
-      await applyPrivacyProtection(canvas);
+      const facesBlurred = await applyAIPrivacyProtection(canvas);
+      if (facesBlurred > 0) {
+        setSuccess(`🔒 ${facesBlurred} face(s) automatically blurred for privacy`);
+      } else {
+        setSuccess('✅ Image captured - no faces detected');
+      }
     } catch (error) {
       console.warn('⚠️ Privacy protection failed, proceeding without it:', error);
+      setSuccess('⚠️ Privacy protection unavailable - image captured');
     }
     
     // Convert canvas to blob
@@ -292,7 +305,6 @@ const ReportForm = ({ onReport, onClose }) => {
         stopCamera();
         
         setProcessingImage(false);
-        setSuccess('📷 Photo captured successfully with privacy protection!');
       }
     }, 'image/jpeg', 0.8);
   };
@@ -867,6 +879,9 @@ const ReportForm = ({ onReport, onClose }) => {
               </button>
               <div className="help-text">
                 Click to open your device's camera and capture a photo of the road condition.
+                <strong style={{ display: 'block', marginTop: '8px', color: '#059669' }}>
+                  🤖 AI Privacy Protection: Faces will be automatically detected and blurred
+                </strong>
               </div>
             </div>
           )}
@@ -891,7 +906,7 @@ const ReportForm = ({ onReport, onClose }) => {
                   className="camera-btn capture"
                   disabled={processingImage}
                 >
-                  {processingImage ? '🔒 Processing...' : '📸 Capture Photo'}
+                  {processingImage ? '🤖 AI Processing...' : '📸 Capture Photo'}
                 </button>
                 <button 
                   type="button" 
