@@ -40,6 +40,7 @@ const NewsFeed = ({ user }) => {
   const [newsPosts, setNewsPosts] = useState([]);
   const [filteredReports, setFilteredReports] = useState([]);
   const [filteredNews, setFilteredNews] = useState([]);
+  const [filteredResolvedReports, setFilteredResolvedReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selectedReport, setSelectedReport] = useState(null);
@@ -48,7 +49,7 @@ const NewsFeed = ({ user }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isNewsModalOpen, setIsNewsModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeTab, setActiveTab] = useState('reports'); // 'reports' or 'news'
+  const [activeTab, setActiveTab] = useState('reports'); // 'reports', 'resolved', or 'news'
 
   useEffect(() => {
     // Debug: Log configuration details
@@ -102,9 +103,14 @@ const NewsFeed = ({ user }) => {
         const reportsData = reportsResponse.data.data || [];
         const newsData = newsResponse.data.posts || [];
         
-        setReports(reportsData);
+        // Separate active (verified) and resolved reports
+        const activeReports = reportsData.filter(r => r.status === 'verified');
+        const resolvedReports = reportsData.filter(r => r.status === 'resolved');
+        
+        setReports(activeReports);
         setNewsPosts(newsData);
-        setFilteredReports(reportsData);
+        setFilteredReports(activeReports);
+        setFilteredResolvedReports(resolvedReports);
         setFilteredNews(newsData);
       } catch (err) {
         setError('Failed to load content');
@@ -121,14 +127,35 @@ const NewsFeed = ({ user }) => {
   const filterContent = (query) => {
     if (!query.trim()) {
       setFilteredReports(reports);
+      setFilteredResolvedReports(reports.filter(r => r.status === 'resolved'));
       setFilteredNews(newsPosts);
       return;
     }
 
     const searchTerm = query.toLowerCase().trim();
     
-    // Filter reports
+    // Get all reports including resolved
+    const allReports = [...reports, ...reports.filter(r => r.status === 'resolved')];
+    
+    // Filter active reports
     const filteredReportsData = reports.filter(report => {
+      const city = report.city?.toLowerCase() || '';
+      const barangay = report.barangay?.toLowerCase() || '';
+      const province = report.province?.toLowerCase() || '';
+      const address = report.location?.address?.toLowerCase() || '';
+      const description = report.description?.toLowerCase() || '';
+
+      return city.includes(searchTerm) || 
+             barangay.includes(searchTerm) || 
+             province.includes(searchTerm) ||
+             address.includes(searchTerm) ||
+             description.includes(searchTerm);
+    });
+    
+    // Filter resolved reports
+    const filteredResolvedData = allReports.filter(report => {
+      if (report.status !== 'resolved') return false;
+      
       const city = report.city?.toLowerCase() || '';
       const barangay = report.barangay?.toLowerCase() || '';
       const province = report.province?.toLowerCase() || '';
@@ -156,6 +183,7 @@ const NewsFeed = ({ user }) => {
     });
 
     setFilteredReports(filteredReportsData);
+    setFilteredResolvedReports(filteredResolvedData);
     setFilteredNews(filteredNewsData);
   };
 
@@ -297,6 +325,21 @@ const NewsFeed = ({ user }) => {
           🚨 Mga Alerto ({filteredReports.length})
         </button>
         <button
+          onClick={() => setActiveTab('resolved')}
+          style={{
+            padding: '12px 24px',
+            border: 'none',
+            background: activeTab === 'resolved' ? '#10b981' : 'transparent',
+            color: activeTab === 'resolved' ? 'white' : '#10b981',
+            borderRadius: '8px 8px 0 0',
+            cursor: 'pointer',
+            fontWeight: 'bold',
+            marginBottom: '-2px'
+          }}
+        >
+          ✅ Resolved ({filteredResolvedReports.length})
+        </button>
+        <button
           onClick={() => setActiveTab('news')}
           style={{
             padding: '12px 24px',
@@ -320,9 +363,9 @@ const NewsFeed = ({ user }) => {
           <input
             type="text"
             className="search-input"
-            placeholder={activeTab === 'reports' 
-              ? "Search by city, barangay, or location..." 
-              : "Search news by title, content, or author..."
+            placeholder={activeTab === 'news'
+              ? "Search news by title, content, or author..."
+              : "Search by city, barangay, or location..." 
             }
             value={searchQuery}
             onChange={handleSearchChange}
@@ -341,7 +384,7 @@ const NewsFeed = ({ user }) => {
         </div>
         
         {/* Quick Search Suggestions */}
-        {!searchQuery && activeTab === 'reports' && (
+        {!searchQuery && (activeTab === 'reports' || activeTab === 'resolved') && (
           <div className="search-suggestions">
             <span className="suggestions-label">Popular searches:</span>
             {['Kabankalan', 'Bacolod', 'Bago', 'Silay', 'Talisay'].map(city => (
@@ -363,6 +406,8 @@ const NewsFeed = ({ user }) => {
           <div className="search-results-info">
             {activeTab === 'reports' 
               ? `${filteredReports.length} report${filteredReports.length !== 1 ? 's' : ''} found`
+              : activeTab === 'resolved'
+              ? `${filteredResolvedReports.length} resolved report${filteredResolvedReports.length !== 1 ? 's' : ''} found`
               : `${filteredNews.length} news item${filteredNews.length !== 1 ? 's' : ''} found`
             } for "{searchQuery}"
           </div>
@@ -370,17 +415,211 @@ const NewsFeed = ({ user }) => {
       </div>
 
       {/* Reports Overview Map - Shows all reports with pins */}
-      {activeTab === 'reports' && (
+      {(activeTab === 'reports' || activeTab === 'resolved') && (
         <ReportsOverviewMap searchQuery={searchQuery} />
       )}
       
-      {/* Reports Map - Only show on Reports tab */}
+      {/* Reports Map - Only show on Reports and Resolved tabs */}
       {activeTab === 'reports' && filteredReports.length > 0 && (
         <ReportsMap reports={filteredReports} />
       )}
+      {activeTab === 'resolved' && filteredResolvedReports.length > 0 && (
+        <ReportsMap reports={filteredResolvedReports} />
+      )}
       
       {/* Content Area */}
-      {activeTab === 'reports' ? (
+      {activeTab === 'resolved' ? (
+        // Resolved Reports Tab Content
+        filteredResolvedReports.length === 0 ? (
+          <div style={{
+            textAlign: 'center',
+            padding: '40px',
+            background: searchQuery ? '#fff3cd' : '#f0fdf4',
+            borderRadius: '12px',
+            color: searchQuery ? '#856404' : '#166534',
+            maxWidth: '600px',
+            margin: '0 auto',
+            border: searchQuery ? '1px solid #ffeaa7' : '1px solid #86efac'
+          }}>
+            <div style={{ fontSize: '24px', marginBottom: '10px' }}>
+              {searchQuery ? '🔍' : '✅'}
+            </div>
+            {searchQuery 
+              ? `No resolved reports found for "${searchQuery}"`
+              : 'No resolved reports yet'
+            }
+            {searchQuery && (
+              <div style={{ fontSize: '14px', marginTop: '8px', color: '#6c757d' }}>
+                Try searching for cities like "Kabankalan", "Bacolod", or barangays
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="news-feed-grid">
+            {filteredResolvedReports.map((report) => {
+              const alertStyle = ALERT_COLORS[report.type] || ALERT_COLORS.info;
+              
+              return (
+                <div
+                  key={report._id}
+                  onClick={() => handleReportClick(report)}
+                  className="report-card"
+                >
+                  {/* Mobile-optimized Header */}
+                  <div className="report-card-header">
+                    <div className="report-type-badge" style={{
+                      background: alertStyle.background,
+                      color: 'white'
+                    }}>
+                      {alertStyle.icon} {report.type.replace('_', ' ')}
+                    </div>
+                    <div className="report-date">
+                      {formatDate(report.createdAt)}
+                    </div>
+                  </div>
+
+                  {/* Resolved Status Badge */}
+                  <div style={{
+                    backgroundColor: '#10b981',
+                    color: 'white',
+                    padding: '8px 12px',
+                    borderRadius: '8px',
+                    margin: '12px 16px 0 16px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+                  }}>
+                    <span style={{ fontSize: '16px' }}>✅</span>
+                    <span>Issue Resolved</span>
+                  </div>
+
+                  {/* Admin Feedback */}
+                  {report.adminFeedback && (
+                    <div style={{
+                      backgroundColor: '#eff6ff',
+                      border: '1px solid #bfdbfe',
+                      borderRadius: '8px',
+                      padding: '12px',
+                      margin: '12px 16px 0 16px',
+                      fontSize: '14px'
+                    }}>
+                      <div style={{
+                        fontWeight: '600',
+                        color: '#1e40af',
+                        marginBottom: '6px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px'
+                      }}>
+                        <span style={{ fontSize: '16px' }}>💬</span>
+                        <span>Admin Feedback:</span>
+                      </div>
+                      <div style={{
+                        color: '#1f2937',
+                        lineHeight: '1.5'
+                      }}>
+                        {report.adminFeedback}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Compact Content Section */}
+                  <div className="report-content">
+                    <p className="report-description">
+                      {report.description}
+                    </p>
+                    
+                    {/* Location Information */}
+                    <div className="report-location-info" style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      marginTop: '8px',
+                      padding: '6px 8px',
+                      backgroundColor: '#f8f9fa',
+                      borderRadius: '6px',
+                      fontSize: '13px'
+                    }}>
+                      <span style={{ fontSize: '14px' }}>📍</span>
+                      <span style={{ color: '#495057', fontWeight: '500' }}>
+                        {[report.barangay, report.city, report.province]
+                          .filter(Boolean)
+                          .join(', ')}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Image Preview */}
+                  {report.images && report.images.length > 0 && (
+                    <div style={{
+                      borderTop: '1px solid #e9ecef',
+                      padding: '16px',
+                      background: '#f8f9fa'
+                    }}>
+                      <img
+                        src={(() => {
+                          const imageData = report.images[0];
+                          if (imageData?.data) {
+                            return `data:${imageData.mimetype};base64,${imageData.data}`;
+                          }
+                          const filename = imageData?.filename || imageData;
+                          if (typeof filename === 'string') {
+                            if (filename.startsWith('http://') || filename.startsWith('https://')) {
+                              return filename;
+                            }
+                            if (filename.startsWith('data:')) {
+                              return filename;
+                            }
+                            return `${config.BACKEND_URL}/uploads/${filename}`;
+                          }
+                          return '';
+                        })()}
+                        alt="Report preview"
+                        style={{
+                          width: '100%',
+                          height: '160px',
+                          objectFit: 'cover',
+                          borderRadius: '8px'
+                        }}
+                        onError={(e) => {
+                          e.target.style.display = 'none';
+                        }}
+                      />
+                    </div>
+                  )}
+
+                  {/* Footer */}
+                  <div style={{
+                    padding: '12px 16px',
+                    borderTop: '1px solid #e9ecef',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    background: '#fff',
+                    fontSize: '13px'
+                  }}>
+                    <span style={{
+                      color: '#10b981',
+                      fontWeight: '600'
+                    }}>
+                      Resolved {report.resolvedAt ? formatDate(report.resolvedAt) : ''}
+                    </span>
+                    <span style={{
+                      color: '#6c757d',
+                      fontSize: '12px'
+                    }}>
+                      👁️ {report.views || 0} views
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )
+      ) : activeTab === 'reports' ? (
         // Reports Tab Content
         reports.length === 0 ? (
           <div style={{
