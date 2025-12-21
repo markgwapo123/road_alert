@@ -585,6 +585,33 @@ const ReportDetailModal = ({ report, isOpen, onClose, reportUser }) => {
                   </div>
                 )}
               </div>
+              
+              {/* Resolved Date */}
+              {report.resolvedAt && (
+                <div style={{ 
+                  background: '#f8fafc', 
+                  padding: '12px', 
+                  borderRadius: '8px',
+                  border: '1px solid #bfdbfe',
+                  textAlign: 'center',
+                  marginTop: '12px'
+                }}>
+                  <div style={{ 
+                    fontSize: '13px', 
+                    color: '#1e40af',
+                    marginBottom: '4px' 
+                  }}>
+                    Resolved on
+                  </div>
+                  <div style={{ 
+                    fontSize: '15px', 
+                    fontWeight: '600',
+                    color: '#1f2937' 
+                  }}>
+                    {formatDate(report.resolvedAt)}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
