@@ -482,13 +482,13 @@ const ReportDetailModal = ({ report, isOpen, onClose, reportUser }) => {
                   color: '#1f2937',
                   lineHeight: '1.6',
                   fontSize: '14px',
-                  marginBottom: report.adminFeedbackImage ? '16px' : '0'
+                  marginBottom: report.evidencePhoto ? '16px' : '0'
                 }}>
                   {report.adminFeedback}
                 </div>
                 
                 {/* Admin Feedback Image */}
-                {report.adminFeedbackImage && (
+                {report.evidencePhoto && (
                   <div>
                     <div style={{
                       fontSize: '13px',
@@ -513,11 +513,11 @@ const ReportDetailModal = ({ report, isOpen, onClose, reportUser }) => {
                       <img
                         src={(() => {
                           // Handle Base64 data URL
-                          if (report.adminFeedbackImage.data) {
-                            return `data:${report.adminFeedbackImage.mimetype};base64,${report.adminFeedbackImage.data}`;
+                          if (report.evidencePhoto.data) {
+                            return `data:${report.evidencePhoto.mimetype};base64,${report.evidencePhoto.data}`;
                           }
                           // Handle filename or URL
-                          const filename = report.adminFeedbackImage.filename || report.adminFeedbackImage;
+                          const filename = report.evidencePhoto.filename || report.evidencePhoto;
                           if (typeof filename === 'string') {
                             if (filename.startsWith('http://') || filename.startsWith('https://')) {
                               return filename;
