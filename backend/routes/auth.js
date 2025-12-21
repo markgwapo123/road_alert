@@ -5,6 +5,7 @@ const { OAuth2Client } = require('google-auth-library');
 const User = require('../models/User');
 const Admin = require('../models/Admin');
 const auth = require('../middleware/auth');
+const NotificationService = require('../services/NotificationService');
 
 const router = express.Router();
 
@@ -38,6 +39,14 @@ router.post('/register', async (req, res) => {
 
         // Password will be hashed automatically by the User model pre-save hook
         await user.save();
+
+        // Send welcome notification to new user
+        try {
+            await NotificationService.createWelcomeNotification(user._id, user.username);
+        } catch (notifError) {
+            console.error('Failed to send welcome notification:', notifError);
+            // Don't fail registration if notification fails
+        }
 
         res.status(201).json({ success: true, message: 'User registered successfully' });
 
@@ -516,6 +525,14 @@ router.post('/google-login', async (req, res) => {
       });
 
       await user.save();
+
+      // Send welcome notification to new Google user
+      try {
+        await NotificationService.createWelcomeNotification(user._id, user.username);
+      } catch (notifError) {
+        console.error('Failed to send welcome notification:', notifError);
+        // Don't fail login if notification fails
+      }
     } else if (!user.socialLogin || user.socialLogin.provider !== 'google') {
       // Update existing user with Google login info
       user.socialLogin = {

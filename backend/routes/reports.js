@@ -382,6 +382,20 @@ router.post('/', upload.array('images', 5), reportValidation, async (req, res) =
     const report = new Report(reportData);
     await report.save();
 
+    // Send notification to user about report submission
+    if (report.reportedBy && report.reportedBy.id) {
+      try {
+        await NotificationService.createReportSubmittedNotification({
+          userId: report.reportedBy.id,
+          reportId: report._id,
+          reportType: report.type
+        });
+      } catch (notifError) {
+        console.error('Failed to send submission notification:', notifError);
+        // Don't fail the request if notification fails
+      }
+    }
+
     res.status(201).json({
       success: true,
       message: 'Report created successfully',

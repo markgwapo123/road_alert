@@ -167,6 +167,103 @@ class NotificationService {
   }
 
   /**
+   * Create a notification when user submits a new report
+   * @param {Object} params - Notification parameters
+   * @param {String} params.userId - User ID who submitted the report
+   * @param {String} params.reportId - Report ID
+   * @param {String} params.reportType - Type of report
+   */
+  static async createReportSubmittedNotification({
+    userId,
+    reportId,
+    reportType
+  }) {
+    try {
+      const reportTypeDisplay = reportType.charAt(0).toUpperCase() + reportType.slice(1);
+      
+      const notification = new Notification({
+        userId,
+        reportId,
+        type: 'new_report',
+        title: `📝 Report Submitted: ${reportTypeDisplay}`,
+        message: `Your ${reportType} report has been submitted successfully and is under review. We'll notify you once it's been verified.`,
+        status: 'pending',
+        isRead: false
+      });
+
+      await notification.save();
+      console.log(`📧 Report submission notification created for user ${userId}`);
+      
+      return notification;
+
+    } catch (error) {
+      console.error('Failed to create submission notification:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Create a notification when user views a report
+   * @param {Object} params - Notification parameters
+   * @param {String} params.userId - User ID who viewed
+   * @param {String} params.reportId - Report ID
+   */
+  static async createReportViewedNotification({
+    userId,
+    reportId,
+    reportType
+  }) {
+    try {
+      // Only create if user is the report owner
+      const reportTypeDisplay = reportType.charAt(0).toUpperCase() + reportType.slice(1);
+      
+      const notification = new Notification({
+        userId,
+        reportId,
+        type: 'system_alert',
+        title: `👁️ Report Viewed`,
+        message: `Your ${reportType} report has received a new view from the community.`,
+        isRead: false
+      });
+
+      await notification.save();
+      console.log(`📧 Report viewed notification created for user ${userId}`);
+      
+      return notification;
+
+    } catch (error) {
+      console.error('Failed to create view notification:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Create a welcome notification for new users
+   * @param {String} userId - User ID
+   * @param {String} username - Username
+   */
+  static async createWelcomeNotification(userId, username) {
+    try {
+      const notification = new Notification({
+        userId,
+        type: 'welcome',
+        title: `👋 Welcome to Road Alert, ${username}!`,
+        message: `Thank you for joining our community. Start reporting road issues to help make our roads safer for everyone. Your reports will be reviewed by our team.`,
+        isRead: false
+      });
+
+      await notification.save();
+      console.log(`📧 Welcome notification created for user ${userId}`);
+      
+      return notification;
+
+    } catch (error) {
+      console.error('Failed to create welcome notification:', error);
+      return null;
+    }
+  }
+
+  /**
    * Clean up old notifications (older than 30 days)
    */
   static async cleanupOldNotifications() {
