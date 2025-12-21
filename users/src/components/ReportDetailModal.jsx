@@ -457,6 +457,137 @@ const ReportDetailModal = ({ report, isOpen, onClose, reportUser }) => {
             </div>
           )}
 
+          {/* Admin Feedback */}
+          {report.status === 'resolved' && report.adminFeedback && (
+            <div style={{ marginBottom: '20px' }}>
+              <h3 style={{ 
+                margin: '0 0 12px 0', 
+                color: '#1e40af', 
+                fontSize: '16px', 
+                fontWeight: '600',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}>
+                <span style={{ fontSize: '20px' }}>💬</span>
+                Admin Feedback
+              </h3>
+              <div style={{
+                backgroundColor: '#eff6ff',
+                border: '1px solid #bfdbfe',
+                borderRadius: '8px',
+                padding: '16px'
+              }}>
+                <div style={{
+                  color: '#1f2937',
+                  lineHeight: '1.6',
+                  fontSize: '14px',
+                  marginBottom: report.adminFeedbackImage ? '16px' : '0'
+                }}>
+                  {report.adminFeedback}
+                </div>
+                
+                {/* Admin Feedback Image */}
+                {report.adminFeedbackImage && (
+                  <div>
+                    <div style={{
+                      fontSize: '13px',
+                      fontWeight: '600',
+                      color: '#1e40af',
+                      marginBottom: '8px'
+                    }}>
+                      📸 Resolution Image
+                    </div>
+                    <div style={{ 
+                      border: '1px solid #bfdbfe',
+                      borderRadius: '8px',
+                      overflow: 'hidden',
+                      height: '250px',
+                      width: '100%',
+                      position: 'relative',
+                      background: '#f8fafc',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}>
+                      <img
+                        src={(() => {
+                          // Handle Base64 data URL
+                          if (report.adminFeedbackImage.data) {
+                            return `data:${report.adminFeedbackImage.mimetype};base64,${report.adminFeedbackImage.data}`;
+                          }
+                          // Handle filename or URL
+                          const filename = report.adminFeedbackImage.filename || report.adminFeedbackImage;
+                          if (typeof filename === 'string') {
+                            if (filename.startsWith('http://') || filename.startsWith('https://')) {
+                              return filename;
+                            }
+                            if (filename.startsWith('data:')) {
+                              return filename;
+                            }
+                            return `${config.BACKEND_URL}/uploads/${filename}`;
+                          }
+                          return '';
+                        })()}
+                        alt="Admin Feedback"
+                        style={{
+                          maxWidth: '100%',
+                          maxHeight: '100%',
+                          width: 'auto',
+                          height: 'auto',
+                          objectFit: 'contain',
+                          cursor: 'pointer',
+                          transition: 'transform 0.2s'
+                        }}
+                        onClick={(e) => {
+                          window.open(e.target.src, '_blank');
+                        }}
+                        onMouseOver={(e) => e.target.style.transform = 'scale(1.02)'}
+                        onMouseOut={(e) => e.target.style.transform = 'scale(1)'}
+                        onError={(e) => {
+                          console.error('❌ Admin feedback image failed to load:', e.target.src);
+                          e.target.style.display = 'none';
+                          const parent = e.target.parentNode;
+                          const fallback = document.createElement('div');
+                          fallback.style.cssText = `
+                            width: 100%;
+                            height: 100%;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            background: #f3f4f6;
+                            color: #6b7280;
+                            font-size: 14px;
+                            text-align: center;
+                          `;
+                          fallback.innerHTML = `
+                            <div>
+                              <div style="font-size: 24px; margin-bottom: 8px;">📷</div>
+                              <div>Image not available</div>
+                            </div>
+                          `;
+                          parent.appendChild(fallback);
+                        }}
+                      />
+                      <div style={{
+                        position: 'absolute',
+                        bottom: '8px',
+                        right: '8px',
+                        background: 'rgba(0, 0, 0, 0.7)',
+                        color: 'white',
+                        padding: '4px 8px',
+                        borderRadius: '4px',
+                        fontSize: '12px'
+                      }}>
+                        Click to enlarge
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Timestamp */}
           <div style={{ 
             background: '#f9fafb', 
