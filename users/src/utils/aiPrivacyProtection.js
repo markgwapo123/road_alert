@@ -3,17 +3,43 @@
  * Uses TensorFlow.js with BlazeFace and COCO-SSD models for accurate face detection
  * Multi-model approach ensures consistent and reliable face/person detection
  * Automatically blurs detected faces to protect user privacy
+ * 
+ * OPTIMIZED: Uses dynamic imports to reduce initial bundle size
  */
 
-import * as tf from '@tensorflow/tfjs';
-import * as blazeface from '@tensorflow-models/blazeface';
-import * as cocoSsd from '@tensorflow-models/coco-ssd';
-
+let tf = null;
+let blazeface = null;
+let cocoSsd = null;
 let faceModel = null;
 let personModel = null;
 
 /**
+ * Lazy load TensorFlow.js and model libraries
+ * Only loads when actually needed, not on initial page load
+ */
+const loadLibraries = async () => {
+  if (tf && blazeface && cocoSsd) return { tf, blazeface, cocoSsd };
+  
+  console.log('📦 Lazy loading AI libraries...');
+  
+  // Dynamic imports - only load when needed
+  const [tfModule, blazefaceModule, cocoSsdModule] = await Promise.all([
+    import('@tensorflow/tfjs'),
+    import('@tensorflow-models/blazeface'),
+    import('@tensorflow-models/coco-ssd')
+  ]);
+  
+  tf = tfModule;
+  blazeface = blazefaceModule;
+  cocoSsd = cocoSsdModule;
+  
+  console.log('✅ AI libraries loaded');
+  return { tf, blazeface, cocoSsd };
+};
+
+/**
  * Load both AI models for comprehensive detection
+ * Uses lazy loading - libraries and models loaded on-demand
  * @returns {Promise<void>}
  */
 export const loadFaceDetectionModel = async () => {
@@ -21,6 +47,9 @@ export const loadFaceDetectionModel = async () => {
   
   try {
     console.log('🤖 Loading AI models for face and person detection...');
+    
+    // Ensure libraries are loaded first (lazy load)
+    await loadLibraries();
     
     // Load both models in parallel for faster startup
     const [loadedFaceModel, loadedPersonModel] = await Promise.all([
@@ -139,7 +168,7 @@ const applyGaussianBlur = (context, x, y, width, height, blurRadius = 40) => {
  */
 export const detectFaces = async (canvas) => {
   try {
-    // Ensure model is loaded
+    // Ensure libraries and models are loaded
     if (!faceModel) {
       await loadFaceDetectionModel();
     }

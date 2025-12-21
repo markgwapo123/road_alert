@@ -51,12 +51,8 @@ const ReportForm = ({ onReport, onClose }) => {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
 
-  // Preload AI face detection model on component mount
-  useEffect(() => {
-    preloadModel().catch(err => {
-      console.warn('⚠️ Failed to preload face detection model:', err);
-    });
-  }, []);
+  // Removed automatic preloading to reduce initial bundle size
+  // Models will be lazy-loaded when camera is opened
 
   // Handle location toggle
   const handleLocationToggle = async () => {
@@ -233,6 +229,13 @@ const ReportForm = ({ onReport, onClose }) => {
   const startCamera = async () => {
     try {
       setError('');
+      setSuccess('📦 Loading AI privacy protection...');
+      
+      // Preload AI models when camera starts (lazy load)
+      preloadModel().catch(err => {
+        console.warn('⚠️ Failed to preload face detection model:', err);
+      });
+      
       const constraints = {
         video: {
           facingMode: 'environment', // Use back camera on mobile
