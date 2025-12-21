@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { UsersIcon, ClockIcon, CheckCircleIcon, XCircleIcon, UserGroupIcon, EyeIcon, DocumentTextIcon, CalendarIcon, MapPinIcon, PhoneIcon, FunnelIcon, UserIcon } from '@heroicons/react/24/outline'
+import config from '../config/index.js'
 
 const Users = () => {
   const [users, setUsers] = useState([])
@@ -46,7 +47,7 @@ const Users = () => {
         throw new Error('No admin token found. Please log in first.')
       }
       
-      const response = await fetch('http://localhost:3001/api/admin/app-users', {
+      const response = await fetch(`${config.API_BASE_URL}/admin/app-users`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -70,7 +71,7 @@ const Users = () => {
       setError(`${err.message}. Please check if you're logged in and try again.`)
       console.error('Error fetching users:', err)
       console.error('Response details:', {
-        url: 'http://localhost:3001/api/admin/app-users',
+        url: `${config.API_BASE_URL}/admin/app-users`,
         token: token ? 'Present' : 'Missing',
         error: err.message
       })
@@ -110,7 +111,7 @@ const Users = () => {
     
     try {
       const token = localStorage.getItem('adminToken')
-      const response = await fetch(`http://localhost:3001/api/admin/user-reports/${user._id}`, {
+      const response = await fetch(`${config.API_BASE_URL}/admin/user-reports/${user._id}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -159,7 +160,7 @@ const Users = () => {
       setLoadingFreezeAction(true)
       const token = localStorage.getItem('adminToken')
       
-      const response = await fetch(`http://localhost:3001/api/admin/user-freeze/${userId}`, {
+      const response = await fetch(`${config.API_BASE_URL}/admin/user-freeze/${userId}`, {
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -387,7 +388,7 @@ const Users = () => {
                           <div className="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center overflow-hidden">
                             {user.profile?.profileImage ? (
                               <img 
-                                src={`http://localhost:3001${user.profile.profileImage}`}
+                                src={`${config.BACKEND_URL}${user.profile.profileImage}`}
                                 alt={`${user.name}'s profile`}
                                 className="h-full w-full object-cover"
                               />
@@ -481,7 +482,7 @@ const Users = () => {
                           <div className="h-16 w-16 rounded-full bg-gray-300 flex items-center justify-center overflow-hidden">
                             {selectedUser.profile?.profileImage ? (
                               <img 
-                                src={`http://localhost:3001${selectedUser.profile.profileImage}`}
+                                src={`${config.BACKEND_URL}${selectedUser.profile.profileImage}`}
                                 alt={`${selectedUser.name}'s profile`}
                                 className="h-full w-full object-cover"
                               />
@@ -645,7 +646,7 @@ const Users = () => {
                           {report.images && report.images.length > 0 && (
                             <div className="mt-2 flex items-center">
                               <img 
-                                src={`http://localhost:3001/uploads/${report.images[0].filename}`}
+                                src={`${config.BACKEND_URL}/uploads/${report.images[0].filename}`}
                                 alt="Report attachment"
                                 className="h-12 w-12 object-cover rounded border mr-2"
                               />
@@ -813,10 +814,10 @@ const Users = () => {
                       {selectedReport.images.map((image, index) => (
                         <div key={index} className="relative group">
                           <img
-                            src={`http://localhost:3001/uploads/${image.filename}`}
+                            src={`${config.BACKEND_URL}/uploads/${image.filename}`}
                             alt={`Report attachment ${index + 1}`}
                             className="w-full h-32 object-cover rounded-lg border hover:shadow-lg transition-shadow cursor-pointer"
-                            onClick={() => window.open(`http://localhost:3001/uploads/${image.filename}`, '_blank')}
+                            onClick={() => window.open(`${config.BACKEND_URL}/uploads/${image.filename}`, '_blank')}
                           />
                           <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-opacity rounded-lg flex items-center justify-center">
                             <EyeIcon className="h-6 w-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
