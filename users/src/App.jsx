@@ -12,7 +12,6 @@ import MyReports from './components/MyReports';
 import NotificationPage from './pages/NotificationPage';
 import ConfirmationModal from './components/ConfirmationModal';
 import LogoutConfirmModal from './components/LogoutConfirmModal';
-import ToastNotification from './components/ToastNotification';
 import './App.css';
 
 function App() {
@@ -28,8 +27,6 @@ function App() {
   const [confirmationMessage, setConfirmationMessage] = useState('');
   const [confirmationType, setConfirmationType] = useState('success');
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-  const [toastNotifications, setToastNotifications] = useState([]);
-  const [lastNotificationId, setLastNotificationId] = useState(null);
 
 
   useEffect(() => {
@@ -73,26 +70,7 @@ function App() {
       const res = await axios.get(`${config.API_BASE_URL}/notifications`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      const newNotifications = res.data.notifications || [];
-      
-      // Check for new notifications to show as toast
-      if (lastNotificationId && newNotifications.length > 0) {
-        const latestNotification = newNotifications[0];
-        if (latestNotification._id !== lastNotificationId && !latestNotification.isRead) {
-          // Show toast for new unread notification
-          setToastNotifications(prev => [...prev, {
-            ...latestNotification,
-            toastId: Date.now()
-          }]);
-        }
-      }
-      
-      // Update last notification ID
-      if (newNotifications.length > 0) {
-        setLastNotificationId(newNotifications[0]._id);
-      }
-      
-      setNotifications(newNotifications);
+      setNotifications(res.data.notifications || []);
       setUnreadCount(res.data.unreadCount || 0);
     } catch (err) {
       console.log('Notifications unavailable:', err.response?.status || err.message);
@@ -144,10 +122,6 @@ function App() {
     } catch (err) {
       console.error('Error marking all notifications as read:', err);
     }
-  };
-
-  const removeToastNotification = (toastId) => {
-    setToastNotifications(prev => prev.filter(notif => notif.toastId !== toastId));
   };
 
   const handleNewReportClick = () => {
@@ -589,26 +563,6 @@ function App() {
         type={confirmationType}
         autoCloseDelay={2000}
       />
-
-      {/* Toast Notifications */}
-      <div style={{
-        position: 'fixed',
-        top: '80px',
-        right: '20px',
-        zIndex: 10000,
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '12px',
-        maxWidth: '380px',
-      }}>
-        {toastNotifications.map((notification) => (
-          <ToastNotification
-            key={notification.toastId}
-            notification={notification}
-            onClose={() => removeToastNotification(notification.toastId)}
-          />
-        ))}
-      </div>
     </div>
   );
 }

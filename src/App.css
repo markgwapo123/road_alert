@@ -1,8 +1,15 @@
 #root {
-  max-width: 1280px;
+  max-width: 100%;
   margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+  padding: 0;
+  text-align: left;
+}
+
+/* Mobile responsive root */
+@media (max-width: 640px) {
+  #root {
+    overflow-x: hidden;
+  }
 }
 
 .logo {
@@ -34,7 +41,13 @@
 }
 
 .card {
-  padding: 2em;
+  padding: 1.5em;
+}
+
+@media (max-width: 640px) {
+  .card {
+    padding: 1em;
+  }
 }
 
 .read-the-docs {
@@ -64,3 +77,95 @@ button:not(.no-black-style):disabled {
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+
+/* Mobile Responsive Utilities */
+@media (max-width: 768px) {
+  /* Ensure tables are scrollable on mobile */
+  .table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  table {
+    min-width: 100%;
+    font-size: 0.875rem;
+  }
+  
+  /* Better modal sizing on mobile */
+  .modal-content {
+    max-width: 95vw !important;
+    max-height: 90vh !important;
+    overflow-y: auto;
+  }
+  
+  /* Stack grid items on mobile */
+  .grid-responsive {
+    grid-template-columns: 1fr !important;
+  }
+  
+  /* Adjust padding for smaller screens */
+  .px-responsive {
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
+  
+  /* Reduce font sizes on mobile */
+  h1 {
+    font-size: 1.5rem !important;
+  }
+  
+  h2 {
+    font-size: 1.25rem !important;
+  }
+  
+  h3 {
+    font-size: 1.125rem !important;
+  }
+}
+
+@media (max-width: 640px) {
+  /* Extra small devices */
+  .container {
+    padding-left: 0.75rem !important;
+    padding-right: 0.75rem !important;
+  }
+  
+  /* Button adjustments */
+  button, .btn {
+    font-size: 0.875rem !important;
+    padding: 0.5rem 1rem !important;
+  }
+  
+  /* Card spacing */
+  .space-y-6 > * + * {
+    margin-top: 1rem !important;
+  }
+  
+  .gap-6 {
+    gap: 1rem !important;
+  }
+}
+
+/* Prevent horizontal scroll */
+body, html {
+  overflow-x: hidden;
+  width: 100%;
+  max-width: 100vw;
+}
+
+/* Better touch targets for mobile */
+@media (max-width: 768px) {
+  button, a, input[type="checkbox"], input[type="radio"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  input, select, textarea {
+    font-size: 16px !important; /* Prevents zoom on iOS */
+  }
+}
+
+/* Image responsiveness */
+img {
+  max-width: 100%;
+  height: auto;
