@@ -86,7 +86,7 @@ const NewsFeed = ({ user }) => {
         const [reportsResponse, newsResponse] = await Promise.all([
           axios.get(`${config.API_BASE_URL}/reports`, {
             params: {
-              status: 'verified',
+              status: 'verified,resolved', // Fetch both verified and resolved reports
               limit: 20,
               sortBy: 'createdAt',
               sortOrder: 'desc'
@@ -434,6 +434,56 @@ const NewsFeed = ({ user }) => {
                       {formatDate(report.createdAt)}
                     </div>
                   </div>
+
+                  {/* Resolved Status Badge */}
+                  {report.status === 'resolved' && (
+                    <div style={{
+                      backgroundColor: '#10b981',
+                      color: 'white',
+                      padding: '8px 12px',
+                      borderRadius: '8px',
+                      margin: '12px 16px 0 16px',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+                    }}>
+                      <span style={{ fontSize: '16px' }}>✅</span>
+                      <span>Issue Resolved</span>
+                    </div>
+                  )}
+
+                  {/* Admin Feedback */}
+                  {report.status === 'resolved' && report.adminFeedback && (
+                    <div style={{
+                      backgroundColor: '#eff6ff',
+                      border: '1px solid #bfdbfe',
+                      borderRadius: '8px',
+                      padding: '12px',
+                      margin: '12px 16px 0 16px',
+                      fontSize: '14px'
+                    }}>
+                      <div style={{
+                        fontWeight: '600',
+                        color: '#1e40af',
+                        marginBottom: '6px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px'
+                      }}>
+                        <span style={{ fontSize: '16px' }}>💬</span>
+                        <span>Admin Feedback:</span>
+                      </div>
+                      <div style={{
+                        color: '#1f2937',
+                        lineHeight: '1.5'
+                      }}>
+                        {report.adminFeedback}
+                      </div>
+                    </div>
+                  )}
                   
                   {/* Compact Content Section */}
                   <div className="report-content">
@@ -450,8 +500,7 @@ const NewsFeed = ({ user }) => {
                       padding: '6px 8px',
                       backgroundColor: '#f8f9fa',
                       borderRadius: '6px',
-                      fontSize: '13px',
-                      color: '#495057'
+                      fontSize: '13px'
                     }}>
                       <span className="location-icon">📍</span>
                       <span className="location-text">

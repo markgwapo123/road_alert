@@ -58,7 +58,14 @@ router.get('/', async (req, res) => {
 
     // Build filter object
     const filter = {};
-    if (status) filter.status = status;
+    if (status) {
+      // Support multiple statuses separated by comma
+      if (status.includes(',')) {
+        filter.status = { $in: status.split(',') };
+      } else {
+        filter.status = status;
+      }
+    }
     if (type) filter.type = type;
     if (severity) filter.severity = severity;
     if (search) {
