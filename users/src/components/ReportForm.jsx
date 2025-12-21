@@ -261,7 +261,7 @@ const ReportForm = ({ onReport, onClose }) => {
     if (!videoRef.current || !canvasRef.current) return;
     
     setProcessingImage(true);
-    setSuccess('🤖 Processing image with AI-powered privacy protection...');
+    setSuccess('🤖 AI analyzing image for privacy protection...');
     
     const video = videoRef.current;
     const canvas = canvasRef.current;
@@ -276,11 +276,18 @@ const ReportForm = ({ onReport, onClose }) => {
     
     // Apply AI-powered privacy protection (detect and blur faces)
     try {
-      const facesBlurred = await applyAIPrivacyProtection(canvas);
-      if (facesBlurred > 0) {
-        setSuccess(`🔒 ${facesBlurred} face(s) automatically blurred for privacy`);
+      const result = await applyAIPrivacyProtection(canvas);
+      
+      // Provide detailed feedback
+      if (result.totalBlurred > 0) {
+        const details = [];
+        if (result.facesDetected > 0) details.push(`${result.facesDetected} face(s)`);
+        if (result.peopleDetected > 0 && result.peopleDetected > result.facesDetected) {
+          details.push(`${result.peopleDetected} person(s)`);
+        }
+        setSuccess(`🔒 ${result.totalBlurred} detection(s) automatically blurred (${details.join(', ')})`);
       } else {
-        setSuccess('✅ Image captured - no faces detected');
+        setSuccess('✅ Image captured - no faces or people detected');
       }
     } catch (error) {
       console.warn('⚠️ Privacy protection failed, proceeding without it:', error);
@@ -880,7 +887,7 @@ const ReportForm = ({ onReport, onClose }) => {
               <div className="help-text">
                 Click to open your device's camera and capture a photo of the road condition.
                 <strong style={{ display: 'block', marginTop: '8px', color: '#059669' }}>
-                  🤖 AI Privacy Protection: Faces will be automatically detected and blurred
+                  🤖 Enhanced AI Privacy: Multi-model detection automatically blurs all faces and people
                 </strong>
               </div>
             </div>

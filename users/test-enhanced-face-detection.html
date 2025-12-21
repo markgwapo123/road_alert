@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Enhanced AI Face Detection Test</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+    
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      padding: 40px;
+    }
+    
+    h1 {
+      color: #667eea;
+      margin-bottom: 10px;
+      font-size: 32px;
+    }
+    
+    .subtitle {
+      color: #666;
+      margin-bottom: 30px;
+      font-size: 16px;
+    }
+    
+    .info-box {
+      background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+      border: 2px solid #3b82f6;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 30px;
+    }
+    
+    .info-box h3 {
+      color: #1e40af;
+      margin-bottom: 12px;
+      font-size: 18px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .info-box ul {
+      margin-left: 20px;
+      color: #334155;
+      line-height: 1.8;
+    }
+    
+    .feature {
+      background: #dcfce7;
+      border-left: 4px solid #16a34a;
+      padding: 12px 16px;
+      margin: 10px 0;
+      border-radius: 4px;
+    }
+    
+    .feature strong {
+      color: #166534;
+    }
+    
+    .camera-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin: 30px 0;
+    }
+    
+    .camera-section {
+      border: 2px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 20px;
+      background: #f8fafc;
+    }
+    
+    .camera-section h3 {
+      color: #334155;
+      margin-bottom: 15px;
+      font-size: 18px;
+    }
+    
+    video, canvas {
+      width: 100%;
+      max-height: 300px;
+      background: #000;
+      border-radius: 8px;
+      display: block;
+    }
+    
+    .controls {
+      display: flex;
+      gap: 10px;
+      margin: 15px 0;
+      flex-wrap: wrap;
+    }
+    
+    button {
+      flex: 1;
+      min-width: 140px;
+      padding: 12px 20px;
+      background: #667eea;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    
+    button:hover:not(:disabled) {
+      background: #5568d3;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+    
+    button:disabled {
+      background: #cbd5e1;
+      cursor: not-allowed;
+      transform: none;
+    }
+    
+    button.detect {
+      background: #10b981;
+    }
+    
+    button.detect:hover:not(:disabled) {
+      background: #059669;
+    }
+    
+    button.retake {
+      background: #f59e0b;
+    }
+    
+    button.retake:hover:not(:disabled) {
+      background: #d97706;
+    }
+    
+    .status {
+      padding: 15px;
+      border-radius: 8px;
+      margin: 15px 0;
+      font-weight: 500;
+      animation: slideIn 0.3s ease;
+    }
+    
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(-10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .status.loading {
+      background: #fef3c7;
+      color: #92400e;
+      border: 2px solid #f59e0b;
+    }
+    
+    .status.success {
+      background: #d1fae5;
+      color: #065f46;
+      border: 2px solid #10b981;
+    }
+    
+    .status.error {
+      background: #fee2e2;
+      color: #991b1b;
+      border: 2px solid #ef4444;
+    }
+    
+    .results-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 20px;
+      margin-top: 30px;
+    }
+    
+    .result-card {
+      background: #f8fafc;
+      border: 2px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 20px;
+    }
+    
+    .result-card h3 {
+      color: #334155;
+      margin-bottom: 15px;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .stat {
+      display: flex;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    
+    .stat:last-child {
+      border-bottom: none;
+    }
+    
+    .stat-label {
+      color: #64748b;
+      font-size: 14px;
+    }
+    
+    .stat-value {
+      color: #1e293b;
+      font-weight: 700;
+      font-size: 16px;
+    }
+    
+    .stat-value.highlight {
+      color: #10b981;
+      font-size: 20px;
+    }
+    
+    .comparison {
+      background: linear-gradient(135deg, #fef3c7 0%, #fed7aa 100%);
+      border: 2px solid #f59e0b;
+      border-radius: 12px;
+      padding: 20px;
+      margin: 30px 0;
+    }
+    
+    .comparison h3 {
+      color: #92400e;
+      margin-bottom: 15px;
+    }
+    
+    .comparison-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+    
+    .method {
+      background: white;
+      padding: 15px;
+      border-radius: 8px;
+    }
+    
+    .method h4 {
+      color: #334155;
+      margin-bottom: 10px;
+    }
+    
+    @media (max-width: 768px) {
+      .camera-grid, .comparison-grid {
+        grid-template-columns: 1fr;
+      }
+      
+      .container {
+        padding: 20px;
+      }
+      
+      h1 {
+        font-size: 24px;
+      }
+      
+      button {
+        min-width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🤖 Enhanced AI Face Detection Test</h1>
+    <p class="subtitle">Multi-Model Approach: BlazeFace + COCO-SSD</p>
+    
+    <div class="info-box">
+      <h3>🎯 Enhanced Detection Features</h3>
+      <div class="feature">
+        <strong>Dual-Model System:</strong> Uses both BlazeFace (face detection) and COCO-SSD (person detection) for maximum coverage
+      </div>
+      <div class="feature">
+        <strong>Stronger Blur:</strong> 5-pass Gaussian blur (up from 3) with radius 45px for complete privacy
+      </div>
+      <div class="feature">
+        <strong>Larger Coverage:</strong> 2.0x expansion factor (up from 1.5x) to cover full head including hair
+      </div>
+      <div class="feature">
+        <strong>Backup Detection:</strong> If face detection misses someone, person detection catches them
+      </div>
+    </div>
+    
+    <div id="status" style="display: none;"></div>
+    
+    <div class="camera-grid">
+      <div class="camera-section">
+        <h3>📸 Original Image</h3>
+        <video id="video" autoplay playsinline style="display: none;"></video>
+        <canvas id="originalCanvas" style="display: none;"></canvas>
+      </div>
+      
+      <div class="camera-section">
+        <h3>🔒 Protected Image</h3>
+        <canvas id="protectedCanvas" style="display: none;"></canvas>
+      </div>
+    </div>
+    
+    <div class="controls">
+      <button id="startBtn" onclick="startCamera()">📸 Start Camera</button>
+      <button id="captureBtn" onclick="capture()" disabled style="display: none;" class="detect">🤖 Detect & Blur</button>
+      <button id="retakeBtn" onclick="retake()" style="display: none;" class="retake">🔄 Retake</button>
+    </div>
+    
+    <div id="results" class="results-grid" style="display: none;">
+      <div class="result-card">
+        <h3>👤 Face Detection</h3>
+        <div class="stat">
+          <span class="stat-label">Faces Found:</span>
+          <span class="stat-value highlight" id="faceCount">0</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Method:</span>
+          <span class="stat-value">BlazeFace</span>
+        </div>
+      </div>
+      
+      <div class="result-card">
+        <h3>👥 Person Detection</h3>
+        <div class="stat">
+          <span class="stat-label">People Found:</span>
+          <span class="stat-value highlight" id="peopleCount">0</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Method:</span>
+          <span class="stat-value">COCO-SSD</span>
+        </div>
+      </div>
+      
+      <div class="result-card">
+        <h3>⚡ Performance</h3>
+        <div class="stat">
+          <span class="stat-label">Total Time:</span>
+          <span class="stat-value" id="totalTime">0ms</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Detection:</span>
+          <span class="stat-value" id="detectTime">0ms</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Blur:</span>
+          <span class="stat-value" id="blurTime">0ms</span>
+        </div>
+      </div>
+      
+      <div class="result-card">
+        <h3>✅ Privacy Status</h3>
+        <div class="stat">
+          <span class="stat-label">Total Blurred:</span>
+          <span class="stat-value highlight" id="totalBlurred">0</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Coverage:</span>
+          <span class="stat-value" id="coverage">2.0x</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Blur Strength:</span>
+          <span class="stat-value">45px / 5-pass</span>
+        </div>
+      </div>
+    </div>
+    
+    <div class="comparison">
+      <h3>📊 Detection Methods Comparison</h3>
+      <div class="comparison-grid">
+        <div class="method">
+          <h4>BlazeFace (Primary)</h4>
+          <ul>
+            <li>✅ Precise face detection</li>
+            <li>✅ Fast and lightweight</li>
+            <li>✅ Works on frontal faces</li>
+            <li>⚠️ May miss side profiles</li>
+          </ul>
+        </div>
+        <div class="method">
+          <h4>COCO-SSD (Backup)</h4>
+          <ul>
+            <li>✅ Detects full person</li>
+            <li>✅ Catches all angles</li>
+            <li>✅ Works at distance</li>
+            <li>✅ Fills detection gaps</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import * as tf from 'https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.11.0/dist/tf.min.js';
+    import * as blazeface from 'https://cdn.jsdelivr.net/npm/@tensorflow-models/blazeface@0.0.7/dist/blazeface.min.js';
+    import * as cocoSsd from 'https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3/dist/coco-ssd.min.js';
+
+    let faceModel = null;
+    let personModel = null;
+    let stream = null;
+    let video = document.getElementById('video');
+    let originalCanvas = document.getElementById('originalCanvas');
+    let protectedCanvas = document.getElementById('protectedCanvas');
+
+    // Preload models
+    showStatus('Loading AI models (BlazeFace + COCO-SSD)...', 'loading');
+    Promise.all([blazeface.load(), cocoSsd.load()]).then(([face, person]) => {
+      faceModel = face;
+      personModel = person;
+      showStatus('✅ All AI models loaded and ready!', 'success');
+      setTimeout(() => hideStatus(), 2000);
+    }).catch(err => {
+      showStatus('❌ Failed to load AI models: ' + err.message, 'error');
+    });
+
+    window.startCamera = async function() {
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'user', width: 1280, height: 720 }
+        });
+        video.srcObject = stream;
+        video.style.display = 'block';
+        originalCanvas.style.display = 'none';
+        protectedCanvas.style.display = 'none';
+        
+        document.getElementById('startBtn').style.display = 'none';
+        document.getElementById('captureBtn').style.display = 'block';
+        document.getElementById('captureBtn').disabled = false;
+        document.getElementById('retakeBtn').style.display = 'none';
+        document.getElementById('results').style.display = 'none';
+        
+        showStatus('📷 Camera ready - position face in frame', 'success');
+      } catch (err) {
+        showStatus('❌ Camera access denied: ' + err.message, 'error');
+      }
+    };
+
+    window.capture = async function() {
+      if (!faceModel || !personModel) {
+        showStatus('⏳ Please wait for AI models to load...', 'loading');
+        return;
+      }
+
+      showStatus('🤖 Running multi-model detection...', 'loading');
+      document.getElementById('captureBtn').disabled = true;
+
+      const startTime = performance.now();
+
+      // Capture frame
+      originalCanvas.width = video.videoWidth;
+      originalCanvas.height = video.videoHeight;
+      protectedCanvas.width = video.videoWidth;
+      protectedCanvas.height = video.videoHeight;
+      
+      const ctx1 = originalCanvas.getContext('2d');
+      const ctx2 = protectedCanvas.getContext('2d');
+      
+      ctx1.drawImage(video, 0, 0);
+      ctx2.drawImage(video, 0, 0);
+
+      const detectStart = performance.now();
+      
+      // Run both detections
+      const [faces, predictions] = await Promise.all([
+        faceModel.estimateFaces(protectedCanvas, false),
+        personModel.detect(protectedCanvas)
+      ]);
+      
+      const people = predictions.filter(p => p.class === 'person');
+      const detectEnd = performance.now();
+
+      console.log('Detections:', { faces, people });
+
+      const blurStart = performance.now();
+      
+      // Blur faces
+      faces.forEach((face, i) => {
+        const [x1, y1] = face.topLeft;
+        const [x2, y2] = face.bottomRight;
+        const w = x2 - x1;
+        const h = y2 - y1;
+        const expW = w * 2.0;
+        const expH = h * 2.8;
+        const expX = x1 - (expW - w) / 2;
+        const expY = y1 - (expH - h) / 2.2;
+        applyStrongBlur(ctx2, expX, expY, expW, expH);
+      });
+
+      // Blur people (backup)
+      if (people.length > 0 && (faces.length === 0 || people.length > faces.length)) {
+        people.forEach(person => {
+          const [x, y, w, h] = person.bbox;
+          const headH = h * 0.4;
+          const headW = w * 0.8;
+          const headX = x + (w - headW) / 2;
+          applyStrongBlur(ctx2, headX, y, headW, headH);
+        });
+      }
+      
+      const blurEnd = performance.now();
+      const totalTime = blurEnd - startTime;
+
+      // Show results
+      video.style.display = 'none';
+      originalCanvas.style.display = 'block';
+      protectedCanvas.style.display = 'block';
+      document.getElementById('captureBtn').style.display = 'none';
+      document.getElementById('retakeBtn').style.display = 'block';
+      document.getElementById('results').style.display = 'grid';
+
+      document.getElementById('faceCount').textContent = faces.length;
+      document.getElementById('peopleCount').textContent = people.length;
+      document.getElementById('totalTime').textContent = Math.round(totalTime) + 'ms';
+      document.getElementById('detectTime').textContent = Math.round(detectEnd - detectStart) + 'ms';
+      document.getElementById('blurTime').textContent = Math.round(blurEnd - blurStart) + 'ms';
+      document.getElementById('totalBlurred').textContent = Math.max(faces.length, people.length);
+
+      const total = Math.max(faces.length, people.length);
+      if (total > 0) {
+        showStatus(`✅ Success! ${total} detection(s) blurred (${faces.length} faces + ${people.length} people)`, 'success');
+      } else {
+        showStatus('ℹ️ No faces or people detected', 'success');
+      }
+    };
+
+    function applyStrongBlur(ctx, x, y, width, height) {
+      x = Math.max(0, Math.floor(x));
+      y = Math.max(0, Math.floor(y));
+      width = Math.min(ctx.canvas.width - x, Math.ceil(width));
+      height = Math.min(ctx.canvas.height - y, Math.ceil(height));
+      
+      if (width <= 0 || height <= 0) return;
+      
+      const imageData = ctx.getImageData(x, y, width, height);
+      const pixels = imageData.data;
+      const radius = 45;
+      
+      // 5-pass blur
+      for (let pass = 0; pass < 5; pass++) {
+        // Horizontal
+        for (let row = 0; row < height; row++) {
+          for (let col = 0; col < width; col++) {
+            const idx = (row * width + col) * 4;
+            let r = 0, g = 0, b = 0, count = 0;
+            
+            for (let i = -radius; i <= radius; i++) {
+              const sCol = col + i;
+              if (sCol >= 0 && sCol < width) {
+                const sIdx = (row * width + sCol) * 4;
+                r += pixels[sIdx];
+                g += pixels[sIdx + 1];
+                b += pixels[sIdx + 2];
+                count++;
+              }
+            }
+            
+            pixels[idx] = r / count;
+            pixels[idx + 1] = g / count;
+            pixels[idx + 2] = b / count;
+          }
+        }
+        
+        // Vertical
+        for (let col = 0; col < width; col++) {
+          for (let row = 0; row < height; row++) {
+            const idx = (row * width + col) * 4;
+            let r = 0, g = 0, b = 0, count = 0;
+            
+            for (let i = -radius; i <= radius; i++) {
+              const sRow = row + i;
+              if (sRow >= 0 && sRow < height) {
+                const sIdx = (sRow * width + col) * 4;
+                r += pixels[sIdx];
+                g += pixels[sIdx + 1];
+                b += pixels[sIdx + 2];
+                count++;
+              }
+            }
+            
+            pixels[idx] = r / count;
+            pixels[idx + 1] = g / count;
+            pixels[idx + 2] = b / count;
+          }
+        }
+      }
+      
+      ctx.putImageData(imageData, x, y);
+    }
+
+    window.retake = function() {
+      originalCanvas.style.display = 'none';
+      protectedCanvas.style.display = 'none';
+      video.style.display = 'block';
+      document.getElementById('captureBtn').style.display = 'block';
+      document.getElementById('captureBtn').disabled = false;
+      document.getElementById('retakeBtn').style.display = 'none';
+      document.getElementById('results').style.display = 'none';
+      hideStatus();
+    };
+
+    function showStatus(message, type) {
+      const status = document.getElementById('status');
+      status.textContent = message;
+      status.className = 'status ' + type;
+      status.style.display = 'block';
+    }
+
+    function hideStatus() {
+      document.getElementById('status').style.display = 'none';
+    }
+  </script>
+</body>
+</html>
