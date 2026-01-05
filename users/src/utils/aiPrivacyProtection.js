@@ -276,13 +276,14 @@ export const blurPeople = (canvas, people) => {
 };
 
 /**
- * DIRECT LICENSE PLATE DETECTION
- * Scans image for rectangular regions that look like license plates
- * Looks for: white/light rectangles with dark text, proper aspect ratio
+ * ACCURATE LICENSE PLATE DETECTION
+ * Specifically designed for Philippine license plates (GREEN background)
+ * Also supports white, yellow, and blue plates
+ * Uses strict validation to avoid false positives
  * @param {HTMLCanvasElement} canvas - Canvas containing the image
  * @returns {Array} Array of detected plate regions
  */
-const detectPlatesDirect = (canvas) => {
+const detectLicensePlates = (canvas) => {
   try {
     const context = canvas.getContext('2d');
     const width = canvas.width;
@@ -290,149 +291,166 @@ const detectPlatesDirect = (canvas) => {
     const imageData = context.getImageData(0, 0, width, height);
     const pixels = imageData.data;
     
-    console.log(`🔍 Scanning image ${width}x${height} for license plates...`);
+    console.log(`🔍 Scanning ${width}x${height} image for license plates (including GREEN Philippine plates)...`);
     
     const candidates = [];
     
-    // Typical license plate characteristics:
-    // - Aspect ratio: 2:1 to 5:1 (width:height)
-    // - Location: usually middle-lower part of image (40-90% from top)
-    // - Background: white, silver, yellow, or blue
-    // - Contains dark text/numbers
-    // - Size: roughly 100-300px wide in typical photos
+    // License plate size constraints (be strict to avoid false positives)
+    // Plates are typically 10-25% of image width
+    const minPlateW = Math.max(50, width * 0.08);
+    const maxPlateW = Math.min(280, width * 0.30);
+    const minPlateH = Math.max(15, height * 0.025);
+    const maxPlateH = Math.min(80, height * 0.12);
     
-    const minPlateW = Math.max(80, width * 0.1);
-    const maxPlateW = Math.min(350, width * 0.4);
-    const minPlateH = Math.max(20, height * 0.03);
-    const maxPlateH = Math.min(100, height * 0.15);
+    // Search in lower 65% of image (plates are on vehicles, not in sky)
+    const searchStartY = Math.floor(height * 0.35);
+    const searchEndY = Math.floor(height * 0.95);
     
-    // Search in lower 70% of image
-    const searchStartY = Math.floor(height * 0.3);
-    const searchEndY = height - minPlateH;
+    // Step sizes - larger steps to reduce false positives
+    const stepX = Math.max(8, Math.floor(width / 80));
+    const stepY = Math.max(6, Math.floor(height / 60));
     
-    // Step sizes for scanning
-    const stepX = Math.max(5, Math.floor(width / 150));
-    const stepY = Math.max(5, Math.floor(height / 100));
+    // Test specific plate sizes
+    const testWidths = [minPlateW, minPlateW * 1.5, minPlateW * 2, minPlateW * 2.5];
     
-    // Test multiple plate sizes
-    const plateSizes = [
-      { w: minPlateW, h: minPlateH },
-      { w: minPlateW * 1.5, h: minPlateH * 1.3 },
-      { w: minPlateW * 2, h: minPlateH * 1.5 },
-      { w: minPlateW * 2.5, h: minPlateH * 1.8 }
-    ];
-    
-    for (const size of plateSizes) {
-      const testW = Math.min(size.w, maxPlateW);
-      const testH = Math.min(size.h, maxPlateH);
-      const aspectRatio = testW / testH;
+    for (const testW of testWidths) {
+      if (testW > maxPlateW) continue;
       
-      // Skip if aspect ratio is not plate-like
-      if (aspectRatio < 2 || aspectRatio > 5.5) continue;
+      // Plate aspect ratio is typically 3:1 to 4:1
+      const testH = testW / 3.5;
+      if (testH < minPlateH || testH > maxPlateH) continue;
       
-      for (let y = searchStartY; y < searchEndY; y += stepY) {
+      for (let y = searchStartY; y < searchEndY - testH; y += stepY) {
         for (let x = 0; x < width - testW; x += stepX) {
-          // Sample the region
-          let whitePixels = 0;
-          let yellowPixels = 0;
-          let bluePixels = 0;
-          let darkPixels = 0;
+          // Count color categories
+          let greenPixels = 0;   // Philippine plates
+          let whitePixels = 0;   // Standard plates
+          let yellowPixels = 0;  // Taxi/commercial plates
+          let bluePixels = 0;    // EU style plates
+          let darkPixels = 0;    // Text/numbers
           let sampleCount = 0;
           
-          // Sample every 3rd pixel for speed
-          for (let py = y; py < y + testH && py < height; py += 3) {
-            for (let px = x; px < x + testW && px < width; px += 3) {
+          // Sample the region (every 4th pixel for speed)
+          for (let py = y; py < y + testH && py < height; py += 4) {
+            for (let px = x; px < x + testW && px < width; px += 4) {
               const idx = (py * width + px) * 4;
               const r = pixels[idx];
               const g = pixels[idx + 1];
               const b = pixels[idx + 2];
               const brightness = (r + g + b) / 3;
               
-              // White/silver plate background
-              if (brightness > 200 && Math.abs(r - g) < 30 && Math.abs(g - b) < 30) {
+              // GREEN plate (Philippine style) - g is dominant
+              if (g > 100 && g > r * 1.2 && g > b * 1.1 && brightness > 60 && brightness < 200) {
+                greenPixels++;
+              }
+              // WHITE/SILVER plate
+              else if (brightness > 190 && Math.abs(r - g) < 25 && Math.abs(g - b) < 25) {
                 whitePixels++;
               }
-              // Yellow plate
-              else if (r > 180 && g > 150 && b < 100) {
+              // YELLOW plate
+              else if (r > 170 && g > 140 && b < 100 && r > b * 1.5) {
                 yellowPixels++;
               }
-              // Blue (EU plates, some Asian plates)
-              else if (b > 150 && r < 120 && g < 150) {
+              // BLUE plate
+              else if (b > 140 && b > r * 1.2 && b > g) {
                 bluePixels++;
               }
-              // Dark (text/numbers)
-              else if (brightness < 80) {
+              // DARK pixels (potential text)
+              else if (brightness < 60) {
                 darkPixels++;
               }
+              
               sampleCount++;
             }
           }
           
-          if (sampleCount === 0) continue;
+          if (sampleCount < 20) continue;
           
+          const greenRatio = greenPixels / sampleCount;
           const whiteRatio = whitePixels / sampleCount;
           const yellowRatio = yellowPixels / sampleCount;
           const blueRatio = bluePixels / sampleCount;
           const darkRatio = darkPixels / sampleCount;
-          const plateColorRatio = whiteRatio + yellowRatio + blueRatio;
           
-          // A plate should have:
-          // - Significant plate-colored background (40-85%)
-          // - Some dark pixels for text (5-40%)
-          // - Not be entirely one color
-          const isPlateCandidate = 
-            plateColorRatio > 0.35 && 
-            plateColorRatio < 0.9 &&
-            darkRatio > 0.05 && 
-            darkRatio < 0.45;
+          // Determine if this is likely a plate
+          // Must have ONE dominant plate color (not mixed)
+          let plateType = null;
+          let plateColorRatio = 0;
           
-          if (isPlateCandidate) {
-            // Calculate confidence score
-            const confidence = (plateColorRatio * 0.5 + darkRatio * 0.3 + (aspectRatio > 2.5 ? 0.2 : 0.1));
-            
-            // Check for overlap with existing candidates
-            const overlaps = candidates.some(c => {
-              const overlapX = Math.max(0, Math.min(c.x + c.width, x + testW) - Math.max(c.x, x));
-              const overlapY = Math.max(0, Math.min(c.y + c.height, y + testH) - Math.max(c.y, y));
-              return overlapX > testW * 0.3 && overlapY > testH * 0.3;
+          if (greenRatio > 0.25 && greenRatio > whiteRatio && greenRatio > yellowRatio) {
+            plateType = 'green';
+            plateColorRatio = greenRatio;
+          } else if (whiteRatio > 0.35 && whiteRatio > greenRatio && whiteRatio > yellowRatio) {
+            plateType = 'white';
+            plateColorRatio = whiteRatio;
+          } else if (yellowRatio > 0.30 && yellowRatio > greenRatio && yellowRatio > whiteRatio) {
+            plateType = 'yellow';
+            plateColorRatio = yellowRatio;
+          } else if (blueRatio > 0.25) {
+            plateType = 'blue';
+            plateColorRatio = blueRatio;
+          }
+          
+          if (!plateType) continue;
+          
+          // STRICT validation:
+          // 1. Must have some dark pixels (text) - between 8% and 45%
+          // 2. Plate color must be dominant
+          // 3. Total colored area must make sense
+          const hasValidText = darkRatio > 0.08 && darkRatio < 0.45;
+          const hasValidColor = plateColorRatio > 0.20 && plateColorRatio < 0.85;
+          
+          if (!hasValidText || !hasValidColor) continue;
+          
+          // Calculate confidence
+          const confidence = plateColorRatio * 0.4 + (darkRatio > 0.15 ? 0.3 : 0.15) + 0.2;
+          
+          // Check overlap with existing candidates
+          const overlaps = candidates.some(c => {
+            const ox = Math.max(0, Math.min(c.x + c.width, x + testW) - Math.max(c.x, x));
+            const oy = Math.max(0, Math.min(c.y + c.height, y + testH) - Math.max(c.y, y));
+            return ox > testW * 0.4 && oy > testH * 0.4;
+          });
+          
+          if (!overlaps) {
+            candidates.push({
+              x, y,
+              width: testW,
+              height: testH,
+              confidence,
+              plateType,
+              plateColorRatio,
+              darkRatio
             });
-            
-            if (!overlaps) {
-              candidates.push({
-                x: x,
-                y: y,
-                width: testW,
-                height: testH,
-                confidence: confidence,
-                whiteRatio,
-                darkRatio
-              });
-            }
           }
         }
       }
     }
     
-    // Sort by confidence and get top results
+    // Sort by confidence
     candidates.sort((a, b) => b.confidence - a.confidence);
     
-    // Filter to best candidates (max 4)
-    const plates = candidates.slice(0, 4);
+    // Return only the BEST 2 candidates (most likely actual plates)
+    const plates = candidates.slice(0, 2);
     
-    console.log(`📋 Direct detection found ${plates.length} plate candidate(s)`);
-    plates.forEach((p, i) => {
-      console.log(`  Plate ${i + 1}: ${Math.round(p.width)}x${Math.round(p.height)} at (${Math.round(p.x)}, ${Math.round(p.y)}), conf=${p.confidence.toFixed(2)}`);
-    });
+    if (plates.length > 0) {
+      console.log(`📋 Found ${plates.length} license plate(s):`);
+      plates.forEach((p, i) => {
+        console.log(`  Plate ${i + 1}: ${p.plateType.toUpperCase()} plate, ${Math.round(p.width)}x${Math.round(p.height)} at (${Math.round(p.x)}, ${Math.round(p.y)})`);
+      });
+    } else {
+      console.log('📋 No license plates detected');
+    }
     
     return plates;
   } catch (error) {
-    console.error('Error in direct plate detection:', error);
+    console.error('Error detecting license plates:', error);
     return [];
   }
 };
 
 /**
- * Blur detected plate regions
+ * Blur detected plate regions with proper Gaussian blur
  */
 const blurDetectedPlates = (canvas, plates) => {
   if (!plates || plates.length === 0) return;
@@ -440,17 +458,17 @@ const blurDetectedPlates = (canvas, plates) => {
   const context = canvas.getContext('2d');
   
   plates.forEach((plate, index) => {
-    // Add small padding around the detected plate
-    const padX = plate.width * 0.1;
-    const padY = plate.height * 0.15;
+    // Add padding around the detected plate
+    const padX = plate.width * 0.15;
+    const padY = plate.height * 0.2;
     
     const blurX = Math.max(0, plate.x - padX);
     const blurY = Math.max(0, plate.y - padY);
     const blurW = plate.width + padX * 2;
     const blurH = plate.height + padY * 2;
     
-    console.log(`🔒 Blurring plate ${index + 1}: ${Math.round(blurW)}x${Math.round(blurH)} at (${Math.round(blurX)}, ${Math.round(blurY)})`);
-    applyGaussianBlur(context, blurX, blurY, blurW, blurH, 40);
+    console.log(`🔒 Blurring ${plate.plateType || 'unknown'} plate ${index + 1}: ${Math.round(blurW)}x${Math.round(blurH)} at (${Math.round(blurX)}, ${Math.round(blurY)})`);
+    applyGaussianBlur(context, blurX, blurY, blurW, blurH, 45);
   });
   
   console.log(`✅ Blurred ${plates.length} license plate(s)`);
@@ -485,205 +503,6 @@ export const detectVehicles = async (canvas) => {
     return vehicles;
   } catch (error) {
     console.error('Error detecting vehicles:', error);
-    return [];
-  }
-};
-
-/**
- * Detect license plates using edge detection within vehicle regions
- * Only searches within detected vehicles for accuracy
- * @param {HTMLCanvasElement} canvas - Canvas containing the image
- * @param {Array} vehicles - Array of detected vehicles from COCO-SSD
- * @returns {Array} Array of detected license plate regions
- */
-export const detectLicensePlates = (canvas, vehicles = []) => {
-  try {
-    console.log('🚗 Detecting license plates...');
-    
-    const context = canvas.getContext('2d');
-    const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
-    const pixels = imageData.data;
-    const width = canvas.width;
-    const height = canvas.height;
-    
-    const plates = [];
-    
-    // Convert to grayscale for edge detection
-    const grayscale = new Uint8Array(width * height);
-    for (let i = 0; i < pixels.length; i += 4) {
-      const idx = i / 4;
-      grayscale[idx] = 0.299 * pixels[i] + 0.587 * pixels[i + 1] + 0.114 * pixels[i + 2];
-    }
-    
-    // Apply edge detection (Sobel-like)
-    const edges = new Uint8Array(width * height);
-    for (let y = 1; y < height - 1; y++) {
-      for (let x = 1; x < width - 1; x++) {
-        const idx = y * width + x;
-        
-        // Sobel X
-        const gx = -grayscale[idx - width - 1] + grayscale[idx - width + 1]
-                   -2 * grayscale[idx - 1] + 2 * grayscale[idx + 1]
-                   -grayscale[idx + width - 1] + grayscale[idx + width + 1];
-        
-        // Sobel Y
-        const gy = -grayscale[idx - width - 1] - 2 * grayscale[idx - width] - grayscale[idx - width + 1]
-                   +grayscale[idx + width - 1] + 2 * grayscale[idx + width] + grayscale[idx + width + 1];
-        
-        edges[idx] = Math.sqrt(gx * gx + gy * gy);
-      }
-    }
-    
-    // Find rectangular regions with high edge density
-    // License plates typically have:
-    // - Aspect ratio between 1.5:1 and 6:1
-    // - High edge density (text on contrasting background)
-    // - Located in lower half of image (vehicles are usually on ground)
-    // - SMALL size (not entire car!)
-    
-    const minWidth = Math.max(60, width * 0.05);
-    const minHeight = Math.max(15, height * 0.015);
-    // STRICT maximum sizes - plates are small!
-    const maxWidth = Math.min(300, width * 0.25);
-    const maxHeight = Math.min(100, height * 0.08);
-    
-    // Define search regions
-    let searchRegions = [];
-    
-    if (vehicles.length > 0) {
-      // Search only within detected vehicles (much more accurate!)
-      console.log(`🎯 Searching for plates within ${vehicles.length} detected vehicle(s)`);
-      searchRegions = vehicles.map(vehicle => {
-        const [vx, vy, vw, vh] = vehicle.bbox;
-        // Focus on lower 60% of vehicle (where plates are mounted)
-        return {
-          startX: Math.max(0, Math.floor(vx)),
-          endX: Math.min(width, Math.ceil(vx + vw)),
-          startY: Math.max(0, Math.floor(vy + vh * 0.4)), // Lower portion
-          endY: Math.min(height, Math.ceil(vy + vh)),
-          vehicleClass: vehicle.class
-        };
-      });
-    } else {
-      // Fallback: search lower half of entire image
-      console.log('⚠️ No vehicles detected, searching lower image area');
-      searchRegions = [{
-        startX: 0,
-        endX: width,
-        startY: Math.floor(height * 0.4),
-        endY: height,
-        vehicleClass: 'unknown'
-      }];
-    }
-    
-    // Optimize step size for faster scanning
-    const stepSize = Math.max(10, Math.floor(width / 100));
-    
-    // Search within each region
-    for (const region of searchRegions) {
-      for (let y = region.startY; y < region.endY - minHeight; y += stepSize) {
-        for (let x = region.startX; x < region.endX - minWidth; x += stepSize) {
-          // Test multiple plate sizes (optimized - fewer iterations)
-          for (let w = minWidth; w <= Math.min(maxWidth, region.endX - x); w += stepSize * 3) {
-            for (let h = minHeight; h <= Math.min(maxHeight, region.endY - y); h += Math.max(stepSize, 15)) {
-              const aspectRatio = w / h;
-              
-              // STRICT size check - reject if too large (likely false positive)
-              const areaPercent = (w * h) / (width * height);
-              if (areaPercent > 0.02) continue; // Reject if > 2% of image area
-              
-              // Check aspect ratio (typical license plates)
-              if (aspectRatio >= 1.5 && aspectRatio <= 6.0) {
-                // Calculate edge density in this region (sample for speed)
-                let edgeCount = 0;
-                let totalPixels = 0;
-                
-                // Sample every 2nd pixel for speed (still accurate enough)
-                const sampleStep = 2;
-                for (let py = y; py < y + h && py < height; py += sampleStep) {
-                  for (let px = x; px < x + w && px < width; px += sampleStep) {
-                    const idx = py * width + px;
-                    if (edges[idx] > 30) edgeCount++;
-                    totalPixels++;
-                  }
-                }
-                
-                const edgeDensity = edgeCount / totalPixels;
-                
-                // High edge density suggests text on plate
-                if (edgeDensity > 0.15 && edgeDensity < 0.6) {
-                  // Check for horizontal pattern (typical of plate text)
-                  let horizontalEdges = 0;
-                  const midY = y + Math.floor(h / 2);
-                  
-                  // Sample horizontal line for speed
-                  for (let px = x; px < x + w && px < width; px += sampleStep) {
-                    const idx = midY * width + px;
-                    if (edges[idx] > 30) horizontalEdges++;
-                  }
-                  
-                  const horizontalDensity = (horizontalEdges / (w / sampleStep));
-                  
-                  if (horizontalDensity > 0.2) {
-                    // Check if this overlaps with existing detections
-                    const overlaps = plates.some(plate => {
-                      const overlapX = Math.max(0, Math.min(plate.x + plate.width, x + w) - Math.max(plate.x, x));
-                      const overlapY = Math.max(0, Math.min(plate.y + plate.height, y + h) - Math.max(plate.y, y));
-                      const overlapArea = overlapX * overlapY;
-                      const thisArea = w * h;
-                      return overlapArea / thisArea > 0.5;
-                    });
-                    
-                    if (!overlaps) {
-                      plates.push({
-                        x: x,
-                        y: y,
-                        width: w,
-                        height: h,
-                        confidence: edgeDensity * horizontalDensity,
-                        aspectRatio: aspectRatio
-                      });
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-    
-    // Filter out plates that are too large (false positives)
-    const validPlates = plates.filter(plate => {
-      const area = plate.width * plate.height;
-      const imageArea = width * height;
-      const areaPercent = area / imageArea;
-      
-      // Plate should be small - typically 0.3% to 2% of image
-      const isSizeValid = areaPercent >= 0.002 && areaPercent <= 0.025;
-      
-      // Width should be reasonable (not entire car)
-      const isWidthValid = plate.width <= 300 && plate.width >= 60;
-      
-      // Height should be reasonable
-      const isHeightValid = plate.height <= 100 && plate.height >= 15;
-      
-      if (!isSizeValid || !isWidthValid || !isHeightValid) {
-        console.log(`❌ Rejected plate (too large): ${Math.round(plate.width)}x${Math.round(plate.height)} (${(areaPercent*100).toFixed(2)}% of image)`);
-        return false;
-      }
-      return true;
-    });
-    
-    // Sort by confidence and return top detections
-    validPlates.sort((a, b) => b.confidence - a.confidence);
-    const topPlates = validPlates.slice(0, 5); // Limit to top 5 detections
-    
-    console.log(`🚗 Detected ${topPlates.length} valid license plate(s) (filtered from ${plates.length} candidates)`);
-    
-    return topPlates;
-  } catch (error) {
-    console.error('Error detecting license plates:', error);
     return [];
   }
 };
@@ -788,15 +607,15 @@ export const applyAIPrivacyProtection = async (canvas) => {
       console.log(`✅ Blurred ${people.length} head(s)`);
     }
     
-    // 3. LICENSE PLATE DETECTION - Direct scanning method (most reliable)
-    // This works regardless of whether COCO-SSD detects vehicles
-    console.log('🔍 Running direct license plate detection...');
-    const directPlates = detectPlatesDirect(canvas);
+    // 3. LICENSE PLATE DETECTION - Scan for green, white, yellow, blue plates
+    // Works regardless of vehicle detection
+    console.log('🔍 Running license plate detection...');
+    const plates = detectLicensePlates(canvas);
     
-    if (directPlates.length > 0) {
-      blurDetectedPlates(canvas, directPlates);
-      platesDetected = directPlates.length;
-      totalDetections += directPlates.length;
+    if (plates.length > 0) {
+      blurDetectedPlates(canvas, plates);
+      platesDetected = plates.length;
+      totalDetections += plates.length;
     } else {
       console.log('ℹ️ No license plates detected in image');
     }
