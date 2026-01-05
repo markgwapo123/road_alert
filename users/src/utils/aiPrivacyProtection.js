@@ -276,12 +276,13 @@ export const blurPeople = (canvas, people) => {
 };
 
 /**
- * FALLBACK: Detect license plates by looking for white/light rectangles
- * Used when COCO-SSD doesn't detect vehicles
+ * DIRECT LICENSE PLATE DETECTION
+ * Scans image for rectangular regions that look like license plates
+ * Looks for: white/light rectangles with dark text, proper aspect ratio
  * @param {HTMLCanvasElement} canvas - Canvas containing the image
- * @returns {Array} Array of potential plate regions
+ * @returns {Array} Array of detected plate regions
  */
-const detectPlatesFallback = (canvas) => {
+const detectPlatesDirect = (canvas) => {
   try {
     const context = canvas.getContext('2d');
     const width = canvas.width;
@@ -289,75 +290,122 @@ const detectPlatesFallback = (canvas) => {
     const imageData = context.getImageData(0, 0, width, height);
     const pixels = imageData.data;
     
-    const plates = [];
+    console.log(`🔍 Scanning image ${width}x${height} for license plates...`);
     
-    // Scan lower 70% of image (where plates typically are)
-    const startY = Math.floor(height * 0.3);
-    const stepSize = Math.max(8, Math.floor(width / 80));
+    const candidates = [];
     
-    // Plate dimensions: typically 100-250px wide, 25-60px tall
-    const minPlateWidth = Math.max(60, width * 0.08);
-    const maxPlateWidth = Math.min(300, width * 0.35);
-    const minPlateHeight = Math.max(15, height * 0.03);
-    const maxPlateHeight = Math.min(80, height * 0.12);
+    // Typical license plate characteristics:
+    // - Aspect ratio: 2:1 to 5:1 (width:height)
+    // - Location: usually middle-lower part of image (40-90% from top)
+    // - Background: white, silver, yellow, or blue
+    // - Contains dark text/numbers
+    // - Size: roughly 100-300px wide in typical photos
     
-    for (let y = startY; y < height - minPlateHeight; y += stepSize) {
-      for (let x = 0; x < width - minPlateWidth; x += stepSize) {
-        // Check for light-colored rectangular region (white/yellow plate)
-        let lightPixels = 0;
-        let totalPixels = 0;
-        
-        // Sample a potential plate region
-        const testWidth = minPlateWidth;
-        const testHeight = minPlateHeight;
-        
-        for (let py = y; py < y + testHeight && py < height; py += 2) {
-          for (let px = x; px < x + testWidth && px < width; px += 2) {
-            const idx = (py * width + px) * 4;
-            const r = pixels[idx];
-            const g = pixels[idx + 1];
-            const b = pixels[idx + 2];
-            
-            // Check if pixel is light (white, light gray, or yellow)
-            const brightness = (r + g + b) / 3;
-            const isLight = brightness > 180;
-            const isYellow = r > 180 && g > 150 && b < 100;
-            
-            if (isLight || isYellow) lightPixels++;
-            totalPixels++;
-          }
-        }
-        
-        const lightRatio = lightPixels / totalPixels;
-        
-        // If region is mostly light colored (like a plate)
-        if (lightRatio > 0.5 && lightRatio < 0.95) {
-          // Check for dark pixels (text) within the light region
+    const minPlateW = Math.max(80, width * 0.1);
+    const maxPlateW = Math.min(350, width * 0.4);
+    const minPlateH = Math.max(20, height * 0.03);
+    const maxPlateH = Math.min(100, height * 0.15);
+    
+    // Search in lower 70% of image
+    const searchStartY = Math.floor(height * 0.3);
+    const searchEndY = height - minPlateH;
+    
+    // Step sizes for scanning
+    const stepX = Math.max(5, Math.floor(width / 150));
+    const stepY = Math.max(5, Math.floor(height / 100));
+    
+    // Test multiple plate sizes
+    const plateSizes = [
+      { w: minPlateW, h: minPlateH },
+      { w: minPlateW * 1.5, h: minPlateH * 1.3 },
+      { w: minPlateW * 2, h: minPlateH * 1.5 },
+      { w: minPlateW * 2.5, h: minPlateH * 1.8 }
+    ];
+    
+    for (const size of plateSizes) {
+      const testW = Math.min(size.w, maxPlateW);
+      const testH = Math.min(size.h, maxPlateH);
+      const aspectRatio = testW / testH;
+      
+      // Skip if aspect ratio is not plate-like
+      if (aspectRatio < 2 || aspectRatio > 5.5) continue;
+      
+      for (let y = searchStartY; y < searchEndY; y += stepY) {
+        for (let x = 0; x < width - testW; x += stepX) {
+          // Sample the region
+          let whitePixels = 0;
+          let yellowPixels = 0;
+          let bluePixels = 0;
           let darkPixels = 0;
-          for (let py = y; py < y + testHeight && py < height; py += 2) {
-            for (let px = x; px < x + testWidth && px < width; px += 2) {
+          let sampleCount = 0;
+          
+          // Sample every 3rd pixel for speed
+          for (let py = y; py < y + testH && py < height; py += 3) {
+            for (let px = x; px < x + testW && px < width; px += 3) {
               const idx = (py * width + px) * 4;
-              const brightness = (pixels[idx] + pixels[idx + 1] + pixels[idx + 2]) / 3;
-              if (brightness < 80) darkPixels++;
+              const r = pixels[idx];
+              const g = pixels[idx + 1];
+              const b = pixels[idx + 2];
+              const brightness = (r + g + b) / 3;
+              
+              // White/silver plate background
+              if (brightness > 200 && Math.abs(r - g) < 30 && Math.abs(g - b) < 30) {
+                whitePixels++;
+              }
+              // Yellow plate
+              else if (r > 180 && g > 150 && b < 100) {
+                yellowPixels++;
+              }
+              // Blue (EU plates, some Asian plates)
+              else if (b > 150 && r < 120 && g < 150) {
+                bluePixels++;
+              }
+              // Dark (text/numbers)
+              else if (brightness < 80) {
+                darkPixels++;
+              }
+              sampleCount++;
             }
           }
           
-          const darkRatio = darkPixels / totalPixels;
+          if (sampleCount === 0) continue;
           
-          // Plates have some dark text (5-30% dark pixels)
-          if (darkRatio > 0.05 && darkRatio < 0.35) {
-            // Check if overlaps with existing detection
-            const overlaps = plates.some(p => {
-              return Math.abs(p.x - x) < testWidth * 0.5 && Math.abs(p.y - y) < testHeight * 0.5;
+          const whiteRatio = whitePixels / sampleCount;
+          const yellowRatio = yellowPixels / sampleCount;
+          const blueRatio = bluePixels / sampleCount;
+          const darkRatio = darkPixels / sampleCount;
+          const plateColorRatio = whiteRatio + yellowRatio + blueRatio;
+          
+          // A plate should have:
+          // - Significant plate-colored background (40-85%)
+          // - Some dark pixels for text (5-40%)
+          // - Not be entirely one color
+          const isPlateCandidate = 
+            plateColorRatio > 0.35 && 
+            plateColorRatio < 0.9 &&
+            darkRatio > 0.05 && 
+            darkRatio < 0.45;
+          
+          if (isPlateCandidate) {
+            // Calculate confidence score
+            const confidence = (plateColorRatio * 0.5 + darkRatio * 0.3 + (aspectRatio > 2.5 ? 0.2 : 0.1));
+            
+            // Check for overlap with existing candidates
+            const overlaps = candidates.some(c => {
+              const overlapX = Math.max(0, Math.min(c.x + c.width, x + testW) - Math.max(c.x, x));
+              const overlapY = Math.max(0, Math.min(c.y + c.height, y + testH) - Math.max(c.y, y));
+              return overlapX > testW * 0.3 && overlapY > testH * 0.3;
             });
             
             if (!overlaps) {
-              plates.push({
+              candidates.push({
                 x: x,
                 y: y,
-                width: testWidth * 1.5, // Expand a bit
-                height: testHeight * 1.5,
-                confidence: lightRatio * (1 - darkRatio)
+                width: testW,
+                height: testH,
+                confidence: confidence,
+                whiteRatio,
+                darkRatio
               });
             }
           }
@@ -365,28 +413,47 @@ const detectPlatesFallback = (canvas) => {
       }
     }
     
-    // Sort by confidence and return top 3
-    plates.sort((a, b) => b.confidence - a.confidence);
-    const topPlates = plates.slice(0, 3);
+    // Sort by confidence and get top results
+    candidates.sort((a, b) => b.confidence - a.confidence);
     
-    console.log(`🔍 Fallback found ${topPlates.length} potential plate(s)`);
-    return topPlates;
+    // Filter to best candidates (max 4)
+    const plates = candidates.slice(0, 4);
+    
+    console.log(`📋 Direct detection found ${plates.length} plate candidate(s)`);
+    plates.forEach((p, i) => {
+      console.log(`  Plate ${i + 1}: ${Math.round(p.width)}x${Math.round(p.height)} at (${Math.round(p.x)}, ${Math.round(p.y)}), conf=${p.confidence.toFixed(2)}`);
+    });
+    
+    return plates;
   } catch (error) {
-    console.error('Error in fallback plate detection:', error);
+    console.error('Error in direct plate detection:', error);
     return [];
   }
 };
 
 /**
- * Blur fallback detected plates
+ * Blur detected plate regions
  */
-const blurFallbackPlates = (canvas, plates) => {
+const blurDetectedPlates = (canvas, plates) => {
+  if (!plates || plates.length === 0) return;
+  
   const context = canvas.getContext('2d');
   
   plates.forEach((plate, index) => {
-    console.log(`🔒 Blurring fallback plate ${index + 1}: ${Math.round(plate.width)}x${Math.round(plate.height)} at (${Math.round(plate.x)}, ${Math.round(plate.y)})`);
-    applyGaussianBlur(context, plate.x, plate.y, plate.width, plate.height, 35);
+    // Add small padding around the detected plate
+    const padX = plate.width * 0.1;
+    const padY = plate.height * 0.15;
+    
+    const blurX = Math.max(0, plate.x - padX);
+    const blurY = Math.max(0, plate.y - padY);
+    const blurW = plate.width + padX * 2;
+    const blurH = plate.height + padY * 2;
+    
+    console.log(`🔒 Blurring plate ${index + 1}: ${Math.round(blurW)}x${Math.round(blurH)} at (${Math.round(blurX)}, ${Math.round(blurY)})`);
+    applyGaussianBlur(context, blurX, blurY, blurW, blurH, 40);
   });
+  
+  console.log(`✅ Blurred ${plates.length} license plate(s)`);
 };
 
 /**
@@ -697,14 +764,14 @@ export const applyAIPrivacyProtection = async (canvas) => {
       await loadFaceDetectionModel();
     }
     
-    // Run all AI detections in parallel
-    const [faces, people, vehicles] = await Promise.all([
+    // Run AI face and people detection
+    const [faces, people] = await Promise.all([
       detectFaces(canvas),
-      detectPeople(canvas),
-      detectVehicles(canvas)
+      detectPeople(canvas)
     ]);
     
     let totalDetections = 0;
+    let platesDetected = 0;
     
     // 1. Blur ONLY detected faces (BlazeFace - most accurate)
     if (faces.length > 0) {
@@ -721,31 +788,27 @@ export const applyAIPrivacyProtection = async (canvas) => {
       console.log(`✅ Blurred ${people.length} head(s)`);
     }
     
-    // 3. Blur plate areas on detected vehicles
-    if (vehicles.length > 0) {
-      blurVehiclePlates(canvas, vehicles);
-      totalDetections += vehicles.length;
-      console.log(`✅ Blurred plates on ${vehicles.length} vehicle(s)`);
+    // 3. LICENSE PLATE DETECTION - Direct scanning method (most reliable)
+    // This works regardless of whether COCO-SSD detects vehicles
+    console.log('🔍 Running direct license plate detection...');
+    const directPlates = detectPlatesDirect(canvas);
+    
+    if (directPlates.length > 0) {
+      blurDetectedPlates(canvas, directPlates);
+      platesDetected = directPlates.length;
+      totalDetections += directPlates.length;
     } else {
-      // FALLBACK: If no vehicles detected by COCO-SSD, try simple plate detection
-      // This helps when AI model fails to detect vehicles
-      console.log('⚠️ No vehicles detected by AI, trying fallback plate detection...');
-      const fallbackPlates = detectPlatesFallback(canvas);
-      if (fallbackPlates.length > 0) {
-        blurFallbackPlates(canvas, fallbackPlates);
-        totalDetections += fallbackPlates.length;
-        console.log(`✅ Fallback: Blurred ${fallbackPlates.length} potential plate(s)`);
-      }
+      console.log('ℹ️ No license plates detected in image');
     }
     
     if (totalDetections === 0) {
-      console.log('✅ No faces, people, or vehicles detected');
+      console.log('✅ No faces, people, or plates detected');
     }
     
     return {
       facesDetected: faces.length,
       peopleDetected: people.length,
-      vehiclesDetected: vehicles.length,
+      platesDetected: platesDetected,
       totalBlurred: totalDetections
     };
     
