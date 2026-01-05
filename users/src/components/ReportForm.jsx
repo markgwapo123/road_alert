@@ -233,6 +233,8 @@ const ReportForm = ({ onReport, onClose }) => {
   const startCamera = async () => {
     try {
       setError('');
+      setSuccess('📸 Opening camera and loading AI models...');
+      
       const constraints = {
         video: {
           facingMode: 'environment', // Use back camera on mobile
@@ -241,9 +243,18 @@ const ReportForm = ({ onReport, onClose }) => {
         }
       };
       
-      const mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
+      // Start camera and preload models in parallel
+      const [mediaStream] = await Promise.all([
+        navigator.mediaDevices.getUserMedia(constraints),
+        preloadModel().catch(err => {
+          console.warn('⚠️ Model preload warning:', err);
+          return null; // Non-critical, continue
+        })
+      ]);
+      
       setStream(mediaStream);
       setShowCamera(true);
+      setSuccess('✅ Camera ready! AI models loaded.');
       
       // Wait for video element to be ready
       setTimeout(() => {
@@ -261,7 +272,7 @@ const ReportForm = ({ onReport, onClose }) => {
     if (!videoRef.current || !canvasRef.current) return;
     
     setProcessingImage(true);
-    setSuccess('🤖 AI analyzing image for privacy protection...');
+    setSuccess('📸 Capturing image...');
     
     const video = videoRef.current;
     const canvas = canvasRef.current;
@@ -275,8 +286,14 @@ const ReportForm = ({ onReport, onClose }) => {
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
     
     // Apply AI-powered privacy protection (detect and blur faces)
+    setSuccess('🤖 AI detecting faces and license plates...');
+    
     try {
+      const startTime = Date.now();
       const result = await applyAIPrivacyProtection(canvas);
+      const processingTime = Date.now() - startTime;
+      
+      console.log(`⚡ Privacy protection completed in ${processingTime}ms`);
       
       // Provide detailed feedback
       if (result.totalBlurred > 0) {
@@ -286,9 +303,9 @@ const ReportForm = ({ onReport, onClose }) => {
           details.push(`${result.peopleDetected} person(s)`);
         }
         if (result.platesDetected > 0) details.push(`${result.platesDetected} license plate(s)`);
-        setSuccess(`🔒 Privacy protected: ${details.join(', ')} automatically blurred`);
+        setSuccess(`🔒 Privacy protected: ${details.join(', ')} blurred in ${(processingTime/1000).toFixed(1)}s`);
       } else {
-        setSuccess('✅ Image captured - no faces, people, or license plates detected');
+        setSuccess(`✅ Image captured in ${(processingTime/1000).toFixed(1)}s - no detections`);
       }
     } catch (error) {
       console.warn('⚠️ Privacy protection failed, proceeding without it:', error);

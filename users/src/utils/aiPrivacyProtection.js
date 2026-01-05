@@ -339,23 +339,26 @@ export const detectLicensePlates = (canvas) => {
     const maxWidth = width * 0.4;
     const maxHeight = height * 0.15;
     
-    const stepSize = Math.max(10, Math.floor(width / 100)); // Adaptive step size
+    // Optimize step size for faster scanning
+    const stepSize = Math.max(15, Math.floor(width / 80)); // Increased from 100 to 80 for faster scan
     
     for (let y = Math.floor(height * 0.3); y < height - minHeight; y += stepSize) {
       for (let x = 0; x < width - minWidth; x += stepSize) {
-        // Test multiple plate sizes
-        for (let w = minWidth; w <= Math.min(maxWidth, width - x); w += stepSize * 2) {
-          for (let h = minHeight; h <= Math.min(maxHeight, height - y); h += stepSize) {
+        // Test multiple plate sizes (optimized - fewer iterations)
+        for (let w = minWidth; w <= Math.min(maxWidth, width - x); w += stepSize * 3) {
+          for (let h = minHeight; h <= Math.min(maxHeight, height - y); h += Math.max(stepSize, 15)) {
             const aspectRatio = w / h;
             
             // Check aspect ratio (typical license plates)
             if (aspectRatio >= 1.5 && aspectRatio <= 6.0) {
-              // Calculate edge density in this region
+              // Calculate edge density in this region (sample for speed)
               let edgeCount = 0;
               let totalPixels = 0;
               
-              for (let py = y; py < y + h && py < height; py++) {
-                for (let px = x; px < x + w && px < width; px++) {
+              // Sample every 2nd pixel for speed (still accurate enough)
+              const sampleStep = 2;
+              for (let py = y; py < y + h && py < height; py += sampleStep) {
+                for (let px = x; px < x + w && px < width; px += sampleStep) {
                   const idx = py * width + px;
                   if (edges[idx] > 30) edgeCount++;
                   totalPixels++;
@@ -370,12 +373,13 @@ export const detectLicensePlates = (canvas) => {
                 let horizontalEdges = 0;
                 const midY = y + Math.floor(h / 2);
                 
-                for (let px = x; px < x + w && px < width; px++) {
+                // Sample horizontal line for speed
+                for (let px = x; px < x + w && px < width; px += sampleStep) {
                   const idx = midY * width + px;
                   if (edges[idx] > 30) horizontalEdges++;
                 }
                 
-                const horizontalDensity = horizontalEdges / w;
+                const horizontalDensity = (horizontalEdges / (w / sampleStep));
                 
                 if (horizontalDensity > 0.2) {
                   // Check if this overlaps with existing detections
