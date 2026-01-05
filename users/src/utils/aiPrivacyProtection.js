@@ -198,9 +198,9 @@ export const detectPeople = async (canvas) => {
  * Blur all detected faces in the image
  * @param {HTMLCanvasElement} canvas - Canvas containing the image
  * @param {Array} faces - Array of detected faces from BlazeFace
- * @param {number} expansionFactor - How much to expand the blur region (default: 2.0)
+ * @param {number} expansionFactor - How much to expand the blur region (default: 1.3)
  */
-export const blurFaces = (canvas, faces, expansionFactor = 2.0) => {
+export const blurFaces = (canvas, faces, expansionFactor = 1.3) => {
   if (!faces || faces.length === 0) {
     console.log('ℹ️ No faces to blur');
     return;
@@ -219,14 +219,14 @@ export const blurFaces = (canvas, faces, expansionFactor = 2.0) => {
       const faceWidth = x2 - x1;
       const faceHeight = y2 - y1;
       
-      // Expand the region significantly to include full head (hair, neck, ears)
-      // Increased expansion for better coverage
+      // Minimal expansion to include just face + minimal hair/neck
+      // Reduced from 2.0x to 1.3x for precision
       const expandedWidth = faceWidth * expansionFactor;
-      const expandedHeight = faceHeight * expansionFactor * 1.4; // Even taller for head coverage
+      const expandedHeight = faceHeight * expansionFactor * 1.2; // Slightly taller for hair
       
       // Calculate expanded coordinates (centered on face)
       const expandedX = x1 - (expandedWidth - faceWidth) / 2;
-      const expandedY = y1 - (expandedHeight - faceHeight) / 2.2; // More space above for hair
+      const expandedY = y1 - (expandedHeight - faceHeight) / 2.5; // Some space above for hair
       
       console.log(`🔒 Blurring face ${index + 1}:`, {
         original: { x: Math.round(x1), y: Math.round(y1), width: Math.round(faceWidth), height: Math.round(faceHeight) },
@@ -262,9 +262,10 @@ export const blurPeople = (canvas, people) => {
       // COCO-SSD returns bbox as [x, y, width, height]
       const [x, y, width, height] = person.bbox;
       
-      // Focus on upper 40% of person detection (where head/face typically is)
-      const headHeight = height * 0.4;
-      const headWidth = width * 0.8; // Slightly narrower for head
+      // Focus on upper 25% of person detection (where head typically is)
+      // Reduced from 40% to 25% for tighter face coverage
+      const headHeight = height * 0.25;
+      const headWidth = width * 0.6; // Narrower for just head
       const headX = x + (width - headWidth) / 2; // Center horizontally
       const headY = y; // Start from top
       
@@ -333,11 +334,13 @@ export const detectLicensePlates = (canvas) => {
     // - Aspect ratio between 1.5:1 and 6:1
     // - High edge density (text on contrasting background)
     // - Located in lower half of image (vehicles are usually on ground)
+    // - SMALL size (not entire car!)
     
-    const minWidth = Math.max(80, width * 0.08);
-    const minHeight = Math.max(20, height * 0.02);
-    const maxWidth = width * 0.4;
-    const maxHeight = height * 0.15;
+    const minWidth = Math.max(60, width * 0.05);
+    const minHeight = Math.max(15, height * 0.015);
+    // STRICT maximum sizes - plates are small!
+    const maxWidth = Math.min(300, width * 0.25);  // Max 25% of width or 300px
+    const maxHeight = Math.min(100, height * 0.08); // Max 8% of height or 100px
     
     // Optimize step size for faster scanning
     const stepSize = Math.max(15, Math.floor(width / 80)); // Increased from 100 to 80 for faster scan
@@ -348,6 +351,10 @@ export const detectLicensePlates = (canvas) => {
         for (let w = minWidth; w <= Math.min(maxWidth, width - x); w += stepSize * 3) {
           for (let h = minHeight; h <= Math.min(maxHeight, height - y); h += Math.max(stepSize, 15)) {
             const aspectRatio = w / h;
+            
+            // STRICT size check - reject if too large (likely false positive)
+            const areaPercent = (w * h) / (width * height);
+            if (areaPercent > 0.03) continue; // Reject if > 3% of image area
             
             // Check aspect ratio (typical license plates)
             if (aspectRatio >= 1.5 && aspectRatio <= 6.0) {
@@ -409,11 +416,33 @@ export const detectLicensePlates = (canvas) => {
       }
     }
     
-    // Sort by confidence and return top detections
-    plates.sort((a, b) => b.confidence - a.confidence);
-    const topPlates = plates.slice(0, 10); // Limit to top 10 detections
+    // Filter out plates that are too large (false positives)
+    const validPlates = plates.filter(plate => {
+      const area = plate.width * plate.height;
+      const imageArea = width * height;
+      const areaPercent = area / imageArea;
+      
+      // Plate should be small - typically 0.3% to 2% of image
+      const isSizeValid = areaPercent >= 0.002 && areaPercent <= 0.025;
+      
+      // Width should be reasonable (not entire car)
+      const isWidthValid = plate.width <= 300 && plate.width >= 60;
+      
+      // Height should be reasonable
+      const isHeightValid = plate.height <= 100 && plate.height >= 15;
+      
+      if (!isSizeValid || !isWidthValid || !isHeightValid) {
+        console.log(`❌ Rejected plate (too large): ${Math.round(plate.width)}x${Math.round(plate.height)} (${(areaPercent*100).toFixed(2)}% of image)`);
+        return false;
+      }
+      return true;
+    });
     
-    console.log(`🚗 Detected ${topPlates.length} potential license plate(s)`);
+    // Sort by confidence and return top detections
+    validPlates.sort((a, b) => b.confidence - a.confidence);
+    const topPlates = validPlates.slice(0, 5); // Limit to top 5 detections
+    
+    console.log(`🚗 Detected ${topPlates.length} valid license plate(s) (filtered from ${plates.length} candidates)`);
     
     return topPlates;
   } catch (error) {
@@ -437,8 +466,8 @@ export const blurLicensePlates = (canvas, plates) => {
   
   plates.forEach((plate, index) => {
     try {
-      // Expand plate region slightly for better coverage
-      const expandFactor = 1.3;
+      // Minimal expansion - just enough to ensure full plate coverage
+      const expandFactor = 1.15; // Reduced from 1.3 to 1.15
       const expandedWidth = plate.width * expandFactor;
       const expandedHeight = plate.height * expandFactor;
       const expandedX = plate.x - (expandedWidth - plate.width) / 2;
@@ -490,7 +519,7 @@ export const applyAIPrivacyProtection = async (canvas) => {
     
     // Blur detected faces first (most precise)
     if (faces.length > 0) {
-      blurFaces(canvas, faces, 2.0); // Larger expansion factor for better coverage
+      blurFaces(canvas, faces, 1.3); // Minimal expansion for face-only coverage
       totalDetections += faces.length;
     }
     
