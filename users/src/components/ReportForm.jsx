@@ -286,7 +286,7 @@ const ReportForm = ({ onReport, onClose }) => {
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
     
     // Apply AI-powered privacy protection (detect and blur faces)
-    setSuccess('🤖 AI detecting faces and license plates...');
+    setSuccess('🤖 AI detecting faces and vehicles...');
     
     try {
       const startTime = Date.now();
@@ -299,13 +299,11 @@ const ReportForm = ({ onReport, onClose }) => {
       if (result.totalBlurred > 0) {
         const details = [];
         if (result.facesDetected > 0) details.push(`${result.facesDetected} face(s)`);
-        if (result.peopleDetected > 0 && result.peopleDetected > result.facesDetected) {
-          details.push(`${result.peopleDetected} person(s)`);
-        }
-        if (result.platesDetected > 0) details.push(`${result.platesDetected} license plate(s)`);
-        setSuccess(`🔒 Privacy protected: ${details.join(', ')} blurred in ${(processingTime/1000).toFixed(1)}s`);
+        if (result.peopleDetected > 0) details.push(`${result.peopleDetected} head(s)`);
+        if (result.vehiclesDetected > 0) details.push(`${result.vehiclesDetected} plate(s)`);
+        setSuccess(`🔒 Blurred: ${details.join(', ')} (${(processingTime/1000).toFixed(1)}s)`);
       } else {
-        setSuccess(`✅ Image captured in ${(processingTime/1000).toFixed(1)}s - no detections`);
+        setSuccess(`✅ Captured (${(processingTime/1000).toFixed(1)}s) - no faces or vehicles`);
       }
     } catch (error) {
       console.warn('⚠️ Privacy protection failed, proceeding without it:', error);

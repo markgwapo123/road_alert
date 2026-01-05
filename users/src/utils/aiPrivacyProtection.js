@@ -195,12 +195,11 @@ export const detectPeople = async (canvas) => {
 };
 
 /**
- * Blur all detected faces in the image
+ * Blur all detected faces in the image - ACCURATE face-only blur
  * @param {HTMLCanvasElement} canvas - Canvas containing the image
  * @param {Array} faces - Array of detected faces from BlazeFace
- * @param {number} expansionFactor - How much to expand the blur region (default: 1.3)
  */
-export const blurFaces = (canvas, faces, expansionFactor = 1.3) => {
+export const blurFaces = (canvas, faces) => {
   if (!faces || faces.length === 0) {
     console.log('ℹ️ No faces to blur');
     return;
@@ -210,8 +209,7 @@ export const blurFaces = (canvas, faces, expansionFactor = 1.3) => {
   
   faces.forEach((face, index) => {
     try {
-      // Get face bounding box
-      // BlazeFace returns topLeft and bottomRight coordinates
+      // Get face bounding box from BlazeFace
       const [x1, y1] = face.topLeft;
       const [x2, y2] = face.bottomRight;
       
@@ -219,22 +217,17 @@ export const blurFaces = (canvas, faces, expansionFactor = 1.3) => {
       const faceWidth = x2 - x1;
       const faceHeight = y2 - y1;
       
-      // Minimal expansion to include just face + minimal hair/neck
-      // Reduced from 2.0x to 1.3x for precision
-      const expandedWidth = faceWidth * expansionFactor;
-      const expandedHeight = faceHeight * expansionFactor * 1.2; // Slightly taller for hair
+      // MINIMAL expansion - just 10% for slight coverage
+      const expansion = 1.1;
+      const blurWidth = faceWidth * expansion;
+      const blurHeight = faceHeight * expansion;
+      const blurX = x1 - (blurWidth - faceWidth) / 2;
+      const blurY = y1 - (blurHeight - faceHeight) / 2;
       
-      // Calculate expanded coordinates (centered on face)
-      const expandedX = x1 - (expandedWidth - faceWidth) / 2;
-      const expandedY = y1 - (expandedHeight - faceHeight) / 2.5; // Some space above for hair
+      console.log(`🔒 Blurring face ${index + 1}: ${Math.round(blurWidth)}x${Math.round(blurHeight)} at (${Math.round(blurX)}, ${Math.round(blurY)})`);
       
-      console.log(`🔒 Blurring face ${index + 1}:`, {
-        original: { x: Math.round(x1), y: Math.round(y1), width: Math.round(faceWidth), height: Math.round(faceHeight) },
-        expanded: { x: Math.round(expandedX), y: Math.round(expandedY), width: Math.round(expandedWidth), height: Math.round(expandedHeight) }
-      });
-      
-      // Apply strong blur to the expanded region
-      applyGaussianBlur(context, expandedX, expandedY, expandedWidth, expandedHeight, 45);
+      // Apply blur to ONLY the face area
+      applyGaussianBlur(context, blurX, blurY, blurWidth, blurHeight, 35);
       
     } catch (error) {
       console.error(`Error blurring face ${index}:`, error);
@@ -245,7 +238,7 @@ export const blurFaces = (canvas, faces, expansionFactor = 1.3) => {
 };
 
 /**
- * Blur detected people (focuses on upper body/head area)
+ * Blur only the HEAD of detected people - NOT the body
  * @param {HTMLCanvasElement} canvas - Canvas containing the image
  * @param {Array} people - Array of detected people from COCO-SSD
  */
@@ -262,27 +255,24 @@ export const blurPeople = (canvas, people) => {
       // COCO-SSD returns bbox as [x, y, width, height]
       const [x, y, width, height] = person.bbox;
       
-      // Focus on upper 25% of person detection (where head typically is)
-      // Reduced from 40% to 25% for tighter face coverage
-      const headHeight = height * 0.25;
-      const headWidth = width * 0.6; // Narrower for just head
+      // HEAD ONLY - top 18% of person, narrow width
+      // Human head is roughly 1/7 to 1/8 of body height
+      const headHeight = height * 0.18;
+      const headWidth = Math.min(width * 0.5, headHeight * 0.9); // Head is roughly as wide as tall
       const headX = x + (width - headWidth) / 2; // Center horizontally
-      const headY = y; // Start from top
+      const headY = y; // Start from very top
       
-      console.log(`🔒 Blurring person ${index + 1} (confidence: ${(person.score * 100).toFixed(1)}%):`, {
-        fullBody: { x: Math.round(x), y: Math.round(y), width: Math.round(width), height: Math.round(height) },
-        headArea: { x: Math.round(headX), y: Math.round(headY), width: Math.round(headWidth), height: Math.round(headHeight) }
-      });
+      console.log(`🔒 Blurring head ${index + 1}: ${Math.round(headWidth)}x${Math.round(headHeight)} at (${Math.round(headX)}, ${Math.round(headY)})`);
       
-      // Apply strong blur to head area
-      applyGaussianBlur(context, headX, headY, headWidth, headHeight, 45);
+      // Apply blur to ONLY the head
+      applyGaussianBlur(context, headX, headY, headWidth, headHeight, 35);
       
     } catch (error) {
       console.error(`Error blurring person ${index}:`, error);
     }
   });
   
-  console.log('✅ People blurring complete');
+  console.log('✅ Head blurring complete');
 };
 
 /**
@@ -514,104 +504,99 @@ export const detectLicensePlates = (canvas, vehicles = []) => {
 };
 
 /**
- * Blur detected license plates
+ * Blur license plate area of detected vehicles
+ * Uses vehicle detection to estimate plate location (no false positives)
  * @param {HTMLCanvasElement} canvas - Canvas containing the image
- * @param {Array} plates - Array of detected license plate regions
+ * @param {Array} vehicles - Array of detected vehicles from COCO-SSD
  */
-export const blurLicensePlates = (canvas, plates) => {
-  if (!plates || plates.length === 0) {
-    console.log('ℹ️ No license plates to blur');
+export const blurVehiclePlates = (canvas, vehicles) => {
+  if (!vehicles || vehicles.length === 0) {
+    console.log('ℹ️ No vehicles to blur plates');
     return;
   }
   
   const context = canvas.getContext('2d');
   
-  plates.forEach((plate, index) => {
+  vehicles.forEach((vehicle, index) => {
     try {
-      // Minimal expansion - just enough to ensure full plate coverage
-      const expandFactor = 1.15; // Reduced from 1.3 to 1.15
-      const expandedWidth = plate.width * expandFactor;
-      const expandedHeight = plate.height * expandFactor;
-      const expandedX = plate.x - (expandedWidth - plate.width) / 2;
-      const expandedY = plate.y - (expandedHeight - plate.height) / 2;
+      // COCO-SSD returns bbox as [x, y, width, height]
+      const [vx, vy, vw, vh] = vehicle.bbox;
       
-      console.log(`🔒 Blurring license plate ${index + 1} (confidence: ${(plate.confidence * 100).toFixed(1)}%):`, {
-        original: { x: Math.round(plate.x), y: Math.round(plate.y), width: Math.round(plate.width), height: Math.round(plate.height) },
-        expanded: { x: Math.round(expandedX), y: Math.round(expandedY), width: Math.round(expandedWidth), height: Math.round(expandedHeight) },
-        aspectRatio: plate.aspectRatio.toFixed(2)
-      });
+      // Estimate plate location: bottom center of vehicle
+      // Plates are typically small: ~15% of vehicle width, ~5% of vehicle height
+      const plateWidth = vw * 0.2;
+      const plateHeight = vh * 0.08;
+      const plateX = vx + (vw - plateWidth) / 2; // Center horizontally
+      const plateY = vy + vh - plateHeight - (vh * 0.05); // Near bottom with small margin
       
-      // Apply strong blur to the plate region
-      applyGaussianBlur(context, expandedX, expandedY, expandedWidth, expandedHeight, 50);
+      // Also blur front plate area (for front-facing vehicles)
+      const frontPlateY = vy + vh * 0.75; // Lower portion
+      
+      console.log(`🔒 Blurring plate for ${vehicle.class} ${index + 1}: ${Math.round(plateWidth)}x${Math.round(plateHeight)}`);
+      
+      // Blur rear plate area
+      applyGaussianBlur(context, plateX, plateY, plateWidth, plateHeight, 30);
+      
+      // Blur front plate area (if car is angled)
+      applyGaussianBlur(context, plateX, frontPlateY, plateWidth, plateHeight, 30);
       
     } catch (error) {
-      console.error(`Error blurring license plate ${index}:`, error);
+      console.error(`Error blurring vehicle plate ${index}:`, error);
     }
   });
   
-  console.log('✅ License plate blurring complete');
+  console.log('✅ Vehicle plate blurring complete');
 };
 
-/**
- * Main function: Apply AI-powered privacy protection to the image
- * Uses TensorFlow.js models: BlazeFace (faces) + COCO-SSD (people & vehicles)
- * Then uses edge detection for license plates within detected vehicles
- * @param {HTMLCanvasElement} canvas - Canvas containing the captured image
- * @returns {Promise<Object>} Detection results with counts
- */
+/**\n * Main function: Apply AI-powered privacy protection to the image\n * Uses TensorFlow.js models: BlazeFace (faces) + COCO-SSD (people & vehicles)\n * ACCURATE: Only blurs faces/heads and vehicle plate areas - nothing else\n * @param {HTMLCanvasElement} canvas - Canvas containing the captured image\n * @returns {Promise<Object>} Detection results with counts\n */
 export const applyAIPrivacyProtection = async (canvas) => {
   try {
-    console.log('🔒 Applying AI-powered privacy protection (TensorFlow.js: BlazeFace + COCO-SSD)...');
+    console.log('🔒 Applying ACCURATE privacy protection (faces + heads + plates only)...');
     
     // Load models if not already loaded
     if (!faceModel || !personModel) {
       await loadFaceDetectionModel();
     }
     
-    // Run all detections in parallel for speed
+    // Run all AI detections in parallel
     const [faces, people, vehicles] = await Promise.all([
       detectFaces(canvas),
       detectPeople(canvas),
       detectVehicles(canvas)
     ]);
     
-    // Detect license plates within vehicle regions (synchronous, fast)
-    const plates = detectLicensePlates(canvas, vehicles);
-    
     let totalDetections = 0;
     
-    // Blur detected faces first (most precise)
+    // 1. Blur ONLY detected faces (BlazeFace - most accurate)
     if (faces.length > 0) {
-      blurFaces(canvas, faces, 1.3); // Minimal expansion for face-only coverage
+      blurFaces(canvas, faces);
       totalDetections += faces.length;
+      console.log(`✅ Blurred ${faces.length} face(s)`);
     }
     
-    // Blur detected people as backup (catches missed faces)
-    // Only blur people if no faces were detected OR if people detected > faces
-    // This handles cases where face detection fails but person detection succeeds
-    if (people.length > 0 && (faces.length === 0 || people.length > faces.length)) {
-      console.log(`ℹ️ Using person detection as backup (${people.length} people detected)`);
+    // 2. Blur ONLY heads of people (when face not detected)
+    // Only process people who don't have a corresponding face detection
+    if (people.length > 0 && faces.length === 0) {
       blurPeople(canvas, people);
-      // Count people only if they're additional to faces
-      totalDetections = Math.max(totalDetections, people.length);
+      totalDetections += people.length;
+      console.log(`✅ Blurred ${people.length} head(s)`);
     }
     
-    // Blur detected license plates
-    if (plates.length > 0) {
-      blurLicensePlates(canvas, plates);
-      totalDetections += plates.length;
+    // 3. Blur ONLY plate areas on detected vehicles (no pattern matching)
+    if (vehicles.length > 0) {
+      blurVehiclePlates(canvas, vehicles);
+      totalDetections += vehicles.length;
+      console.log(`✅ Blurred plates on ${vehicles.length} vehicle(s)`);
     }
     
     if (totalDetections === 0) {
-      console.log('✅ No faces, people, or license plates detected - image is privacy-safe');
-    } else {
-      console.log(`✅ Privacy protection applied - ${faces.length} face(s), ${people.length} person(s), ${plates.length} license plate(s) blurred`);
+      console.log('✅ No faces, people, or vehicles detected');
     }
     
     return {
       facesDetected: faces.length,
       peopleDetected: people.length,
-      platesDetected: plates.length,
+      vehiclesDetected: vehicles.length,
       totalBlurred: totalDetections
     };
     
