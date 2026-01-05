@@ -2,7 +2,7 @@
  * AI-Powered Privacy Protection for Road Alert Images
  * Uses TensorFlow.js with BlazeFace and COCO-SSD models for accurate face detection
  * Multi-model approach ensures consistent and reliable face/person detection
- * Automatically blurs detected faces to protect user privacy
+ * Automatically blurs detected faces and license plates to protect privacy
  */
 
 import * as tf from '@tensorflow/tfjs';
@@ -285,26 +285,202 @@ export const blurPeople = (canvas, people) => {
 };
 
 /**
+ * Detect license plates using pattern matching and edge detection
+ * Looks for rectangular shapes with appropriate aspect ratios and text-like patterns
+ * @param {HTMLCanvasElement} canvas - Canvas containing the image
+ * @returns {Array} Array of detected license plate regions
+ */
+export const detectLicensePlates = (canvas) => {
+  try {
+    console.log('🚗 Detecting license plates...');
+    
+    const context = canvas.getContext('2d');
+    const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+    const pixels = imageData.data;
+    const width = canvas.width;
+    const height = canvas.height;
+    
+    const plates = [];
+    
+    // Convert to grayscale for edge detection
+    const grayscale = new Uint8Array(width * height);
+    for (let i = 0; i < pixels.length; i += 4) {
+      const idx = i / 4;
+      grayscale[idx] = 0.299 * pixels[i] + 0.587 * pixels[i + 1] + 0.114 * pixels[i + 2];
+    }
+    
+    // Apply edge detection (Sobel-like)
+    const edges = new Uint8Array(width * height);
+    for (let y = 1; y < height - 1; y++) {
+      for (let x = 1; x < width - 1; x++) {
+        const idx = y * width + x;
+        
+        // Sobel X
+        const gx = -grayscale[idx - width - 1] + grayscale[idx - width + 1]
+                   -2 * grayscale[idx - 1] + 2 * grayscale[idx + 1]
+                   -grayscale[idx + width - 1] + grayscale[idx + width + 1];
+        
+        // Sobel Y
+        const gy = -grayscale[idx - width - 1] - 2 * grayscale[idx - width] - grayscale[idx - width + 1]
+                   +grayscale[idx + width - 1] + 2 * grayscale[idx + width] + grayscale[idx + width + 1];
+        
+        edges[idx] = Math.sqrt(gx * gx + gy * gy);
+      }
+    }
+    
+    // Find rectangular regions with high edge density
+    // License plates typically have:
+    // - Aspect ratio between 1.5:1 and 6:1
+    // - High edge density (text on contrasting background)
+    // - Located in lower half of image (vehicles are usually on ground)
+    
+    const minWidth = Math.max(80, width * 0.08);
+    const minHeight = Math.max(20, height * 0.02);
+    const maxWidth = width * 0.4;
+    const maxHeight = height * 0.15;
+    
+    const stepSize = Math.max(10, Math.floor(width / 100)); // Adaptive step size
+    
+    for (let y = Math.floor(height * 0.3); y < height - minHeight; y += stepSize) {
+      for (let x = 0; x < width - minWidth; x += stepSize) {
+        // Test multiple plate sizes
+        for (let w = minWidth; w <= Math.min(maxWidth, width - x); w += stepSize * 2) {
+          for (let h = minHeight; h <= Math.min(maxHeight, height - y); h += stepSize) {
+            const aspectRatio = w / h;
+            
+            // Check aspect ratio (typical license plates)
+            if (aspectRatio >= 1.5 && aspectRatio <= 6.0) {
+              // Calculate edge density in this region
+              let edgeCount = 0;
+              let totalPixels = 0;
+              
+              for (let py = y; py < y + h && py < height; py++) {
+                for (let px = x; px < x + w && px < width; px++) {
+                  const idx = py * width + px;
+                  if (edges[idx] > 30) edgeCount++;
+                  totalPixels++;
+                }
+              }
+              
+              const edgeDensity = edgeCount / totalPixels;
+              
+              // High edge density suggests text on plate
+              if (edgeDensity > 0.15 && edgeDensity < 0.6) {
+                // Check for horizontal pattern (typical of plate text)
+                let horizontalEdges = 0;
+                const midY = y + Math.floor(h / 2);
+                
+                for (let px = x; px < x + w && px < width; px++) {
+                  const idx = midY * width + px;
+                  if (edges[idx] > 30) horizontalEdges++;
+                }
+                
+                const horizontalDensity = horizontalEdges / w;
+                
+                if (horizontalDensity > 0.2) {
+                  // Check if this overlaps with existing detections
+                  const overlaps = plates.some(plate => {
+                    const overlapX = Math.max(0, Math.min(plate.x + plate.width, x + w) - Math.max(plate.x, x));
+                    const overlapY = Math.max(0, Math.min(plate.y + plate.height, y + h) - Math.max(plate.y, y));
+                    const overlapArea = overlapX * overlapY;
+                    const thisArea = w * h;
+                    return overlapArea / thisArea > 0.5;
+                  });
+                  
+                  if (!overlaps) {
+                    plates.push({
+                      x: x,
+                      y: y,
+                      width: w,
+                      height: h,
+                      confidence: edgeDensity * horizontalDensity,
+                      aspectRatio: aspectRatio
+                    });
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    
+    // Sort by confidence and return top detections
+    plates.sort((a, b) => b.confidence - a.confidence);
+    const topPlates = plates.slice(0, 10); // Limit to top 10 detections
+    
+    console.log(`🚗 Detected ${topPlates.length} potential license plate(s)`);
+    
+    return topPlates;
+  } catch (error) {
+    console.error('Error detecting license plates:', error);
+    return [];
+  }
+};
+
+/**
+ * Blur detected license plates
+ * @param {HTMLCanvasElement} canvas - Canvas containing the image
+ * @param {Array} plates - Array of detected license plate regions
+ */
+export const blurLicensePlates = (canvas, plates) => {
+  if (!plates || plates.length === 0) {
+    console.log('ℹ️ No license plates to blur');
+    return;
+  }
+  
+  const context = canvas.getContext('2d');
+  
+  plates.forEach((plate, index) => {
+    try {
+      // Expand plate region slightly for better coverage
+      const expandFactor = 1.3;
+      const expandedWidth = plate.width * expandFactor;
+      const expandedHeight = plate.height * expandFactor;
+      const expandedX = plate.x - (expandedWidth - plate.width) / 2;
+      const expandedY = plate.y - (expandedHeight - plate.height) / 2;
+      
+      console.log(`🔒 Blurring license plate ${index + 1} (confidence: ${(plate.confidence * 100).toFixed(1)}%):`, {
+        original: { x: Math.round(plate.x), y: Math.round(plate.y), width: Math.round(plate.width), height: Math.round(plate.height) },
+        expanded: { x: Math.round(expandedX), y: Math.round(expandedY), width: Math.round(expandedWidth), height: Math.round(expandedHeight) },
+        aspectRatio: plate.aspectRatio.toFixed(2)
+      });
+      
+      // Apply strong blur to the plate region
+      applyGaussianBlur(context, expandedX, expandedY, expandedWidth, expandedHeight, 50);
+      
+    } catch (error) {
+      console.error(`Error blurring license plate ${index}:`, error);
+    }
+  });
+  
+  console.log('✅ License plate blurring complete');
+};
+
+/**
  * Main function: Apply AI-powered privacy protection to the image
- * Uses multi-model approach: BlazeFace for faces + COCO-SSD for people
+ * Uses multi-model approach: BlazeFace for faces + COCO-SSD for people + Pattern matching for license plates
  * Ensures maximum detection accuracy and consistency
  * @param {HTMLCanvasElement} canvas - Canvas containing the captured image
  * @returns {Promise<Object>} Detection results with counts
  */
 export const applyAIPrivacyProtection = async (canvas) => {
   try {
-    console.log('🔒 Applying AI-powered privacy protection (multi-model)...');
+    console.log('🔒 Applying AI-powered privacy protection (multi-model + license plates)...');
     
     // Load models if not already loaded
     if (!faceModel || !personModel) {
       await loadFaceDetectionModel();
     }
     
-    // Run both detections in parallel for speed
+    // Run face and people detection in parallel, then detect license plates
     const [faces, people] = await Promise.all([
       detectFaces(canvas),
       detectPeople(canvas)
     ]);
+    
+    // Detect license plates (synchronous, fast operation)
+    const plates = detectLicensePlates(canvas);
     
     let totalDetections = 0;
     
@@ -324,25 +500,33 @@ export const applyAIPrivacyProtection = async (canvas) => {
       totalDetections = Math.max(totalDetections, people.length);
     }
     
+    // Blur detected license plates
+    if (plates.length > 0) {
+      blurLicensePlates(canvas, plates);
+      totalDetections += plates.length;
+    }
+    
     if (totalDetections === 0) {
-      console.log('✅ No faces or people detected - image is privacy-safe');
+      console.log('✅ No faces, people, or license plates detected - image is privacy-safe');
     } else {
-      console.log(`✅ Privacy protection applied - ${totalDetections} detection(s) blurred`);
+      console.log(`✅ Privacy protection applied - ${faces.length} face(s), ${people.length} person(s), ${plates.length} license plate(s) blurred`);
     }
     
     return {
       facesDetected: faces.length,
       peopleDetected: people.length,
+      platesDetected: plates.length,
       totalBlurred: totalDetections
     };
     
   } catch (error) {
     console.error('❌ Error applying privacy protection:', error);
-    // Don't throw error - allow image capture to proceed even if face detection fails
-    console.log('⚠️ Proceeding without face detection');
+    // Don't throw error - allow image capture to proceed even if detection fails
+    console.log('⚠️ Proceeding without privacy detection');
     return {
       facesDetected: 0,
       peopleDetected: 0,
+      platesDetected: 0,
       totalBlurred: 0,
       error: error.message
     };

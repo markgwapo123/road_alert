@@ -285,9 +285,10 @@ const ReportForm = ({ onReport, onClose }) => {
         if (result.peopleDetected > 0 && result.peopleDetected > result.facesDetected) {
           details.push(`${result.peopleDetected} person(s)`);
         }
-        setSuccess(`🔒 ${result.totalBlurred} detection(s) automatically blurred (${details.join(', ')})`);
+        if (result.platesDetected > 0) details.push(`${result.platesDetected} license plate(s)`);
+        setSuccess(`🔒 Privacy protected: ${details.join(', ')} automatically blurred`);
       } else {
-        setSuccess('✅ Image captured - no faces or people detected');
+        setSuccess('✅ Image captured - no faces, people, or license plates detected');
       }
     } catch (error) {
       console.warn('⚠️ Privacy protection failed, proceeding without it:', error);
