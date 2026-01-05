@@ -31,7 +31,7 @@ const upload = multer({
 // Validation rules
 const reportValidation = [
   body('type').isIn(['pothole', 'debris', 'flooding', 'construction', 'accident', 'other', 'emergency', 'caution', 'info', 'safe']),
-  body('description').isLength({ min: 10, max: 500 }),
+  body('description').optional().isLength({ max: 500 }),
   body('location[address]').isLength({ min: 3, max: 200 }).withMessage('Address must be between 3 and 200 characters'),
   body('location[coordinates][latitude]').isFloat({ min: -90, max: 90 }).withMessage('Latitude must be between -90 and 90'),
   body('location[coordinates][longitude]').isFloat({ min: -180, max: 180 }).withMessage('Longitude must be between -180 and 180'),

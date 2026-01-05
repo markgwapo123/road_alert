@@ -494,13 +494,7 @@ const ReportForm = ({ onReport, onClose }) => {
       return;
     }
     
-    // Description is now optional, only validate if provided
-    if (form.description && form.description.length < 10) {
-      setError('Description must be at least 10 characters long');
-      setSubmitting(false);
-      return;
-    }
-    
+    // Description is optional - only validate max length if provided
     if (form.description && form.description.length > 500) {
       setError('Description must be less than 500 characters');
       setSubmitting(false);
@@ -873,12 +867,12 @@ const ReportForm = ({ onReport, onClose }) => {
           </label>
           <textarea 
             name="description" 
-            placeholder="Provide detailed information about the road condition or incident. Include landmarks, direction of travel, and any other relevant details..." 
+            placeholder="Optional: Add any details about the road condition (e.g., landmarks, severity, affected lanes)..." 
             value={form.description} 
             onChange={handleChange} 
           />
           <div className="help-text">
-            Be as specific as possible. Good descriptions help other drivers prepare and authorities respond quickly.
+            Adding details helps other drivers but is not required to submit a report.
           </div>
         </div>
 
