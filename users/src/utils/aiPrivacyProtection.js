@@ -276,6 +276,120 @@ export const blurPeople = (canvas, people) => {
 };
 
 /**
+ * FALLBACK: Detect license plates by looking for white/light rectangles
+ * Used when COCO-SSD doesn't detect vehicles
+ * @param {HTMLCanvasElement} canvas - Canvas containing the image
+ * @returns {Array} Array of potential plate regions
+ */
+const detectPlatesFallback = (canvas) => {
+  try {
+    const context = canvas.getContext('2d');
+    const width = canvas.width;
+    const height = canvas.height;
+    const imageData = context.getImageData(0, 0, width, height);
+    const pixels = imageData.data;
+    
+    const plates = [];
+    
+    // Scan lower 70% of image (where plates typically are)
+    const startY = Math.floor(height * 0.3);
+    const stepSize = Math.max(8, Math.floor(width / 80));
+    
+    // Plate dimensions: typically 100-250px wide, 25-60px tall
+    const minPlateWidth = Math.max(60, width * 0.08);
+    const maxPlateWidth = Math.min(300, width * 0.35);
+    const minPlateHeight = Math.max(15, height * 0.03);
+    const maxPlateHeight = Math.min(80, height * 0.12);
+    
+    for (let y = startY; y < height - minPlateHeight; y += stepSize) {
+      for (let x = 0; x < width - minPlateWidth; x += stepSize) {
+        // Check for light-colored rectangular region (white/yellow plate)
+        let lightPixels = 0;
+        let totalPixels = 0;
+        
+        // Sample a potential plate region
+        const testWidth = minPlateWidth;
+        const testHeight = minPlateHeight;
+        
+        for (let py = y; py < y + testHeight && py < height; py += 2) {
+          for (let px = x; px < x + testWidth && px < width; px += 2) {
+            const idx = (py * width + px) * 4;
+            const r = pixels[idx];
+            const g = pixels[idx + 1];
+            const b = pixels[idx + 2];
+            
+            // Check if pixel is light (white, light gray, or yellow)
+            const brightness = (r + g + b) / 3;
+            const isLight = brightness > 180;
+            const isYellow = r > 180 && g > 150 && b < 100;
+            
+            if (isLight || isYellow) lightPixels++;
+            totalPixels++;
+          }
+        }
+        
+        const lightRatio = lightPixels / totalPixels;
+        
+        // If region is mostly light colored (like a plate)
+        if (lightRatio > 0.5 && lightRatio < 0.95) {
+          // Check for dark pixels (text) within the light region
+          let darkPixels = 0;
+          for (let py = y; py < y + testHeight && py < height; py += 2) {
+            for (let px = x; px < x + testWidth && px < width; px += 2) {
+              const idx = (py * width + px) * 4;
+              const brightness = (pixels[idx] + pixels[idx + 1] + pixels[idx + 2]) / 3;
+              if (brightness < 80) darkPixels++;
+            }
+          }
+          
+          const darkRatio = darkPixels / totalPixels;
+          
+          // Plates have some dark text (5-30% dark pixels)
+          if (darkRatio > 0.05 && darkRatio < 0.35) {
+            // Check if overlaps with existing detection
+            const overlaps = plates.some(p => {
+              return Math.abs(p.x - x) < testWidth * 0.5 && Math.abs(p.y - y) < testHeight * 0.5;
+            });
+            
+            if (!overlaps) {
+              plates.push({
+                x: x,
+                y: y,
+                width: testWidth * 1.5, // Expand a bit
+                height: testHeight * 1.5,
+                confidence: lightRatio * (1 - darkRatio)
+              });
+            }
+          }
+        }
+      }
+    }
+    
+    // Sort by confidence and return top 3
+    plates.sort((a, b) => b.confidence - a.confidence);
+    const topPlates = plates.slice(0, 3);
+    
+    console.log(`🔍 Fallback found ${topPlates.length} potential plate(s)`);
+    return topPlates;
+  } catch (error) {
+    console.error('Error in fallback plate detection:', error);
+    return [];
+  }
+};
+
+/**
+ * Blur fallback detected plates
+ */
+const blurFallbackPlates = (canvas, plates) => {
+  const context = canvas.getContext('2d');
+  
+  plates.forEach((plate, index) => {
+    console.log(`🔒 Blurring fallback plate ${index + 1}: ${Math.round(plate.width)}x${Math.round(plate.height)} at (${Math.round(plate.x)}, ${Math.round(plate.y)})`);
+    applyGaussianBlur(context, plate.x, plate.y, plate.width, plate.height, 35);
+  });
+};
+
+/**
  * Detect vehicles (cars, trucks, motorcycles) using COCO-SSD
  * @param {HTMLCanvasElement} canvas - Canvas containing the image
  * @returns {Promise<Array>} Array of detected vehicle regions
@@ -288,14 +402,18 @@ export const detectVehicles = async (canvas) => {
     
     console.log('🚗 Detecting vehicles in image...');
     
-    const predictions = await personModel.detect(canvas);
+    // Detect with lower threshold to catch more vehicles
+    const predictions = await personModel.detect(canvas, 20, 0.3); // maxDetections=20, minScore=0.3
     
-    // Filter vehicle classes: car, truck, bus, motorcycle
+    // Log ALL detections for debugging
+    console.log('📊 All COCO-SSD detections:', predictions.map(p => `${p.class}(${(p.score*100).toFixed(0)}%)`).join(', '));
+    
+    // Filter vehicle classes: car, truck, bus, motorcycle, bicycle
     const vehicles = predictions.filter(pred => 
-      ['car', 'truck', 'bus', 'motorcycle'].includes(pred.class)
+      ['car', 'truck', 'bus', 'motorcycle', 'bicycle'].includes(pred.class) && pred.score > 0.25
     );
     
-    console.log(`🚙 COCO-SSD detected ${vehicles.length} vehicle(s)`);
+    console.log(`🚙 COCO-SSD detected ${vehicles.length} vehicle(s):`, vehicles.map(v => `${v.class}(${(v.score*100).toFixed(0)}%)`).join(', '));
     
     return vehicles;
   } catch (error) {
@@ -522,23 +640,44 @@ export const blurVehiclePlates = (canvas, vehicles) => {
       // COCO-SSD returns bbox as [x, y, width, height]
       const [vx, vy, vw, vh] = vehicle.bbox;
       
-      // Estimate plate location: bottom center of vehicle
-      // Plates are typically small: ~15% of vehicle width, ~5% of vehicle height
-      const plateWidth = vw * 0.2;
-      const plateHeight = vh * 0.08;
-      const plateX = vx + (vw - plateWidth) / 2; // Center horizontally
-      const plateY = vy + vh - plateHeight - (vh * 0.05); // Near bottom with small margin
+      console.log(`🚗 Vehicle ${index + 1} (${vehicle.class}): bbox=[${Math.round(vx)}, ${Math.round(vy)}, ${Math.round(vw)}, ${Math.round(vh)}]`);
       
-      // Also blur front plate area (for front-facing vehicles)
-      const frontPlateY = vy + vh * 0.75; // Lower portion
+      // License plate location varies by vehicle type and angle
+      // Typical plate: 30-40cm wide, 10-15cm tall
+      // On image: roughly 25-35% of vehicle width
       
-      console.log(`🔒 Blurring plate for ${vehicle.class} ${index + 1}: ${Math.round(plateWidth)}x${Math.round(plateHeight)}`);
+      const plateWidth = Math.max(vw * 0.3, 60); // At least 60px or 30% of vehicle
+      const plateHeight = Math.max(vh * 0.1, 20); // At least 20px or 10% of vehicle
       
-      // Blur rear plate area
-      applyGaussianBlur(context, plateX, plateY, plateWidth, plateHeight, 30);
+      // CENTER PLATE (most common - front of car facing camera)
+      const centerPlateX = vx + (vw - plateWidth) / 2;
+      const centerPlateY = vy + vh * 0.65; // 65% down from top (front grille area)
       
-      // Blur front plate area (if car is angled)
-      applyGaussianBlur(context, plateX, frontPlateY, plateWidth, plateHeight, 30);
+      // BOTTOM PLATE (rear of car, or low-mounted front plates)
+      const bottomPlateY = vy + vh - plateHeight - (vh * 0.08); // Near bottom
+      
+      // For motorcycles, plate is usually at the back, lower position
+      const isMotorcycle = vehicle.class === 'motorcycle' || vehicle.class === 'bicycle';
+      
+      if (isMotorcycle) {
+        // Motorcycle plate - rear, centered
+        const motoPlateWidth = Math.max(vw * 0.4, 50);
+        const motoPlateHeight = Math.max(vh * 0.12, 25);
+        const motoPlateX = vx + (vw - motoPlateWidth) / 2;
+        const motoPlateY = vy + vh * 0.7; // Lower on motorcycle
+        
+        console.log(`🔒 Blurring motorcycle plate: ${Math.round(motoPlateWidth)}x${Math.round(motoPlateHeight)} at (${Math.round(motoPlateX)}, ${Math.round(motoPlateY)})`);
+        applyGaussianBlur(context, motoPlateX, motoPlateY, motoPlateWidth, motoPlateHeight, 35);
+      } else {
+        // Car/truck plates - blur both possible locations
+        console.log(`🔒 Blurring car plates: ${Math.round(plateWidth)}x${Math.round(plateHeight)}`);
+        
+        // Front plate area (center-lower of vehicle)
+        applyGaussianBlur(context, centerPlateX, centerPlateY, plateWidth, plateHeight, 35);
+        
+        // Rear/bottom plate area
+        applyGaussianBlur(context, centerPlateX, bottomPlateY, plateWidth, plateHeight, 35);
+      }
       
     } catch (error) {
       console.error(`Error blurring vehicle plate ${index}:`, error);
@@ -582,11 +721,21 @@ export const applyAIPrivacyProtection = async (canvas) => {
       console.log(`✅ Blurred ${people.length} head(s)`);
     }
     
-    // 3. Blur ONLY plate areas on detected vehicles (no pattern matching)
+    // 3. Blur plate areas on detected vehicles
     if (vehicles.length > 0) {
       blurVehiclePlates(canvas, vehicles);
       totalDetections += vehicles.length;
       console.log(`✅ Blurred plates on ${vehicles.length} vehicle(s)`);
+    } else {
+      // FALLBACK: If no vehicles detected by COCO-SSD, try simple plate detection
+      // This helps when AI model fails to detect vehicles
+      console.log('⚠️ No vehicles detected by AI, trying fallback plate detection...');
+      const fallbackPlates = detectPlatesFallback(canvas);
+      if (fallbackPlates.length > 0) {
+        blurFallbackPlates(canvas, fallbackPlates);
+        totalDetections += fallbackPlates.length;
+        console.log(`✅ Fallback: Blurred ${fallbackPlates.length} potential plate(s)`);
+      }
     }
     
     if (totalDetections === 0) {
