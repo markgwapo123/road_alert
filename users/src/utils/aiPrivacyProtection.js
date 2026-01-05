@@ -286,12 +286,42 @@ export const blurPeople = (canvas, people) => {
 };
 
 /**
- * Detect license plates using pattern matching and edge detection
- * Looks for rectangular shapes with appropriate aspect ratios and text-like patterns
+ * Detect vehicles (cars, trucks, motorcycles) using COCO-SSD
  * @param {HTMLCanvasElement} canvas - Canvas containing the image
+ * @returns {Promise<Array>} Array of detected vehicle regions
+ */
+export const detectVehicles = async (canvas) => {
+  try {
+    if (!personModel) {
+      await loadFaceDetectionModel();
+    }
+    
+    console.log('🚗 Detecting vehicles in image...');
+    
+    const predictions = await personModel.detect(canvas);
+    
+    // Filter vehicle classes: car, truck, bus, motorcycle
+    const vehicles = predictions.filter(pred => 
+      ['car', 'truck', 'bus', 'motorcycle'].includes(pred.class)
+    );
+    
+    console.log(`🚙 COCO-SSD detected ${vehicles.length} vehicle(s)`);
+    
+    return vehicles;
+  } catch (error) {
+    console.error('Error detecting vehicles:', error);
+    return [];
+  }
+};
+
+/**
+ * Detect license plates using edge detection within vehicle regions
+ * Only searches within detected vehicles for accuracy
+ * @param {HTMLCanvasElement} canvas - Canvas containing the image
+ * @param {Array} vehicles - Array of detected vehicles from COCO-SSD
  * @returns {Array} Array of detected license plate regions
  */
-export const detectLicensePlates = (canvas) => {
+export const detectLicensePlates = (canvas, vehicles = []) => {
   try {
     console.log('🚗 Detecting license plates...');
     
@@ -339,74 +369,106 @@ export const detectLicensePlates = (canvas) => {
     const minWidth = Math.max(60, width * 0.05);
     const minHeight = Math.max(15, height * 0.015);
     // STRICT maximum sizes - plates are small!
-    const maxWidth = Math.min(300, width * 0.25);  // Max 25% of width or 300px
-    const maxHeight = Math.min(100, height * 0.08); // Max 8% of height or 100px
+    const maxWidth = Math.min(300, width * 0.25);
+    const maxHeight = Math.min(100, height * 0.08);
+    
+    // Define search regions
+    let searchRegions = [];
+    
+    if (vehicles.length > 0) {
+      // Search only within detected vehicles (much more accurate!)
+      console.log(`🎯 Searching for plates within ${vehicles.length} detected vehicle(s)`);
+      searchRegions = vehicles.map(vehicle => {
+        const [vx, vy, vw, vh] = vehicle.bbox;
+        // Focus on lower 60% of vehicle (where plates are mounted)
+        return {
+          startX: Math.max(0, Math.floor(vx)),
+          endX: Math.min(width, Math.ceil(vx + vw)),
+          startY: Math.max(0, Math.floor(vy + vh * 0.4)), // Lower portion
+          endY: Math.min(height, Math.ceil(vy + vh)),
+          vehicleClass: vehicle.class
+        };
+      });
+    } else {
+      // Fallback: search lower half of entire image
+      console.log('⚠️ No vehicles detected, searching lower image area');
+      searchRegions = [{
+        startX: 0,
+        endX: width,
+        startY: Math.floor(height * 0.4),
+        endY: height,
+        vehicleClass: 'unknown'
+      }];
+    }
     
     // Optimize step size for faster scanning
-    const stepSize = Math.max(15, Math.floor(width / 80)); // Increased from 100 to 80 for faster scan
+    const stepSize = Math.max(10, Math.floor(width / 100));
     
-    for (let y = Math.floor(height * 0.3); y < height - minHeight; y += stepSize) {
-      for (let x = 0; x < width - minWidth; x += stepSize) {
-        // Test multiple plate sizes (optimized - fewer iterations)
-        for (let w = minWidth; w <= Math.min(maxWidth, width - x); w += stepSize * 3) {
-          for (let h = minHeight; h <= Math.min(maxHeight, height - y); h += Math.max(stepSize, 15)) {
-            const aspectRatio = w / h;
-            
-            // STRICT size check - reject if too large (likely false positive)
-            const areaPercent = (w * h) / (width * height);
-            if (areaPercent > 0.03) continue; // Reject if > 3% of image area
-            
-            // Check aspect ratio (typical license plates)
-            if (aspectRatio >= 1.5 && aspectRatio <= 6.0) {
-              // Calculate edge density in this region (sample for speed)
-              let edgeCount = 0;
-              let totalPixels = 0;
+    // Search within each region
+    for (const region of searchRegions) {
+      for (let y = region.startY; y < region.endY - minHeight; y += stepSize) {
+        for (let x = region.startX; x < region.endX - minWidth; x += stepSize) {
+          // Test multiple plate sizes (optimized - fewer iterations)
+          for (let w = minWidth; w <= Math.min(maxWidth, region.endX - x); w += stepSize * 3) {
+            for (let h = minHeight; h <= Math.min(maxHeight, region.endY - y); h += Math.max(stepSize, 15)) {
+              const aspectRatio = w / h;
               
-              // Sample every 2nd pixel for speed (still accurate enough)
-              const sampleStep = 2;
-              for (let py = y; py < y + h && py < height; py += sampleStep) {
-                for (let px = x; px < x + w && px < width; px += sampleStep) {
-                  const idx = py * width + px;
-                  if (edges[idx] > 30) edgeCount++;
-                  totalPixels++;
-                }
-              }
+              // STRICT size check - reject if too large (likely false positive)
+              const areaPercent = (w * h) / (width * height);
+              if (areaPercent > 0.02) continue; // Reject if > 2% of image area
               
-              const edgeDensity = edgeCount / totalPixels;
-              
-              // High edge density suggests text on plate
-              if (edgeDensity > 0.15 && edgeDensity < 0.6) {
-                // Check for horizontal pattern (typical of plate text)
-                let horizontalEdges = 0;
-                const midY = y + Math.floor(h / 2);
+              // Check aspect ratio (typical license plates)
+              if (aspectRatio >= 1.5 && aspectRatio <= 6.0) {
+                // Calculate edge density in this region (sample for speed)
+                let edgeCount = 0;
+                let totalPixels = 0;
                 
-                // Sample horizontal line for speed
-                for (let px = x; px < x + w && px < width; px += sampleStep) {
-                  const idx = midY * width + px;
-                  if (edges[idx] > 30) horizontalEdges++;
+                // Sample every 2nd pixel for speed (still accurate enough)
+                const sampleStep = 2;
+                for (let py = y; py < y + h && py < height; py += sampleStep) {
+                  for (let px = x; px < x + w && px < width; px += sampleStep) {
+                    const idx = py * width + px;
+                    if (edges[idx] > 30) edgeCount++;
+                    totalPixels++;
+                  }
                 }
                 
-                const horizontalDensity = (horizontalEdges / (w / sampleStep));
+                const edgeDensity = edgeCount / totalPixels;
                 
-                if (horizontalDensity > 0.2) {
-                  // Check if this overlaps with existing detections
-                  const overlaps = plates.some(plate => {
-                    const overlapX = Math.max(0, Math.min(plate.x + plate.width, x + w) - Math.max(plate.x, x));
-                    const overlapY = Math.max(0, Math.min(plate.y + plate.height, y + h) - Math.max(plate.y, y));
-                    const overlapArea = overlapX * overlapY;
-                    const thisArea = w * h;
-                    return overlapArea / thisArea > 0.5;
-                  });
+                // High edge density suggests text on plate
+                if (edgeDensity > 0.15 && edgeDensity < 0.6) {
+                  // Check for horizontal pattern (typical of plate text)
+                  let horizontalEdges = 0;
+                  const midY = y + Math.floor(h / 2);
                   
-                  if (!overlaps) {
-                    plates.push({
-                      x: x,
-                      y: y,
-                      width: w,
-                      height: h,
-                      confidence: edgeDensity * horizontalDensity,
-                      aspectRatio: aspectRatio
+                  // Sample horizontal line for speed
+                  for (let px = x; px < x + w && px < width; px += sampleStep) {
+                    const idx = midY * width + px;
+                    if (edges[idx] > 30) horizontalEdges++;
+                  }
+                  
+                  const horizontalDensity = (horizontalEdges / (w / sampleStep));
+                  
+                  if (horizontalDensity > 0.2) {
+                    // Check if this overlaps with existing detections
+                    const overlaps = plates.some(plate => {
+                      const overlapX = Math.max(0, Math.min(plate.x + plate.width, x + w) - Math.max(plate.x, x));
+                      const overlapY = Math.max(0, Math.min(plate.y + plate.height, y + h) - Math.max(plate.y, y));
+                      const overlapArea = overlapX * overlapY;
+                      const thisArea = w * h;
+                      return overlapArea / thisArea > 0.5;
                     });
+                    
+                    if (!overlaps) {
+                      plates.push({
+                        x: x,
+                        y: y,
+                        width: w,
+                        height: h,
+                        confidence: edgeDensity * horizontalDensity,
+                        aspectRatio: aspectRatio
+                      });
+                    }
                   }
                 }
               }
@@ -492,28 +554,29 @@ export const blurLicensePlates = (canvas, plates) => {
 
 /**
  * Main function: Apply AI-powered privacy protection to the image
- * Uses multi-model approach: BlazeFace for faces + COCO-SSD for people + Pattern matching for license plates
- * Ensures maximum detection accuracy and consistency
+ * Uses TensorFlow.js models: BlazeFace (faces) + COCO-SSD (people & vehicles)
+ * Then uses edge detection for license plates within detected vehicles
  * @param {HTMLCanvasElement} canvas - Canvas containing the captured image
  * @returns {Promise<Object>} Detection results with counts
  */
 export const applyAIPrivacyProtection = async (canvas) => {
   try {
-    console.log('🔒 Applying AI-powered privacy protection (multi-model + license plates)...');
+    console.log('🔒 Applying AI-powered privacy protection (TensorFlow.js: BlazeFace + COCO-SSD)...');
     
     // Load models if not already loaded
     if (!faceModel || !personModel) {
       await loadFaceDetectionModel();
     }
     
-    // Run face and people detection in parallel, then detect license plates
-    const [faces, people] = await Promise.all([
+    // Run all detections in parallel for speed
+    const [faces, people, vehicles] = await Promise.all([
       detectFaces(canvas),
-      detectPeople(canvas)
+      detectPeople(canvas),
+      detectVehicles(canvas)
     ]);
     
-    // Detect license plates (synchronous, fast operation)
-    const plates = detectLicensePlates(canvas);
+    // Detect license plates within vehicle regions (synchronous, fast)
+    const plates = detectLicensePlates(canvas, vehicles);
     
     let totalDetections = 0;
     
