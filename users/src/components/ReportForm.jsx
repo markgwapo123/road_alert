@@ -565,7 +565,7 @@ const ReportForm = ({ onReport, onClose }) => {
       
       // Show success modal
       setConfirmType('success');
-      setConfirmMessage('✅ Report submitted successfully! Your report has been sent for review and will be visible to other users once approved by our team.');
+      setConfirmMessage('Report submitted successfully');
       setShowConfirmModal(true);
       
       // Clear the form
@@ -734,31 +734,7 @@ const ReportForm = ({ onReport, onClose }) => {
           </div>
         )}
         
-        {success && !detectingLocation && (
-          <div style={{ 
-            marginTop: '0.75rem', 
-            padding: '0.5rem', 
-            background: '#d1fae5', 
-            borderRadius: '4px',
-            fontSize: '0.9rem',
-            color: '#065f46'
-          }}>
-            {success}
-          </div>
-        )}
-        
-        {error && !detectingLocation && (
-          <div style={{ 
-            marginTop: '0.75rem', 
-            padding: '0.5rem', 
-            background: '#fee2e2', 
-            borderRadius: '4px',
-            fontSize: '0.9rem',
-            color: '#991b1b'
-          }}>
-            {error}
-          </div>
-        )}
+
       </div>
       
       <form onSubmit={handleSubmit}>
@@ -1077,7 +1053,7 @@ const ReportForm = ({ onReport, onClose }) => {
           left: 0,
           right: 0,
           bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          backgroundColor: 'rgba(0, 0, 0, 0.6)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -1086,64 +1062,106 @@ const ReportForm = ({ onReport, onClose }) => {
         }}>
           <div style={{
             background: 'white',
-            borderRadius: '12px',
-            padding: '30px',
-            maxWidth: '500px',
+            borderRadius: '16px',
+            padding: '0',
+            maxWidth: '420px',
             width: '100%',
-            boxShadow: '0 10px 40px rgba(0,0,0,0.2)',
+            boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+            overflow: 'hidden',
             animation: 'slideIn 0.3s ease-out'
           }}>
+            {/* Modal Header */}
             <div style={{
-              textAlign: 'center',
-              marginBottom: '20px'
+              background: confirmType === 'success' ? '#10b981' : '#ef4444',
+              padding: '30px 20px',
+              textAlign: 'center'
             }}>
               <div style={{
-                fontSize: '60px',
-                marginBottom: '15px'
+                width: '70px',
+                height: '70px',
+                background: 'white',
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 15px',
+                boxShadow: '0 4px 15px rgba(0,0,0,0.1)'
               }}>
-                {confirmType === 'success' ? '✅' : '❌'}
+                {confirmType === 'success' ? (
+                  <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                  </svg>
+                ) : (
+                  <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                  </svg>
+                )}
               </div>
               <h3 style={{
-                fontSize: '22px',
-                fontWeight: 'bold',
-                color: confirmType === 'success' ? '#10b981' : '#ef4444',
-                marginBottom: '10px'
-              }}>
-                {confirmType === 'success' ? 'Success!' : 'Error'}
-              </h3>
-              <p style={{
-                fontSize: '16px',
-                color: '#374151',
-                lineHeight: '1.6',
-                whiteSpace: 'pre-line'
-              }}>
-                {confirmMessage}
-              </p>
-            </div>
-            <button
-              onClick={() => {
-                setShowConfirmModal(false);
-                if (confirmType === 'success' && onClose) {
-                  onClose();
-                }
-              }}
-              style={{
-                width: '100%',
-                padding: '14px',
-                backgroundColor: confirmType === 'success' ? '#10b981' : '#ef4444',
+                fontSize: '24px',
+                fontWeight: '700',
                 color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                fontSize: '16px',
-                fontWeight: '600',
-                cursor: 'pointer',
-                transition: 'all 0.2s'
-              }}
-              onMouseOver={(e) => e.target.style.opacity = '0.9'}
-              onMouseOut={(e) => e.target.style.opacity = '1'}
-            >
-              {confirmType === 'success' ? 'Done' : 'Try Again'}
-            </button>
+                margin: '0'
+              }}>
+                {confirmType === 'success' ? 'Report Submitted' : 'Error'}
+              </h3>
+            </div>
+            
+            {/* Modal Body */}
+            <div style={{
+              padding: '25px 30px'
+            }}>
+              <p style={{
+                fontSize: '15px',
+                color: '#4b5563',
+                lineHeight: '1.7',
+                textAlign: 'center',
+                margin: '0 0 25px 0'
+              }}>
+                {confirmType === 'success' 
+                  ? 'Your report has been submitted successfully. Our team will review it shortly and it will be visible to other users once approved.'
+                  : confirmMessage.replace(/^[❌🧊] /, '')}
+              </p>
+              
+              <button
+                onClick={() => {
+                  setShowConfirmModal(false);
+                  if (confirmType === 'success' && onClose) {
+                    onClose();
+                  }
+                }}
+                style={{
+                  width: '100%',
+                  padding: '14px 20px',
+                  backgroundColor: confirmType === 'success' ? '#10b981' : '#ef4444',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '10px',
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  boxShadow: confirmType === 'success' 
+                    ? '0 4px 15px rgba(16, 185, 129, 0.3)' 
+                    : '0 4px 15px rgba(239, 68, 68, 0.3)'
+                }}
+                onMouseOver={(e) => {
+                  e.target.style.transform = 'translateY(-2px)';
+                  e.target.style.boxShadow = confirmType === 'success' 
+                    ? '0 6px 20px rgba(16, 185, 129, 0.4)' 
+                    : '0 6px 20px rgba(239, 68, 68, 0.4)';
+                }}
+                onMouseOut={(e) => {
+                  e.target.style.transform = 'translateY(0)';
+                  e.target.style.boxShadow = confirmType === 'success' 
+                    ? '0 4px 15px rgba(16, 185, 129, 0.3)' 
+                    : '0 4px 15px rgba(239, 68, 68, 0.3)';
+                }}
+              >
+                {confirmType === 'success' ? 'Continue' : 'Try Again'}
+              </button>
+            </div>
           </div>
         </div>
       )}

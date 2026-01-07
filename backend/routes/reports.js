@@ -793,7 +793,7 @@ router.post('/user', require('../middleware/userAuth'), upload.array('images', 5
     // Create report data
     const reportData = {
       type: req.body.type,
-      description: req.body.description,
+      description: req.body.description || '',
       province: req.body.province,
       city: req.body.city,
       barangay: req.body.barangay,
