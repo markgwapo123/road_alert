@@ -6,6 +6,12 @@ const User = require('../models/User');
 const Admin = require('../models/Admin');
 const { auth } = require('../middleware/roleAuth');
 const NotificationService = require('../services/NotificationService');
+const { 
+  checkRegistrationAllowed, 
+  validatePasswordRequirements,
+  checkLoginAttempts,
+  getSetting 
+} = require('../middleware/settingsEnforcement');
 
 const router = express.Router();
 
@@ -15,7 +21,7 @@ const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 // @route   POST /api/auth/register
 // @desc    Register a new user
 // @access  Public
-router.post('/register', async (req, res) => {
+router.post('/register', checkRegistrationAllowed, validatePasswordRequirements, async (req, res) => {
     try {
         const { username, email, password } = req.body;
 
@@ -69,7 +75,7 @@ router.post('/register', async (req, res) => {
 // @route   POST /api/auth/login
 // @desc    User or Admin login
 // @access  Public
-router.post('/login', async (req, res) => {
+router.post('/login', checkLoginAttempts, async (req, res) => {
   try {
     const { email, username, password } = req.body;
 
@@ -89,15 +95,30 @@ router.post('/login', async (req, res) => {
     }    if (user) {
       const isMatch = await user.comparePassword(password);
       if (!isMatch) {
+        // Record failed login attempt
+        if (req.loginAttempts) {
+          req.loginAttempts.recordFailure();
+        }
         return res.status(401).json({ error: 'Invalid credentials' });
       }
+      
+      // Clear login attempts on successful login
+      if (req.loginAttempts) {
+        req.loginAttempts.recordSuccess();
+      }
+      
       // Update last login for user tracking
       await user.updateLastLogin();
+      
+      // Get session timeout from settings for token expiry
+      const sessionTimeout = await getSetting('session_timeout_minutes', 1440);
+      const expiresIn = sessionTimeout > 0 ? `${sessionTimeout}m` : '7d';
+      
       // Create a JWT for the user
       const token = jwt.sign(
         { id: user._id, username: user.username, email: user.email },
         process.env.JWT_SECRET || 'your_jwt_secret',
-        { expiresIn: '7d' }
+        { expiresIn }
       );
       return res.json({
         success: true,

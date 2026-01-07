@@ -6,6 +6,7 @@ import exifr from 'exifr';
 import { applyAIPrivacyProtection, preloadModel } from '../utils/aiPrivacyProtection.js';
 import { getReverseGeocode } from '../services/geocoding.js';
 import { processGeocodedAddress } from '../utils/addressMatcher.js';
+import { useSettings } from '../context/SettingsContext.jsx';
 
 const ALERT_TYPES = [
   { value: 'emergency', label: 'Emergency Alert', example: 'ROAD CLOSED - Accident Ahead' },
@@ -21,6 +22,10 @@ const ALERT_TYPES = [
 ];
 
 const ReportForm = ({ onReport, onClose }) => {
+  // Get settings for report requirements
+  const { getReportConfig, getSetting } = useSettings();
+  const reportConfig = getReportConfig();
+  
   const [form, setForm] = useState({
     type: '',
     province: '',
@@ -520,14 +525,16 @@ const ReportForm = ({ onReport, onClose }) => {
     setSuccess('⏳ Submitting report... Please wait up to 15 seconds.'); 
     setSubmitting(true);
     
-    if (!form.location) {
+    // Check location requirement from system settings
+    if (reportConfig.requireLocation && !form.location) {
       setError('📍 Location is required. Please turn on "Auto-Detect Location" toggle to get your GPS coordinates, or take a photo with GPS enabled.'); 
       setSubmitting(false); 
       return;
     }
     
-    if (!form.image) {
-      setError('Please select an image'); 
+    // Check image requirement from system settings
+    if (reportConfig.requireImage && !form.image) {
+      setError('📷 An image is required for this report. Please take or select a photo.'); 
       setSubmitting(false); 
       return;
     }

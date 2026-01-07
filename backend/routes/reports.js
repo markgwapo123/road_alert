@@ -8,6 +8,12 @@ const User = require('../models/User');
 const SystemSettings = require('../models/SystemSettings');
 const { auth, canManageReports, canDeleteReports, createAuditLog } = require('../middleware/roleAuth');
 const NotificationService = require('../services/NotificationService');
+const { 
+  checkDailyReportLimit, 
+  validateReportRequirements,
+  processAutoVerification,
+  getSetting 
+} = require('../middleware/settingsEnforcement');
 
 const router = express.Router();
 

@@ -272,16 +272,49 @@ app.use('*', (req, res) => {
 
 // Database connection
 const connectDB = require('./config/database');
+const SystemSettings = require('./models/SystemSettings');
+const { processReportExpiry, clearSettingsCache } = require('./middleware/settingsEnforcement');
 
-// Initialize database
+// Initialize database and settings
 const initializeDatabase = async () => {
   try {
     await connectDB();
     console.log('🎉 Database connected successfully!');
+    
+    // Initialize system settings
+    try {
+      await SystemSettings.initializeDefaults();
+      console.log('⚙️ System settings initialized');
+    } catch (settingsError) {
+      console.log('⚠️ Settings initialization warning:', settingsError.message);
+    }
+    
+    // Start scheduled tasks
+    startScheduledTasks();
+    
   } catch (error) {
     console.log('⚠️  MongoDB connection failed, but server will continue running');
     console.log('Error:', error.message);
   }
+};
+
+// Scheduled tasks for settings enforcement
+const startScheduledTasks = () => {
+  // Process report expiry every hour
+  setInterval(async () => {
+    try {
+      await processReportExpiry();
+    } catch (error) {
+      console.error('Report expiry task error:', error);
+    }
+  }, 60 * 60 * 1000); // Every hour
+  
+  // Clear settings cache every 5 minutes to pick up changes
+  setInterval(() => {
+    clearSettingsCache();
+  }, 5 * 60 * 1000); // Every 5 minutes
+  
+  console.log('⏰ Scheduled tasks started');
 };
 
 initializeDatabase();

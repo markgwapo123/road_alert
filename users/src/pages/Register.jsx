@@ -2,8 +2,11 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import config from '../config/index.js';
 import ErrorModal from '../components/ErrorModal';
+import { useSettings } from '../context/SettingsContext.jsx';
 
 const Register = ({ onRegister, switchToLogin }) => {
+  const { getSetting, validatePassword, getAuthConfig } = useSettings();
+  
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -15,7 +18,13 @@ const Register = ({ onRegister, switchToLogin }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [passwordStrength, setPasswordStrength] = useState(0);
+  const [passwordErrors, setPasswordErrors] = useState([]);
   const [formKey, setFormKey] = useState(Date.now()); // Force form refresh
+
+  // Get auth settings
+  const authConfig = getAuthConfig();
+  const minPasswordLength = authConfig.minPasswordLength || 8;
+  const requireStrongPassword = authConfig.requireStrongPassword;
 
   // Clear form when component mounts
   useEffect(() => {
@@ -33,10 +42,10 @@ const Register = ({ onRegister, switchToLogin }) => {
     setShowErrorModal(true);
   };
 
-  // Password strength checker
+  // Password strength checker using system settings
   const checkPasswordStrength = (pass) => {
     let strength = 0;
-    if (pass.length >= 8) strength++;
+    if (pass.length >= minPasswordLength) strength++;
     if (/[A-Z]/.test(pass)) strength++;
     if (/[0-9]/.test(pass)) strength++;
     if (/[^A-Za-z0-9]/.test(pass)) strength++;
@@ -47,6 +56,14 @@ const Register = ({ onRegister, switchToLogin }) => {
     const newPassword = e.target.value;
     setPassword(newPassword);
     setPasswordStrength(checkPasswordStrength(newPassword));
+    
+    // Validate password against system requirements
+    if (newPassword) {
+      const validation = validatePassword(newPassword);
+      setPasswordErrors(validation.errors);
+    } else {
+      setPasswordErrors([]);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -65,11 +82,15 @@ const Register = ({ onRegister, switchToLogin }) => {
       setLoading(false);
       return;
     }
-    if (password.length < 6) {
-      showError('Password must be at least 6 characters long');
+    
+    // Validate password using system settings
+    const passwordValidation = validatePassword(password);
+    if (!passwordValidation.isValid) {
+      showError(passwordValidation.errors.join('\n'));
       setLoading(false);
       return;
     }
+    
     if (password !== confirmPassword) {
       showError('Passwords do not match');
       setLoading(false);
@@ -95,6 +116,8 @@ const Register = ({ onRegister, switchToLogin }) => {
         showError('Cannot connect to server. Please check your internet connection.');
       } else if (err.response?.status === 400) {
         showError(err.response.data.error || 'Invalid registration data');
+      } else if (err.response?.status === 403) {
+        showError('Registration is currently disabled. Please contact the administrator.');
       } else if (err.response?.status === 409) {
         showError('Username or email already exists. Please use a different one or sign in.');
       } else {
@@ -201,6 +224,31 @@ const Register = ({ onRegister, switchToLogin }) => {
                 </span>
               </div>
             )}
+            {/* Password requirements hint */}
+            {password && passwordErrors.length > 0 && (
+              <div style={{ 
+                fontSize: '12px', 
+                color: '#e74c3c', 
+                marginTop: '8px',
+                padding: '8px',
+                backgroundColor: '#fef2f2',
+                borderRadius: '6px'
+              }}>
+                {passwordErrors.map((err, i) => (
+                  <div key={i} style={{ marginBottom: i < passwordErrors.length - 1 ? '4px' : 0 }}>
+                    ⚠️ {err}
+                  </div>
+                ))}
+              </div>
+            )}
+            {/* Password requirements info */}
+            <div style={{ 
+              fontSize: '11px', 
+              color: '#6b7280', 
+              marginTop: '6px' 
+            }}>
+              Min {minPasswordLength} characters{requireStrongPassword ? ', uppercase, lowercase & number' : ''}
+            </div>
           </div>
 
           <div className="input-group">

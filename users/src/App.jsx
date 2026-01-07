@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import config from './config/index.js';
+import { SettingsProvider, useSettings } from './context/SettingsContext.jsx';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import ProfilePage from './pages/ProfilePage';
@@ -15,7 +16,17 @@ import LogoutConfirmModal from './components/LogoutConfirmModal';
 import MaintenancePage from './pages/MaintenancePage';
 import './App.css';
 
-function App() {
+// Main App component wrapped with settings
+function AppContent() {
+  const { 
+    settings, 
+    loading: settingsLoading, 
+    getSetting, 
+    isMaintenanceMode, 
+    getMaintenanceInfo,
+    getAuthConfig 
+  } = useSettings();
+  
   const [token, setToken] = useState(localStorage.getItem('token'));
   const [showRegister, setShowRegister] = useState(false);
   const [showReport, setShowReport] = useState(false);
@@ -28,41 +39,47 @@ function App() {
   const [confirmationMessage, setConfirmationMessage] = useState('');
   const [confirmationType, setConfirmationType] = useState('success');
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-  
-  // Maintenance mode state
-  const [maintenanceMode, setMaintenanceMode] = useState(false);
-  const [maintenanceMessage, setMaintenanceMessage] = useState('');
-  const [maintenanceScheduledEnd, setMaintenanceScheduledEnd] = useState('');
-  const [checkingMaintenance, setCheckingMaintenance] = useState(true);
+  const [lastActivity, setLastActivity] = useState(Date.now());
 
-  // Check maintenance status on app load and periodically
+  // Session timeout handling
   useEffect(() => {
-    checkMaintenanceStatus();
-    // Check maintenance status every 60 seconds
-    const maintenanceInterval = setInterval(checkMaintenanceStatus, 60000);
-    return () => clearInterval(maintenanceInterval);
-  }, []);
-
-  const checkMaintenanceStatus = async () => {
-    try {
-      const res = await axios.get(`${config.API_BASE_URL}/settings/maintenance/status`);
-      if (res.data.success && res.data.maintenance) {
-        setMaintenanceMode(res.data.maintenance.enabled);
-        setMaintenanceMessage(res.data.maintenance.message || '');
-        setMaintenanceScheduledEnd(res.data.maintenance.scheduledEnd || '');
-      } else {
-        setMaintenanceMode(false);
+    if (!token) return;
+    
+    const sessionTimeout = getSetting('session_timeout_minutes', 1440);
+    if (sessionTimeout <= 0) return; // 0 = never timeout
+    
+    const timeoutMs = sessionTimeout * 60 * 1000;
+    
+    // Activity tracker
+    const updateActivity = () => setLastActivity(Date.now());
+    
+    // Listen for user activity
+    const events = ['mousedown', 'keydown', 'scroll', 'touchstart'];
+    events.forEach(event => window.addEventListener(event, updateActivity));
+    
+    // Check for timeout every minute
+    const checkTimeout = setInterval(() => {
+      const inactiveTime = Date.now() - lastActivity;
+      if (inactiveTime > timeoutMs) {
+        console.log('⏰ Session timeout - logging out');
+        handleSessionTimeout();
       }
-    } catch (err) {
-      console.log('Maintenance status check failed:', err.message);
-      // If API fails, assume not in maintenance mode
-      setMaintenanceMode(false);
-    } finally {
-      setCheckingMaintenance(false);
-    }
+    }, 60000);
+    
+    return () => {
+      events.forEach(event => window.removeEventListener(event, updateActivity));
+      clearInterval(checkTimeout);
+    };
+  }, [token, lastActivity, getSetting]);
+
+  const handleSessionTimeout = () => {
+    localStorage.removeItem('token');
+    setToken(null);
+    setUser(null);
+    setConfirmationMessage('Your session has expired. Please log in again.');
+    setConfirmationType('warning');
+    setShowConfirmation(true);
   };
-
-
   useEffect(() => {
     if (token) {
       fetchNotifications();
@@ -214,8 +231,11 @@ function App() {
     }
   };
 
-  // Show loading while checking maintenance status
-  if (checkingMaintenance) {
+  // Get site name from settings
+  const siteName = getSetting('site_name', 'BANTAY DALAN');
+
+  // Show loading while settings are loading
+  if (settingsLoading) {
     return (
       <div style={{ 
         minHeight: '100vh', 
@@ -233,17 +253,63 @@ function App() {
   }
 
   // Show maintenance page if maintenance mode is enabled
-  if (maintenanceMode) {
+  if (isMaintenanceMode()) {
+    const maintenanceInfo = getMaintenanceInfo();
     return (
       <MaintenancePage 
-        message={maintenanceMessage} 
-        scheduledEnd={maintenanceScheduledEnd} 
+        message={maintenanceInfo.message} 
+        scheduledEnd={maintenanceInfo.scheduledEnd} 
       />
     );
   }
 
+  // Check if registration is allowed
+  const authConfig = getAuthConfig();
+
   if (!token) {
     if (showRegister) {
+      // Check if registration is allowed
+      if (!authConfig.allowRegistration) {
+        return (
+          <div style={{ 
+            minHeight: '100vh', 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center',
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            padding: '20px'
+          }}>
+            <div style={{ 
+              textAlign: 'center', 
+              color: 'white',
+              background: 'rgba(255,255,255,0.1)',
+              padding: '40px',
+              borderRadius: '16px',
+              maxWidth: '400px'
+            }}>
+              <div style={{ fontSize: '60px', marginBottom: '20px' }}>🚫</div>
+              <h2 style={{ marginBottom: '16px' }}>Registration Disabled</h2>
+              <p style={{ marginBottom: '24px', opacity: 0.9 }}>
+                New user registration is currently disabled. Please contact the administrator.
+              </p>
+              <button
+                onClick={() => setShowRegister(false)}
+                style={{
+                  padding: '12px 24px',
+                  background: 'white',
+                  color: '#667eea',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontWeight: '600',
+                  cursor: 'pointer'
+                }}
+              >
+                Back to Login
+              </button>
+            </div>
+          </div>
+        );
+      }
       return <Register onRegister={handleRegister} switchToLogin={() => setShowRegister(false)} />;
     }
     return <Login onLogin={handleLogin} switchToRegister={() => setShowRegister(true)} />;
@@ -255,7 +321,7 @@ function App() {
       <nav className="navbar desktop-nav">
         <div className="navbar-left">
           <span className="logo">🚧</span>
-          <span className="app-name">BANTAY DALAN</span>
+          <span className="app-name">{siteName.toUpperCase()}</span>
         </div>
       </nav>
 
@@ -624,6 +690,15 @@ function App() {
         autoCloseDelay={2000}
       />
     </div>
+  );
+}
+
+// Wrap App with SettingsProvider
+function App() {
+  return (
+    <SettingsProvider>
+      <AppContent />
+    </SettingsProvider>
   );
 }
 

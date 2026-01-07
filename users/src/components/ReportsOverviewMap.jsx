@@ -3,6 +3,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import './ReportsOverviewMap.css';
 import config from '../config';
+import { useSettings } from '../context/SettingsContext.jsx';
 
 // Fix for default marker icon
 delete L.Icon.Default.prototype._getIconUrl;
@@ -12,10 +13,30 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 });
 
+// Map tile layers for different styles
+const MAP_TILES = {
+  streets: {
+    url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+    attribution: '© OpenStreetMap contributors'
+  },
+  satellite: {
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    attribution: '© Esri'
+  },
+  dark: {
+    url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+    attribution: '© CartoDB'
+  }
+};
+
 const ReportsOverviewMap = ({ searchQuery = '' }) => {
+  const { getMapConfig } = useSettings();
+  const mapConfig = getMapConfig();
+  
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const markersLayerRef = useRef(null);
+  const tileLayerRef = useRef(null);
   const [reports, setReports] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -104,15 +125,19 @@ const ReportsOverviewMap = ({ searchQuery = '' }) => {
   useEffect(() => {
     // Initialize map only once
     if (!mapInstanceRef.current && mapRef.current) {
-      // Center on Negros Occidental
+      // Use settings for map center and zoom
+      const { center, zoom, style } = mapConfig;
+      
       mapInstanceRef.current = L.map(mapRef.current, {
         scrollWheelZoom: false,
         dragging: true,
         touchZoom: true
-      }).setView([10.1617, 122.9747], 10);
+      }).setView([center.lat, center.lng], zoom);
 
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap contributors',
+      // Get tile layer based on style setting
+      const tileConfig = MAP_TILES[style] || MAP_TILES.streets;
+      tileLayerRef.current = L.tileLayer(tileConfig.url, {
+        attribution: tileConfig.attribution,
         maxZoom: 19
       }).addTo(mapInstanceRef.current);
 

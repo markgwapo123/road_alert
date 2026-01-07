@@ -159,14 +159,158 @@ router.get('/public', async (req, res) => {
       settingsObject[s.key] = s.value;
     });
     
+    // Add computed/default values for any missing settings
+    const defaults = {
+      site_name: 'BantayDalan',
+      site_description: 'Community Road Alert System',
+      site_tagline: 'Report. Alert. Protect.',
+      contact_email: 'support@bantaydalan.com',
+      contact_phone: '',
+      timezone: 'Asia/Manila',
+      date_format: 'MMM DD, YYYY',
+      language: 'en',
+      map_default_center_lat: 10.1617,
+      map_default_center_lng: 122.9747,
+      map_default_zoom: 10,
+      map_style: 'streets',
+      max_reports_per_day: 10,
+      require_image: true,
+      require_location: true,
+      allow_anonymous_reports: false,
+      allow_user_registration: true,
+      min_password_length: 8,
+      require_strong_passwords: true,
+      two_factor_auth: false,
+      report_expiry_days: 30,
+      notifications_enabled: true,
+      email_notifications: true,
+      push_notifications: true
+    };
+    
+    // Merge defaults with database values (database takes priority)
+    const mergedSettings = { ...defaults, ...settingsObject };
+    
     res.json({
       success: true,
-      settings: settingsObject
+      settings: mergedSettings
     });
   } catch (error) {
     console.error('Get public settings error:', error);
     res.status(500).json({
       error: 'Server error while fetching public settings'
+    });
+  }
+});
+
+// @route   GET /api/settings/report-config
+// @desc    Get report-related settings for submission form
+// @access  Public  
+router.get('/report-config', async (req, res) => {
+  try {
+    const [
+      requireImage,
+      requireLocation,
+      maxImagesPerReport,
+      allowAnonymous,
+      maxReportsPerDay
+    ] = await Promise.all([
+      SystemSettings.getSetting('require_image', true),
+      SystemSettings.getSetting('require_location', true),
+      SystemSettings.getSetting('max_images_per_report', 5),
+      SystemSettings.getSetting('allow_anonymous_reports', false),
+      SystemSettings.getSetting('max_reports_per_day', 10)
+    ]);
+    
+    res.json({
+      success: true,
+      config: {
+        requireImage,
+        requireLocation,
+        maxImagesPerReport,
+        allowAnonymous,
+        maxReportsPerDay
+      }
+    });
+  } catch (error) {
+    console.error('Get report config error:', error);
+    res.status(500).json({
+      error: 'Server error while fetching report config'
+    });
+  }
+});
+
+// @route   GET /api/settings/auth-config
+// @desc    Get authentication-related settings
+// @access  Public
+router.get('/auth-config', async (req, res) => {
+  try {
+    const [
+      allowRegistration,
+      requireEmailVerification,
+      minPasswordLength,
+      requireStrongPasswords,
+      twoFactorAuth
+    ] = await Promise.all([
+      SystemSettings.getSetting('allow_user_registration', true),
+      SystemSettings.getSetting('require_email_verification', false),
+      SystemSettings.getSetting('min_password_length', 8),
+      SystemSettings.getSetting('require_strong_passwords', true),
+      SystemSettings.getSetting('two_factor_auth', false)
+    ]);
+    
+    res.json({
+      success: true,
+      config: {
+        allowRegistration,
+        requireEmailVerification,
+        minPasswordLength,
+        requireStrongPasswords,
+        twoFactorAuth
+      }
+    });
+  } catch (error) {
+    console.error('Get auth config error:', error);
+    res.status(500).json({
+      error: 'Server error while fetching auth config'
+    });
+  }
+});
+
+// @route   GET /api/settings/map-config
+// @desc    Get map-related settings
+// @access  Public
+router.get('/map-config', async (req, res) => {
+  try {
+    const [
+      centerLat,
+      centerLng,
+      defaultZoom,
+      mapStyle,
+      clusterRadius
+    ] = await Promise.all([
+      SystemSettings.getSetting('map_default_center_lat', 10.1617),
+      SystemSettings.getSetting('map_default_center_lng', 122.9747),
+      SystemSettings.getSetting('map_default_zoom', 10),
+      SystemSettings.getSetting('map_style', 'streets'),
+      SystemSettings.getSetting('map_cluster_radius', 50)
+    ]);
+    
+    res.json({
+      success: true,
+      config: {
+        center: {
+          lat: centerLat,
+          lng: centerLng
+        },
+        defaultZoom,
+        mapStyle,
+        clusterRadius
+      }
+    });
+  } catch (error) {
+    console.error('Get map config error:', error);
+    res.status(500).json({
+      error: 'Server error while fetching map config'
     });
   }
 });
