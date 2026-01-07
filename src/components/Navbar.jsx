@@ -329,6 +329,22 @@ const Navbar = () => {
                       <UserPlusIcon className="h-5 w-5 mr-3" />
                       Create New Admin
                     </Link>
+                    <Link
+                      to="/admin/settings"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="flex items-center px-4 py-2 text-base font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+                    >
+                      <Cog6ToothIcon className="h-5 w-5 mr-3" />
+                      System Settings
+                    </Link>
+                    <Link
+                      to="/admin/audit-logs"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="flex items-center px-4 py-2 text-base font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+                    >
+                      <ClipboardDocumentListIcon className="h-5 w-5 mr-3" />
+                      Audit Logs
+                    </Link>
                   </>
                 )}
                 <button
