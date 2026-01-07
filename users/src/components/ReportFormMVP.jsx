@@ -1014,19 +1014,6 @@ const ReportFormMVP = ({ onReport, onClose }) => {
                     >
                       <span>📸</span> Open Camera
                     </button>
-                    <div className="mvp-upload-alt">
-                      <span>or</span>
-                      <label className="mvp-upload-label">
-                        <input 
-                          type="file" 
-                          name="image"
-                          accept="image/*"
-                          onChange={handleChange}
-                          style={{ display: 'none' }}
-                        />
-                        <span className="mvp-upload-link">upload from gallery</span>
-                      </label>
-                    </div>
                   </div>
                 )}
 
@@ -1044,39 +1031,6 @@ const ReportFormMVP = ({ onReport, onClose }) => {
                     </button>
                   </div>
                 )}
-              </div>
-            </section>
-
-            {/* ==================== SECTION 4: PRIVACY PROTECTION ==================== */}
-            <section className="mvp-form-section mvp-privacy-section">
-              <div className="mvp-privacy-panel">
-                <div className="mvp-privacy-header">
-                  <span className="mvp-privacy-icon">🔒</span>
-                  <span className="mvp-privacy-title">Privacy Protection</span>
-                  <span className={`mvp-privacy-badge ${aiStatus.active ? 'active' : ''}`}>
-                    {aiStatus.active ? 'Active' : 'Ready'}
-                  </span>
-                </div>
-                <div className="mvp-privacy-stats">
-                  <div className="mvp-stat-item">
-                    <span className="mvp-stat-icon">👤</span>
-                    <span className="mvp-stat-value">{aiStatus.faces}</span>
-                    <span className="mvp-stat-label">Faces</span>
-                  </div>
-                  <div className="mvp-stat-item">
-                    <span className="mvp-stat-icon">🧑</span>
-                    <span className="mvp-stat-value">{aiStatus.people}</span>
-                    <span className="mvp-stat-label">People</span>
-                  </div>
-                  <div className="mvp-stat-item">
-                    <span className="mvp-stat-icon">🚗</span>
-                    <span className="mvp-stat-value">{aiStatus.plates}</span>
-                    <span className="mvp-stat-label">Plates</span>
-                  </div>
-                </div>
-                <p className="mvp-privacy-note">
-                  Faces and license plates are automatically blurred for privacy
-                </p>
               </div>
             </section>
 
@@ -1104,45 +1058,47 @@ const ReportFormMVP = ({ onReport, onClose }) => {
         <footer className="mvp-report-footer">
           <button 
             type="button" 
-            onClick={handleReset}
-            className="mvp-btn mvp-btn-secondary"
-            disabled={submitting}
-          >
-            Reset
-          </button>
-          <button 
-            type="button" 
             onClick={onClose}
             className="mvp-btn mvp-btn-text"
             disabled={submitting}
           >
             Cancel
           </button>
-          <button 
-            type="submit"
-            onClick={handleSubmit}
-            className="mvp-btn mvp-btn-submit"
-            disabled={submitting || checkingLimit || (dailyLimit && !dailyLimit.canSubmit)}
-          >
-            {submitting ? (
-              <>
-                <div className="mvp-spinner-small"></div>
-                <span>Submitting...</span>
-              </>
-            ) : checkingLimit ? (
-              <>
-                <div className="mvp-spinner-small"></div>
-                <span>Checking...</span>
-              </>
-            ) : dailyLimit && !dailyLimit.canSubmit ? (
-              <span>Limit Reached</span>
-            ) : (
-              <>
-                <span>🚀</span>
+          <div className="mvp-footer-actions">
+            <button 
+              type="button" 
+              onClick={handleReset}
+              className="mvp-btn mvp-btn-secondary"
+              disabled={submitting}
+            >
+              Reset
+            </button>
+            <button 
+              type="submit"
+              onClick={handleSubmit}
+              className="mvp-btn mvp-btn-submit"
+              disabled={submitting || checkingLimit || (dailyLimit && !dailyLimit.canSubmit)}
+            >
+              {submitting ? (
+                <>
+                  <div className="mvp-spinner-small"></div>
+                  <span>Submitting...</span>
+                </>
+              ) : checkingLimit ? (
+                <>
+                  <div className="mvp-spinner-small"></div>
+                  <span>Checking...</span>
+                </>
+              ) : dailyLimit && !dailyLimit.canSubmit ? (
+                <span>Limit Reached</span>
+              ) : (
+                <>
+                  <span>🚀</span>
                 <span>Submit Report</span>
               </>
             )}
-          </button>
+            </button>
+          </div>
         </footer>
 
         {/* ==================== CONFIRMATION MODAL ==================== */}

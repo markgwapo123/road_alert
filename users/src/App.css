@@ -10049,12 +10049,18 @@ main h1 {
 .mvp-report-footer {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
-  gap: 10px;
+  justify-content: space-between;
+  gap: 12px;
   padding: 16px 20px;
   background: white;
   border-top: 1px solid #e2e8f0;
   flex-shrink: 0;
+}
+
+.mvp-footer-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 /* ==================== BUTTONS ==================== */
