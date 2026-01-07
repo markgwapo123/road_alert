@@ -12,6 +12,7 @@ import MyReports from './components/MyReports';
 import NotificationPage from './pages/NotificationPage';
 import ConfirmationModal from './components/ConfirmationModal';
 import LogoutConfirmModal from './components/LogoutConfirmModal';
+import MaintenancePage from './pages/MaintenancePage';
 import './App.css';
 
 function App() {
@@ -27,6 +28,39 @@ function App() {
   const [confirmationMessage, setConfirmationMessage] = useState('');
   const [confirmationType, setConfirmationType] = useState('success');
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  
+  // Maintenance mode state
+  const [maintenanceMode, setMaintenanceMode] = useState(false);
+  const [maintenanceMessage, setMaintenanceMessage] = useState('');
+  const [maintenanceScheduledEnd, setMaintenanceScheduledEnd] = useState('');
+  const [checkingMaintenance, setCheckingMaintenance] = useState(true);
+
+  // Check maintenance status on app load and periodically
+  useEffect(() => {
+    checkMaintenanceStatus();
+    // Check maintenance status every 60 seconds
+    const maintenanceInterval = setInterval(checkMaintenanceStatus, 60000);
+    return () => clearInterval(maintenanceInterval);
+  }, []);
+
+  const checkMaintenanceStatus = async () => {
+    try {
+      const res = await axios.get(`${config.API_BASE_URL}/settings/maintenance/status`);
+      if (res.data.success && res.data.maintenance) {
+        setMaintenanceMode(res.data.maintenance.enabled);
+        setMaintenanceMessage(res.data.maintenance.message || '');
+        setMaintenanceScheduledEnd(res.data.maintenance.scheduledEnd || '');
+      } else {
+        setMaintenanceMode(false);
+      }
+    } catch (err) {
+      console.log('Maintenance status check failed:', err.message);
+      // If API fails, assume not in maintenance mode
+      setMaintenanceMode(false);
+    } finally {
+      setCheckingMaintenance(false);
+    }
+  };
 
 
   useEffect(() => {
@@ -180,7 +214,33 @@ function App() {
     }
   };
 
+  // Show loading while checking maintenance status
+  if (checkingMaintenance) {
+    return (
+      <div style={{ 
+        minHeight: '100vh', 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center',
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+      }}>
+        <div style={{ textAlign: 'center', color: 'white' }}>
+          <div style={{ fontSize: '40px', marginBottom: '20px' }}>🚧</div>
+          <p>Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
+  // Show maintenance page if maintenance mode is enabled
+  if (maintenanceMode) {
+    return (
+      <MaintenancePage 
+        message={maintenanceMessage} 
+        scheduledEnd={maintenanceScheduledEnd} 
+      />
+    );
+  }
 
   if (!token) {
     if (showRegister) {
