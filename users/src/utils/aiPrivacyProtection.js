@@ -18,6 +18,121 @@ const PERSON_CONFIDENCE_THRESHOLD = 0.5; // COCO-SSD person confidence
 const PLATE_CONFIDENCE_THRESHOLD = 0.50; // License plate detection - lowered for privacy safety
 const PLATE_BORDERLINE_THRESHOLD = 0.40; // Borderline plates - prefer blur over skip
 
+// License plate aspect ratio constraints (width / height)
+const PLATE_MIN_ASPECT_RATIO = 1.5;  // Minimum: plate must be wider than tall
+const PLATE_MAX_ASPECT_RATIO = 6.0;  // Maximum: reject excessively wide boxes
+
+/**
+ * BOUNDING BOX VALIDATION for license plates
+ * ALL conditions must be true before blurring
+ */
+const validatePlateBoundingBox = (plate, vehicle, imgWidth, imgHeight) => {
+  const validationResult = {
+    isValid: true,
+    correctedBox: { ...plate },
+    rejectionReason: null
+  };
+  
+  // 1. Check aspect ratio (width > height for plates)
+  const aspectRatio = plate.width / plate.height;
+  if (aspectRatio < PLATE_MIN_ASPECT_RATIO) {
+    validationResult.isValid = false;
+    validationResult.rejectionReason = `Aspect ratio ${aspectRatio.toFixed(2)} too low (square/tall box - not a plate)`;
+    return validationResult;
+  }
+  if (aspectRatio > PLATE_MAX_ASPECT_RATIO) {
+    validationResult.isValid = false;
+    validationResult.rejectionReason = `Aspect ratio ${aspectRatio.toFixed(2)} too high (excessively wide)`;
+    return validationResult;
+  }
+  
+  // 2. Clamp box to image boundaries
+  let { x, y, width, height } = plate;
+  if (x < 0) { width += x; x = 0; }
+  if (y < 0) { height += y; y = 0; }
+  if (x + width > imgWidth) { width = imgWidth - x; }
+  if (y + height > imgHeight) { height = imgHeight - y; }
+  
+  // Check if box is still valid after clamping
+  if (width <= 0 || height <= 0) {
+    validationResult.isValid = false;
+    validationResult.rejectionReason = 'Box outside image boundaries';
+    return validationResult;
+  }
+  
+  // 3. If vehicle is provided, validate plate is inside/attached to vehicle
+  if (vehicle) {
+    const [vx, vy, vw, vh] = vehicle.bbox;
+    const vehicleRight = vx + vw;
+    const vehicleBottom = vy + vh;
+    const plateRight = x + width;
+    const plateBottom = y + height;
+    
+    // Check if plate is floating outside vehicle (not attached)
+    const isOutsideLeft = plateRight < vx;
+    const isOutsideRight = x > vehicleRight;
+    const isOutsideTop = plateBottom < vy;
+    const isOutsideBottom = y > vehicleBottom;
+    
+    if (isOutsideLeft || isOutsideRight || isOutsideTop || isOutsideBottom) {
+      validationResult.isValid = false;
+      validationResult.rejectionReason = 'Plate box floating outside vehicle region';
+      return validationResult;
+    }
+    
+    // Clamp plate box to stay inside vehicle region
+    if (x < vx) { width -= (vx - x); x = vx; }
+    if (y < vy) { height -= (vy - y); y = vy; }
+    if (x + width > vehicleRight) { width = vehicleRight - x; }
+    if (y + height > vehicleBottom) { height = vehicleBottom - y; }
+    
+    // Validate plate is in lower portion of vehicle (not headlights/grille area)
+    const plateRelativeY = (y - vy) / vh;
+    if (plateRelativeY < 0.30) {
+      validationResult.isValid = false;
+      validationResult.rejectionReason = `Plate too high on vehicle (${(plateRelativeY * 100).toFixed(0)}% from top) - likely headlight/logo`;
+      return validationResult;
+    }
+  }
+  
+  // Update corrected box
+  validationResult.correctedBox = { ...plate, x, y, width, height };
+  return validationResult;
+};
+
+/**
+ * Find plate closest to vehicle center-bottom (secondary confirmation)
+ * Used when primary detection fails but vehicle is present
+ */
+const findPlateNearVehicleBottom = (candidates, vehicle) => {
+  if (!vehicle || candidates.length === 0) return null;
+  
+  const [vx, vy, vw, vh] = vehicle.bbox;
+  const targetX = vx + vw / 2;  // Center X of vehicle
+  const targetY = vy + vh * 0.75; // 75% down from top (typical plate location)
+  
+  let bestCandidate = null;
+  let bestDistance = Infinity;
+  
+  candidates.forEach(plate => {
+    const plateCenterX = plate.x + plate.width / 2;
+    const plateCenterY = plate.y + plate.height / 2;
+    const distance = Math.sqrt(
+      Math.pow(plateCenterX - targetX, 2) + 
+      Math.pow(plateCenterY - targetY, 2)
+    );
+    
+    if (distance < bestDistance) {
+      bestDistance = distance;
+      bestCandidate = plate;
+    }
+  });
+  
+  // Only return if reasonably close to expected position
+  const maxDistance = Math.sqrt(vw * vw + vh * vh) * 0.4; // 40% of vehicle diagonal
+  return bestDistance <= maxDistance ? bestCandidate : null;
+};
+
 /**
  * Load both AI models for comprehensive detection
  * @returns {Promise<void>}
@@ -526,29 +641,64 @@ const detectPlatesInVehiclesStage2 = (canvas, vehicles) => {
       }
     }
     
-    // Get best candidate for this vehicle
+    // Get best candidates for this vehicle with BOUNDING BOX VALIDATION
     if (candidates.length > 0) {
       candidates.sort((a, b) => b.confidence - a.confidence);
-      const bestPlate = candidates[0];
       
-      // PRIVACY SAFETY: Prefer blur over skip for borderline cases
-      // If confidence >= PLATE_CONFIDENCE_THRESHOLD (0.50): definitely blur
-      // If confidence >= PLATE_BORDERLINE_THRESHOLD (0.40): blur for safety
-      // If confidence < PLATE_BORDERLINE_THRESHOLD: skip to avoid false positives
-      if (bestPlate.confidence >= PLATE_CONFIDENCE_THRESHOLD) {
-        detectedPlates.push(bestPlate);
-        console.log(`    ✅ Found ${bestPlate.plateType.toUpperCase()} plate (conf: ${(bestPlate.confidence * 100).toFixed(0)}%)`);
-      } else if (bestPlate.confidence >= PLATE_BORDERLINE_THRESHOLD) {
-        // Borderline case - prefer blur for privacy safety
-        detectedPlates.push(bestPlate);
-        console.log(`    ⚠️ Borderline ${bestPlate.plateType.toUpperCase()} plate (conf: ${(bestPlate.confidence * 100).toFixed(0)}%) - blurring for privacy safety`);
-      } else {
-        console.log(`    ❌ Plate candidate rejected - confidence ${(bestPlate.confidence * 100).toFixed(0)}% too low`);
+      let validPlateFound = false;
+      
+      // Try high-confidence candidates first
+      for (const candidate of candidates) {
+        if (candidate.confidence < PLATE_BORDERLINE_THRESHOLD) break;
+        
+        // CRITICAL: Validate bounding box before blurring
+        const validation = validatePlateBoundingBox(candidate, vehicle, imgWidth, imgHeight);
+        
+        if (!validation.isValid) {
+          console.log(`    ⚠️ Plate rejected: ${validation.rejectionReason}`);
+          continue;
+        }
+        
+        // Use corrected bounding box
+        const validatedPlate = {
+          ...candidate,
+          ...validation.correctedBox
+        };
+        
+        if (candidate.confidence >= PLATE_CONFIDENCE_THRESHOLD) {
+          detectedPlates.push(validatedPlate);
+          console.log(`    ✅ VALIDATED ${validatedPlate.plateType.toUpperCase()} plate (conf: ${(validatedPlate.confidence * 100).toFixed(0)}%)`);
+          validPlateFound = true;
+          break;
+        } else if (candidate.confidence >= PLATE_BORDERLINE_THRESHOLD) {
+          detectedPlates.push(validatedPlate);
+          console.log(`    ⚠️ VALIDATED borderline ${validatedPlate.plateType.toUpperCase()} plate (conf: ${(validatedPlate.confidence * 100).toFixed(0)}%)`);
+          validPlateFound = true;
+          break;
+        }
+      }
+      
+      // SECONDARY CONFIRMATION: If no valid plate found, check low-confidence near vehicle bottom
+      if (!validPlateFound && candidates.length > 0) {
+        console.log(`    🔄 Secondary confirmation: checking low-confidence plates near vehicle center-bottom...`);
+        const lowConfCandidates = candidates.filter(c => c.confidence >= PLATE_BORDERLINE_THRESHOLD);
+        const nearBottomPlate = findPlateNearVehicleBottom(lowConfCandidates, vehicle);
+        
+        if (nearBottomPlate) {
+          const validation = validatePlateBoundingBox(nearBottomPlate, vehicle, imgWidth, imgHeight);
+          if (validation.isValid) {
+            const validatedPlate = { ...nearBottomPlate, ...validation.correctedBox };
+            detectedPlates.push(validatedPlate);
+            console.log(`    ✅ Secondary: Found plate near vehicle bottom (conf: ${(validatedPlate.confidence * 100).toFixed(0)}%)`);
+          }
+        } else {
+          console.log(`    ❌ No valid plate found for this vehicle (avoiding wrong location blur)`);
+        }
       }
     }
   });
   
-  console.log(`🔍 STAGE 2 Result: ${detectedPlates.length} plate(s) detected`);
+  console.log(`🔍 STAGE 2 Result: ${detectedPlates.length} VALIDATED plate(s) detected`);
   return detectedPlates;
 };
 
@@ -562,22 +712,42 @@ const blurPlatesAdaptive = (canvas, plates) => {
   if (!plates || plates.length === 0) return;
   
   const context = canvas.getContext('2d');
+  const imgWidth = canvas.width;
+  const imgHeight = canvas.height;
   
   plates.forEach((plate, index) => {
+    // FINAL VALIDATION before blur - ensure box is within image
+    let { x, y, width, height } = plate;
+    
+    // Clamp to image boundaries (safety check)
+    x = Math.max(0, x);
+    y = Math.max(0, y);
+    if (x + width > imgWidth) width = imgWidth - x;
+    if (y + height > imgHeight) height = imgHeight - y;
+    
+    if (width <= 0 || height <= 0) {
+      console.log(`⚠️ Plate ${index + 1} skipped - invalid dimensions after clamping`);
+      return;
+    }
+    
     // TIGHT bounding box - 3-5% expansion max for precision
     // Rule: Blur ONLY the plate, NOT headlights, bumper, grille, or vehicle body
-    const padX = plate.width * 0.03;  // 3% horizontal padding
-    const padY = plate.height * 0.05; // 5% vertical padding
+    const padX = width * 0.03;  // 3% horizontal padding
+    const padY = height * 0.05; // 5% vertical padding
     
-    const blurX = Math.max(0, plate.x - padX);
-    const blurY = Math.max(0, plate.y - padY);
-    const blurW = plate.width + padX * 2;
-    const blurH = plate.height + padY * 2;
+    const blurX = Math.max(0, x - padX);
+    const blurY = Math.max(0, y - padY);
+    let blurW = width + padX * 2;
+    let blurH = height + padY * 2;
+    
+    // Final clamp to ensure blur stays within image
+    if (blurX + blurW > imgWidth) blurW = imgWidth - blurX;
+    if (blurY + blurH > imgHeight) blurH = imgHeight - blurY;
     
     // Strong blur to ensure plate is completely unreadable
-    const blurStrength = Math.max(35, Math.min(55, plate.width / 2));
+    const blurStrength = Math.max(35, Math.min(55, width / 2));
     
-    console.log(`🔒 Blurring ${plate.plateType || 'unknown'} plate ${index + 1} (${(plate.confidence * 100).toFixed(0)}% conf): ${Math.round(blurW)}x${Math.round(blurH)} at (${Math.round(blurX)}, ${Math.round(blurY)})`);
+    console.log(`🔒 FINAL BLUR: ${plate.plateType || 'unknown'} plate ${index + 1} (${(plate.confidence * 100).toFixed(0)}% conf): ${Math.round(blurW)}x${Math.round(blurH)} at (${Math.round(blurX)}, ${Math.round(blurY)})`);
     applyGaussianBlur(context, blurX, blurY, blurW, blurH, blurStrength);
   });
 };
@@ -649,14 +819,20 @@ const detectPlatesFallback = (canvas) => {
         
         const confidence = colorRatio * 0.5 + darkRatio * 0.3;
         
-        // PRIVACY SAFETY: Include borderline plates
+        // BOUNDING BOX VALIDATION for fallback (no vehicle context)
+        const plateCandidate = { x, y, width: testW, height: testH, confidence, plateType };
+        const validation = validatePlateBoundingBox(plateCandidate, null, width, height);
+        
+        if (!validation.isValid) continue; // Skip invalid boxes
+        
+        // PRIVACY SAFETY: Include borderline plates that pass validation
         if (confidence >= PLATE_BORDERLINE_THRESHOLD) {
           const overlaps = candidates.some(c => 
             Math.abs(c.x - x) < testW * 0.4 && Math.abs(c.y - y) < testH * 0.4
           );
           
           if (!overlaps) {
-            candidates.push({ x, y, width: testW, height: testH, confidence, plateType });
+            candidates.push(validation.correctedBox);
           }
         }
       }
@@ -664,16 +840,22 @@ const detectPlatesFallback = (canvas) => {
   }
   
   candidates.sort((a, b) => b.confidence - a.confidence);
-  const result = candidates.slice(0, 3); // Top 3 matches in fallback for better coverage
   
-  if (result.length > 0) {
-    result.forEach((plate, i) => {
-      const status = plate.confidence >= PLATE_CONFIDENCE_THRESHOLD ? '✅' : '⚠️ borderline';
-      console.log(`🔄 FALLBACK ${i + 1}: ${status} ${plate.plateType} plate (conf: ${(plate.confidence * 100).toFixed(0)}%)`);
-    });
+  // Validate all results before returning
+  const validatedResults = [];
+  for (const plate of candidates.slice(0, 5)) { // Check top 5
+    if (validatedResults.length >= 3) break; // Return max 3
+    
+    const status = plate.confidence >= PLATE_CONFIDENCE_THRESHOLD ? '✅ VALIDATED' : '⚠️ borderline VALIDATED';
+    console.log(`🔄 FALLBACK: ${status} ${plate.plateType} plate (conf: ${(plate.confidence * 100).toFixed(0)}%)`);
+    validatedResults.push(plate);
   }
   
-  return result;
+  if (validatedResults.length === 0) {
+    console.log(`🔄 FALLBACK: No valid plates found (avoiding wrong location blur)`);
+  }
+  
+  return validatedResults;
 };
 
 // ============================================================================
