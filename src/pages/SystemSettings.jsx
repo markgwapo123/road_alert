@@ -11,7 +11,9 @@ import {
   ArrowPathIcon,
   WrenchScrewdriverIcon,
   ExclamationTriangleIcon,
-  ClockIcon
+  ClockIcon,
+  Bars3Icon,
+  XMarkIcon
 } from '@heroicons/react/24/outline'
 import { useAuth, SuperAdminOnly } from '../context/AuthContext'
 import config from '../config/index.js'
@@ -25,6 +27,7 @@ const SystemSettings = () => {
   const [success, setSuccess] = useState(null)
   const [activeCategory, setActiveCategory] = useState('maintenance')
   const [changedSettings, setChangedSettings] = useState({})
+  const [sidebarOpen, setSidebarOpen] = useState(false)
   
   // Maintenance mode state
   const [maintenanceEnabled, setMaintenanceEnabled] = useState(false)
@@ -310,32 +313,38 @@ const SystemSettings = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6 pb-20 md:pb-6">
       {/* Header */}
-      <div className="bg-white rounded-lg shadow-sm border p-6">
-        <div className="flex justify-between items-start">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-              <Cog6ToothIcon className="h-8 w-8 text-red-600" />
-              System Settings
-            </h1>
-            <p className="mt-1 text-sm text-gray-500">
-              Configure system-wide settings for the BantayDalan platform
-            </p>
+      <div className="bg-white rounded-lg shadow-sm border p-4 md:p-6">
+        <div className="flex flex-col gap-4">
+          <div className="flex items-start justify-between">
+            <div className="flex items-center gap-2">
+              <Cog6ToothIcon className="h-6 w-6 md:h-8 md:w-8 text-red-600 flex-shrink-0" />
+              <div>
+                <h1 className="text-lg md:text-2xl font-bold text-gray-900">
+                  System Settings
+                </h1>
+                <p className="hidden md:block mt-1 text-sm text-gray-500">
+                  Configure system-wide settings for the BantayDalan platform
+                </p>
+              </div>
+            </div>
           </div>
-          <div className="flex gap-2">
+          
+          {/* Buttons - stack on mobile */}
+          <div className="flex flex-col sm:flex-row gap-2">
             <button
               onClick={initializeDefaults}
               disabled={saving}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50"
+              className="w-full sm:w-auto px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 flex items-center justify-center gap-1"
             >
-              <ArrowPathIcon className="h-4 w-4 inline mr-1" />
+              <ArrowPathIcon className="h-4 w-4" />
               Reset to Defaults
             </button>
             <button
               onClick={saveSettings}
               disabled={saving || Object.keys(changedSettings).length === 0}
-              className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50"
+              className="w-full sm:w-auto px-4 py-2.5 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50"
             >
               {saving ? 'Saving...' : `Save Changes ${Object.keys(changedSettings).length > 0 ? `(${Object.keys(changedSettings).length})` : ''}`}
             </button>
@@ -344,24 +353,79 @@ const SystemSettings = () => {
 
         {/* Status Messages */}
         {error && (
-          <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-md flex items-center gap-2">
-            <ExclamationCircleIcon className="h-5 w-5 text-red-500" />
-            <span className="text-red-700">{error}</span>
+          <div className="mt-4 p-3 md:p-4 bg-red-50 border border-red-200 rounded-md flex items-center gap-2">
+            <ExclamationCircleIcon className="h-5 w-5 text-red-500 flex-shrink-0" />
+            <span className="text-red-700 text-sm">{error}</span>
           </div>
         )}
         {success && (
-          <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-md flex items-center gap-2">
-            <CheckCircleIcon className="h-5 w-5 text-green-500" />
-            <span className="text-green-700">{success}</span>
+          <div className="mt-4 p-3 md:p-4 bg-green-50 border border-green-200 rounded-md flex items-center gap-2">
+            <CheckCircleIcon className="h-5 w-5 text-green-500 flex-shrink-0" />
+            <span className="text-green-700 text-sm">{success}</span>
+          </div>
+        )}
+      </div>
+
+      {/* Mobile Category Selector Button */}
+      <div className="md:hidden">
+        <button
+          onClick={() => setSidebarOpen(!sidebarOpen)}
+          className="w-full flex items-center justify-between px-4 py-3 bg-white rounded-lg shadow-sm border text-left"
+        >
+          <div className="flex items-center gap-3">
+            {(() => {
+              const currentCategory = categories.find(c => c.id === activeCategory)
+              const Icon = currentCategory?.icon || Cog6ToothIcon
+              return (
+                <>
+                  <Icon className="h-5 w-5 text-red-600" />
+                  <span className="font-medium text-gray-900">{currentCategory?.name}</span>
+                </>
+              )
+            })()}
+          </div>
+          {sidebarOpen ? (
+            <XMarkIcon className="h-5 w-5 text-gray-500" />
+          ) : (
+            <Bars3Icon className="h-5 w-5 text-gray-500" />
+          )}
+        </button>
+        
+        {/* Mobile Dropdown Menu */}
+        {sidebarOpen && (
+          <div className="mt-2 bg-white rounded-lg shadow-sm border overflow-hidden">
+            <nav className="divide-y divide-gray-100">
+              {categories.map((category) => {
+                const Icon = category.icon
+                const isActive = activeCategory === category.id
+                return (
+                  <button
+                    key={category.id}
+                    onClick={() => {
+                      setActiveCategory(category.id)
+                      setSidebarOpen(false)
+                    }}
+                    className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium transition-colors ${
+                      isActive
+                        ? 'bg-red-50 text-red-700'
+                        : 'text-gray-600 hover:bg-gray-50'
+                    }`}
+                  >
+                    <Icon className={`h-5 w-5 ${isActive ? 'text-red-600' : 'text-gray-400'}`} />
+                    {category.name}
+                  </button>
+                )
+              })}
+            </nav>
           </div>
         )}
       </div>
 
       {/* Settings Content */}
-      <div className="flex gap-6">
-        {/* Category Sidebar */}
-        <div className="w-64 flex-shrink-0">
-          <div className="bg-white rounded-lg shadow-sm border">
+      <div className="flex flex-col md:flex-row gap-4 md:gap-6">
+        {/* Category Sidebar - Hidden on mobile */}
+        <div className="hidden md:block w-64 flex-shrink-0">
+          <div className="bg-white rounded-lg shadow-sm border sticky top-4">
             <nav className="space-y-1 p-2">
               {categories.map((category) => {
                 const Icon = category.icon
@@ -386,67 +450,67 @@ const SystemSettings = () => {
         </div>
 
         {/* Settings Panel */}
-        <div className="flex-1">
-          <div className="bg-white rounded-lg shadow-sm border p-6">
+        <div className="flex-1 min-w-0">
+          <div className="bg-white rounded-lg shadow-sm border p-4 md:p-6">
             {/* Maintenance Mode Panel */}
             {activeCategory === 'maintenance' && (
               <div>
-                <div className="flex items-center gap-3 mb-6">
-                  <WrenchScrewdriverIcon className="h-6 w-6 text-red-600" />
+                <div className="flex items-center gap-3 mb-4 md:mb-6">
+                  <WrenchScrewdriverIcon className="h-5 w-5 md:h-6 md:w-6 text-red-600 flex-shrink-0" />
                   <div>
-                    <h2 className="text-lg font-semibold text-gray-900">Maintenance Mode</h2>
-                    <p className="text-sm text-gray-500">Control system availability and scheduled downtime</p>
+                    <h2 className="text-base md:text-lg font-semibold text-gray-900">Maintenance Mode</h2>
+                    <p className="text-xs md:text-sm text-gray-500">Control system availability and scheduled downtime</p>
                   </div>
                 </div>
 
                 {/* Maintenance Status Card */}
-                <div className={`rounded-lg p-6 mb-6 ${maintenanceEnabled ? 'bg-orange-50 border-2 border-orange-300' : 'bg-green-50 border-2 border-green-300'}`}>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
+                <div className={`rounded-lg p-4 md:p-6 mb-4 md:mb-6 ${maintenanceEnabled ? 'bg-orange-50 border-2 border-orange-300' : 'bg-green-50 border-2 border-green-300'}`}>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="flex items-center gap-3 md:gap-4">
                       {maintenanceEnabled ? (
-                        <ExclamationTriangleIcon className="h-12 w-12 text-orange-500" />
+                        <ExclamationTriangleIcon className="h-10 w-10 md:h-12 md:w-12 text-orange-500 flex-shrink-0" />
                       ) : (
-                        <CheckCircleIcon className="h-12 w-12 text-green-500" />
+                        <CheckCircleIcon className="h-10 w-10 md:h-12 md:w-12 text-green-500 flex-shrink-0" />
                       )}
                       <div>
-                        <h3 className={`text-xl font-bold ${maintenanceEnabled ? 'text-orange-700' : 'text-green-700'}`}>
+                        <h3 className={`text-lg md:text-xl font-bold ${maintenanceEnabled ? 'text-orange-700' : 'text-green-700'}`}>
                           {maintenanceEnabled ? 'Maintenance Mode Active' : 'System Online'}
                         </h3>
-                        <p className={`text-sm ${maintenanceEnabled ? 'text-orange-600' : 'text-green-600'}`}>
+                        <p className={`text-xs md:text-sm ${maintenanceEnabled ? 'text-orange-600' : 'text-green-600'}`}>
                           {maintenanceEnabled 
-                            ? 'Users cannot access the system. Only admins can access the admin panel.' 
-                            : 'The system is fully operational and accessible to all users.'}
+                            ? 'Users cannot access the system.' 
+                            : 'The system is fully operational.'}
                         </p>
                       </div>
                     </div>
                     <button
                       onClick={() => toggleMaintenanceMode(!maintenanceEnabled)}
                       disabled={maintenanceLoading}
-                      className={`px-6 py-3 rounded-lg font-semibold text-white transition-colors ${
+                      className={`w-full sm:w-auto px-4 md:px-6 py-2.5 md:py-3 rounded-lg font-semibold text-white text-sm md:text-base transition-colors ${
                         maintenanceEnabled
                           ? 'bg-green-600 hover:bg-green-700'
                           : 'bg-orange-600 hover:bg-orange-700'
                       } disabled:opacity-50`}
                     >
                       {maintenanceLoading ? (
-                        <span className="flex items-center gap-2">
-                          <ArrowPathIcon className="h-5 w-5 animate-spin" />
+                        <span className="flex items-center justify-center gap-2">
+                          <ArrowPathIcon className="h-4 w-4 md:h-5 md:w-5 animate-spin" />
                           Processing...
                         </span>
                       ) : maintenanceEnabled ? (
-                        'Disable Maintenance Mode'
+                        'Disable Maintenance'
                       ) : (
-                        'Enable Maintenance Mode'
+                        'Enable Maintenance'
                       )}
                     </button>
                   </div>
                 </div>
 
                 {/* Maintenance Settings */}
-                <div className="space-y-6">
+                <div className="space-y-4 md:space-y-6">
                   {/* Maintenance Message */}
-                  <div className="border-b border-gray-100 pb-6">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <div className="border-b border-gray-100 pb-4 md:pb-6">
+                    <label className="block text-sm font-medium text-gray-700 mb-1 md:mb-2">
                       Maintenance Message
                     </label>
                     <p className="text-xs text-gray-500 mb-2">
@@ -456,21 +520,21 @@ const SystemSettings = () => {
                       value={maintenanceMessage}
                       onChange={(e) => setMaintenanceMessage(e.target.value)}
                       rows={3}
-                      className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500 sm:text-sm text-black bg-white"
+                      className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500 text-sm text-black bg-white"
                       placeholder="We are currently performing scheduled maintenance. Please check back soon."
                     />
                   </div>
 
                   {/* Scheduled Maintenance */}
-                  <div className="border-b border-gray-100 pb-6">
-                    <div className="flex items-center gap-2 mb-4">
-                      <ClockIcon className="h-5 w-5 text-gray-500" />
+                  <div className="border-b border-gray-100 pb-4 md:pb-6">
+                    <div className="flex items-center gap-2 mb-3 md:mb-4">
+                      <ClockIcon className="h-4 w-4 md:h-5 md:w-5 text-gray-500" />
                       <h4 className="text-sm font-medium text-gray-700">Scheduled Maintenance Window</h4>
                     </div>
-                    <p className="text-xs text-gray-500 mb-4">
-                      Optionally set a scheduled maintenance window. Users will see these times in advance.
+                    <p className="text-xs text-gray-500 mb-3 md:mb-4">
+                      Optionally set a scheduled maintenance window.
                     </p>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
                       <div>
                         <label className="block text-xs font-medium text-gray-600 mb-1">
                           Start Time
@@ -479,7 +543,7 @@ const SystemSettings = () => {
                           type="datetime-local"
                           value={scheduledStart}
                           onChange={(e) => setScheduledStart(e.target.value)}
-                          className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500 sm:text-sm text-black bg-white"
+                          className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500 text-sm text-black bg-white"
                         />
                       </div>
                       <div>
@@ -490,7 +554,7 @@ const SystemSettings = () => {
                           type="datetime-local"
                           value={scheduledEnd}
                           onChange={(e) => setScheduledEnd(e.target.value)}
-                          className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500 sm:text-sm text-black bg-white"
+                          className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500 text-sm text-black bg-white"
                         />
                       </div>
                     </div>
@@ -498,12 +562,12 @@ const SystemSettings = () => {
 
                   {/* Quick Actions */}
                   <div>
-                    <h4 className="text-sm font-medium text-gray-700 mb-4">Quick Actions</h4>
-                    <div className="flex flex-wrap gap-3">
+                    <h4 className="text-sm font-medium text-gray-700 mb-3 md:mb-4">Quick Actions</h4>
+                    <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
                       <button
                         onClick={saveMaintenanceSettings}
                         disabled={maintenanceLoading}
-                        className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50"
+                        className="w-full sm:w-auto px-4 py-2.5 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50"
                       >
                         {maintenanceLoading ? 'Saving...' : 'Save Settings'}
                       </button>
@@ -513,7 +577,7 @@ const SystemSettings = () => {
                           setScheduledStart('')
                           setScheduledEnd('')
                         }}
-                        className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                        className="w-full sm:w-auto px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
                       >
                         Reset to Default
                       </button>
@@ -521,13 +585,13 @@ const SystemSettings = () => {
                   </div>
 
                   {/* Maintenance Mode Info */}
-                  <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="mt-4 md:mt-6 p-3 md:p-4 bg-blue-50 border border-blue-200 rounded-lg">
                     <h4 className="text-sm font-medium text-blue-800 mb-2">ℹ️ About Maintenance Mode</h4>
                     <ul className="text-xs text-blue-700 space-y-1">
-                      <li>• When enabled, regular users will see a maintenance page instead of the app</li>
-                      <li>• Admins can still access the admin panel to manage the system</li>
-                      <li>• API endpoints will return a 503 Service Unavailable response</li>
-                      <li>• Use scheduled maintenance windows to inform users in advance</li>
+                      <li>• Users will see a maintenance page</li>
+                      <li>• Admins can still access the admin panel</li>
+                      <li>• API returns 503 Service Unavailable</li>
+                      <li>• Use scheduled windows to inform users</li>
                     </ul>
                   </div>
                 </div>
@@ -542,17 +606,17 @@ const SystemSettings = () => {
 
               return (
                 <div key={category.id}>
-                  <div className="flex items-center gap-3 mb-6">
-                    <Icon className="h-6 w-6 text-red-600" />
+                  <div className="flex items-center gap-3 mb-4 md:mb-6">
+                    <Icon className="h-5 w-5 md:h-6 md:w-6 text-red-600 flex-shrink-0" />
                     <div>
-                      <h2 className="text-lg font-semibold text-gray-900">{category.name}</h2>
-                      <p className="text-sm text-gray-500">{category.description}</p>
+                      <h2 className="text-base md:text-lg font-semibold text-gray-900">{category.name}</h2>
+                      <p className="text-xs md:text-sm text-gray-500">{category.description}</p>
                     </div>
                   </div>
 
                   {categorySettings.length === 0 ? (
-                    <div className="text-center py-8 text-gray-500">
-                      <p>No settings found for this category.</p>
+                    <div className="text-center py-6 md:py-8 text-gray-500">
+                      <p className="text-sm">No settings found for this category.</p>
                       <button
                         onClick={initializeDefaults}
                         className="mt-2 text-red-600 hover:text-red-700 text-sm font-medium"
@@ -561,11 +625,11 @@ const SystemSettings = () => {
                       </button>
                     </div>
                   ) : (
-                    <div className="space-y-6">
+                    <div className="space-y-4 md:space-y-6">
                       {categorySettings.map((setting) => (
                         <div key={setting.key} className="border-b border-gray-100 pb-4 last:border-0 last:pb-0">
-                          <div className="flex justify-between items-start mb-2">
-                            <div>
+                          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2 sm:gap-4 mb-2">
+                            <div className="flex-1 min-w-0">
                               <label className="block text-sm font-medium text-gray-700">
                                 {setting.key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
                                 {setting.isPublic && (
@@ -574,9 +638,9 @@ const SystemSettings = () => {
                                   </span>
                                 )}
                               </label>
-                              <p className="text-sm text-gray-500">{setting.description}</p>
+                              <p className="text-xs md:text-sm text-gray-500 mt-0.5">{setting.description}</p>
                             </div>
-                            <div className="ml-4 min-w-[200px]">
+                            <div className="w-full sm:w-auto sm:min-w-[200px]">
                               {renderSettingInput(setting)}
                             </div>
                           </div>
@@ -598,15 +662,17 @@ const SystemSettings = () => {
 
       {/* Unsaved Changes Indicator */}
       {Object.keys(changedSettings).length > 0 && (
-        <div className="fixed bottom-4 right-4 bg-yellow-50 border border-yellow-200 rounded-lg shadow-lg p-4 flex items-center gap-3">
-          <ExclamationCircleIcon className="h-5 w-5 text-yellow-500" />
-          <span className="text-yellow-700 text-sm">
-            You have {Object.keys(changedSettings).length} unsaved change{Object.keys(changedSettings).length > 1 ? 's' : ''}
-          </span>
+        <div className="fixed bottom-4 left-4 right-4 md:left-auto md:right-4 md:w-auto bg-yellow-50 border border-yellow-200 rounded-lg shadow-lg p-3 md:p-4 flex flex-col sm:flex-row items-center gap-2 sm:gap-3 z-50">
+          <div className="flex items-center gap-2">
+            <ExclamationCircleIcon className="h-5 w-5 text-yellow-500 flex-shrink-0" />
+            <span className="text-yellow-700 text-sm">
+              {Object.keys(changedSettings).length} unsaved change{Object.keys(changedSettings).length > 1 ? 's' : ''}
+            </span>
+          </div>
           <button
             onClick={saveSettings}
             disabled={saving}
-            className="px-3 py-1 text-sm font-medium text-white bg-yellow-600 rounded hover:bg-yellow-700"
+            className="w-full sm:w-auto px-4 py-2 text-sm font-medium text-white bg-yellow-600 rounded hover:bg-yellow-700"
           >
             Save Now
           </button>
