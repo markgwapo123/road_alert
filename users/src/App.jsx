@@ -5,7 +5,7 @@ import { SettingsProvider, useSettings } from './context/SettingsContext.jsx';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import ProfilePage from './pages/ProfilePage';
-import ReportForm from './components/ReportForm';
+import ReportFormMVP from './components/ReportFormMVP';
 import NewsFeed from './components/NewsFeed';
 import Dashboard from './components/Dashboard';
 import UserProfile from './components/UserProfile';
@@ -377,7 +377,7 @@ function AppContent() {
               }
             }}
           >
-            <ReportForm 
+            <ReportFormMVP 
               onReport={handleSuccessfulReport} 
               onClose={() => {
                 setShowReport(false);
