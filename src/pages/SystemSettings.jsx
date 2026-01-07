@@ -8,7 +8,10 @@ import {
   ShieldCheckIcon,
   CheckCircleIcon,
   ExclamationCircleIcon,
-  ArrowPathIcon
+  ArrowPathIcon,
+  WrenchScrewdriverIcon,
+  ExclamationTriangleIcon,
+  ClockIcon
 } from '@heroicons/react/24/outline'
 import { useAuth, SuperAdminOnly } from '../context/AuthContext'
 import config from '../config/index.js'
@@ -20,10 +23,18 @@ const SystemSettings = () => {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState(null)
   const [success, setSuccess] = useState(null)
-  const [activeCategory, setActiveCategory] = useState('general')
+  const [activeCategory, setActiveCategory] = useState('maintenance')
   const [changedSettings, setChangedSettings] = useState({})
+  
+  // Maintenance mode state
+  const [maintenanceEnabled, setMaintenanceEnabled] = useState(false)
+  const [maintenanceMessage, setMaintenanceMessage] = useState('')
+  const [scheduledStart, setScheduledStart] = useState('')
+  const [scheduledEnd, setScheduledEnd] = useState('')
+  const [maintenanceLoading, setMaintenanceLoading] = useState(false)
 
   const categories = [
+    { id: 'maintenance', name: 'Maintenance', icon: WrenchScrewdriverIcon, description: 'System maintenance mode and scheduled downtime' },
     { id: 'general', name: 'General', icon: Cog6ToothIcon, description: 'Site name, tagline, and general configuration' },
     { id: 'map', name: 'Map Settings', icon: MapPinIcon, description: 'Default map center, zoom level, and clustering' },
     { id: 'notifications', name: 'Notifications', icon: BellIcon, description: 'Push and email notification settings' },
@@ -34,6 +45,7 @@ const SystemSettings = () => {
 
   useEffect(() => {
     fetchSettings()
+    fetchMaintenanceStatus()
   }, [])
 
   const fetchSettings = async () => {
@@ -61,6 +73,90 @@ const SystemSettings = () => {
       setError(err.message)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchMaintenanceStatus = async () => {
+    try {
+      const response = await fetch(`${config.API_BASE_URL}/settings/maintenance/status`)
+      if (response.ok) {
+        const data = await response.json()
+        setMaintenanceEnabled(data.maintenance.enabled)
+        setMaintenanceMessage(data.maintenance.message || '')
+        setScheduledStart(data.maintenance.scheduledStart || '')
+        setScheduledEnd(data.maintenance.scheduledEnd || '')
+      }
+    } catch (err) {
+      console.error('Failed to fetch maintenance status:', err)
+    }
+  }
+
+  const toggleMaintenanceMode = async (enabled) => {
+    try {
+      setMaintenanceLoading(true)
+      setError(null)
+      const token = localStorage.getItem('adminToken')
+
+      const response = await fetch(`${config.API_BASE_URL}/settings/maintenance/toggle`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          enabled,
+          message: maintenanceMessage,
+          scheduledStart,
+          scheduledEnd
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to toggle maintenance mode')
+      }
+
+      const data = await response.json()
+      setMaintenanceEnabled(data.maintenance.enabled)
+      setSuccess(`Maintenance mode ${enabled ? 'enabled' : 'disabled'} successfully`)
+      
+      setTimeout(() => setSuccess(null), 3000)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setMaintenanceLoading(false)
+    }
+  }
+
+  const saveMaintenanceSettings = async () => {
+    try {
+      setMaintenanceLoading(true)
+      setError(null)
+      const token = localStorage.getItem('adminToken')
+
+      const response = await fetch(`${config.API_BASE_URL}/settings/maintenance/toggle`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          enabled: maintenanceEnabled,
+          message: maintenanceMessage,
+          scheduledStart,
+          scheduledEnd
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to save maintenance settings')
+      }
+
+      setSuccess('Maintenance settings saved successfully')
+      setTimeout(() => setSuccess(null), 3000)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setMaintenanceLoading(false)
     }
   }
 
@@ -292,7 +388,154 @@ const SystemSettings = () => {
         {/* Settings Panel */}
         <div className="flex-1">
           <div className="bg-white rounded-lg shadow-sm border p-6">
-            {categories.map((category) => {
+            {/* Maintenance Mode Panel */}
+            {activeCategory === 'maintenance' && (
+              <div>
+                <div className="flex items-center gap-3 mb-6">
+                  <WrenchScrewdriverIcon className="h-6 w-6 text-red-600" />
+                  <div>
+                    <h2 className="text-lg font-semibold text-gray-900">Maintenance Mode</h2>
+                    <p className="text-sm text-gray-500">Control system availability and scheduled downtime</p>
+                  </div>
+                </div>
+
+                {/* Maintenance Status Card */}
+                <div className={`rounded-lg p-6 mb-6 ${maintenanceEnabled ? 'bg-orange-50 border-2 border-orange-300' : 'bg-green-50 border-2 border-green-300'}`}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      {maintenanceEnabled ? (
+                        <ExclamationTriangleIcon className="h-12 w-12 text-orange-500" />
+                      ) : (
+                        <CheckCircleIcon className="h-12 w-12 text-green-500" />
+                      )}
+                      <div>
+                        <h3 className={`text-xl font-bold ${maintenanceEnabled ? 'text-orange-700' : 'text-green-700'}`}>
+                          {maintenanceEnabled ? 'Maintenance Mode Active' : 'System Online'}
+                        </h3>
+                        <p className={`text-sm ${maintenanceEnabled ? 'text-orange-600' : 'text-green-600'}`}>
+                          {maintenanceEnabled 
+                            ? 'Users cannot access the system. Only admins can access the admin panel.' 
+                            : 'The system is fully operational and accessible to all users.'}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => toggleMaintenanceMode(!maintenanceEnabled)}
+                      disabled={maintenanceLoading}
+                      className={`px-6 py-3 rounded-lg font-semibold text-white transition-colors ${
+                        maintenanceEnabled
+                          ? 'bg-green-600 hover:bg-green-700'
+                          : 'bg-orange-600 hover:bg-orange-700'
+                      } disabled:opacity-50`}
+                    >
+                      {maintenanceLoading ? (
+                        <span className="flex items-center gap-2">
+                          <ArrowPathIcon className="h-5 w-5 animate-spin" />
+                          Processing...
+                        </span>
+                      ) : maintenanceEnabled ? (
+                        'Disable Maintenance Mode'
+                      ) : (
+                        'Enable Maintenance Mode'
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Maintenance Settings */}
+                <div className="space-y-6">
+                  {/* Maintenance Message */}
+                  <div className="border-b border-gray-100 pb-6">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Maintenance Message
+                    </label>
+                    <p className="text-xs text-gray-500 mb-2">
+                      This message will be displayed to users when maintenance mode is enabled.
+                    </p>
+                    <textarea
+                      value={maintenanceMessage}
+                      onChange={(e) => setMaintenanceMessage(e.target.value)}
+                      rows={3}
+                      className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500 sm:text-sm text-black bg-white"
+                      placeholder="We are currently performing scheduled maintenance. Please check back soon."
+                    />
+                  </div>
+
+                  {/* Scheduled Maintenance */}
+                  <div className="border-b border-gray-100 pb-6">
+                    <div className="flex items-center gap-2 mb-4">
+                      <ClockIcon className="h-5 w-5 text-gray-500" />
+                      <h4 className="text-sm font-medium text-gray-700">Scheduled Maintenance Window</h4>
+                    </div>
+                    <p className="text-xs text-gray-500 mb-4">
+                      Optionally set a scheduled maintenance window. Users will see these times in advance.
+                    </p>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">
+                          Start Time
+                        </label>
+                        <input
+                          type="datetime-local"
+                          value={scheduledStart}
+                          onChange={(e) => setScheduledStart(e.target.value)}
+                          className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500 sm:text-sm text-black bg-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">
+                          End Time (Estimated)
+                        </label>
+                        <input
+                          type="datetime-local"
+                          value={scheduledEnd}
+                          onChange={(e) => setScheduledEnd(e.target.value)}
+                          className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500 sm:text-sm text-black bg-white"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Quick Actions */}
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-700 mb-4">Quick Actions</h4>
+                    <div className="flex flex-wrap gap-3">
+                      <button
+                        onClick={saveMaintenanceSettings}
+                        disabled={maintenanceLoading}
+                        className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50"
+                      >
+                        {maintenanceLoading ? 'Saving...' : 'Save Settings'}
+                      </button>
+                      <button
+                        onClick={() => {
+                          setMaintenanceMessage('We are currently performing scheduled maintenance. Please check back soon.')
+                          setScheduledStart('')
+                          setScheduledEnd('')
+                        }}
+                        className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                      >
+                        Reset to Default
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Maintenance Mode Info */}
+                  <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <h4 className="text-sm font-medium text-blue-800 mb-2">ℹ️ About Maintenance Mode</h4>
+                    <ul className="text-xs text-blue-700 space-y-1">
+                      <li>• When enabled, regular users will see a maintenance page instead of the app</li>
+                      <li>• Admins can still access the admin panel to manage the system</li>
+                      <li>• API endpoints will return a 503 Service Unavailable response</li>
+                      <li>• Use scheduled maintenance windows to inform users in advance</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Other Category Settings */}
+            {activeCategory !== 'maintenance' && categories.map((category) => {
               if (category.id !== activeCategory) return null
               const Icon = category.icon
               const categorySettings = settings[category.id] || []

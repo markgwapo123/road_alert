@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom'
-import { MapPinIcon, ChartBarIcon, DocumentTextIcon, UserIcon, ChevronDownIcon, CogIcon, KeyIcon, UserPlusIcon, ArrowRightOnRectangleIcon, UsersIcon, NewspaperIcon, ShieldCheckIcon, Bars3Icon, XMarkIcon, PresentationChartLineIcon, ClipboardDocumentListIcon, Cog6ToothIcon } from '@heroicons/react/24/outline'
+import { MapPinIcon, ChartBarIcon, DocumentTextIcon, UserIcon, ChevronDownIcon, CogIcon, KeyIcon, UserPlusIcon, ArrowRightOnRectangleIcon, UsersIcon, NewspaperIcon, ShieldCheckIcon, Bars3Icon, XMarkIcon, PresentationChartLineIcon, ClipboardDocumentListIcon, Cog6ToothIcon, WrenchScrewdriverIcon } from '@heroicons/react/24/outline'
 import { useState, useEffect } from 'react'
 import AdminLogoutConfirmModal from './AdminLogoutConfirmModal'
 import axios from 'axios'
@@ -11,6 +11,7 @@ const Navbar = () => {
   const [showLogoutModal, setShowLogoutModal] = useState(false)
   const [currentAdmin, setCurrentAdmin] = useState(null)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [maintenanceMode, setMaintenanceMode] = useState(false)
   
   // Check if current admin is super admin
   const isSuperAdmin = currentAdmin?.role === 'super_admin'
@@ -18,8 +19,20 @@ const Navbar = () => {
   useEffect(() => {
     if (location.pathname !== '/login') {
       fetchCurrentAdmin()
+      fetchMaintenanceStatus()
     }
   }, [location.pathname])
+
+  const fetchMaintenanceStatus = async () => {
+    try {
+      const response = await axios.get(`${config.API_BASE_URL}/settings/maintenance/status`)
+      if (response.data.success) {
+        setMaintenanceMode(response.data.maintenance.enabled)
+      }
+    } catch (err) {
+      console.error('Error fetching maintenance status:', err)
+    }
+  }
 
   const fetchCurrentAdmin = async () => {
     try {
@@ -73,8 +86,28 @@ const Navbar = () => {
   if (location.pathname === '/login') return null
 
   return (
-    <nav className="bg-white shadow-lg border-b">
-      <div className="container mx-auto px-2 sm:px-4">
+    <>
+      {/* Maintenance Mode Banner */}
+      {maintenanceMode && (
+        <div className="bg-orange-500 text-white px-4 py-2">
+          <div className="container mx-auto flex items-center justify-center gap-2">
+            <WrenchScrewdriverIcon className="h-5 w-5" />
+            <span className="text-sm font-medium">
+              Maintenance Mode is Active - Users cannot access the system
+            </span>
+            {isSuperAdmin && (
+              <Link
+                to="/admin/settings"
+                className="ml-4 px-3 py-1 bg-orange-600 hover:bg-orange-700 rounded text-xs font-medium"
+              >
+                Manage
+              </Link>
+            )}
+          </div>
+        </div>
+      )}
+      <nav className="bg-white shadow-lg border-b">
+        <div className="container mx-auto px-2 sm:px-4">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
           <div className="flex items-center space-x-2">
@@ -370,6 +403,7 @@ const Navbar = () => {
         onConfirm={handleLogoutConfirm}
       />
     </nav>
+    </>
   )
 }
 

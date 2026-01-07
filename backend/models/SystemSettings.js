@@ -96,7 +96,13 @@ systemSettingsSchema.statics.initializeDefaults = async function() {
     { key: 'site_name', value: 'BantayDalan', category: 'general', description: 'Site name displayed in the app', dataType: 'string', isPublic: true },
     { key: 'site_tagline', value: 'Community Road Alert System', category: 'general', description: 'Site tagline', dataType: 'string', isPublic: true },
     { key: 'contact_email', value: 'admin@bantaydalan.com', category: 'general', description: 'Contact email address', dataType: 'string', isPublic: true },
+    
+    // Maintenance mode settings
     { key: 'maintenance_mode', value: false, category: 'general', description: 'Enable maintenance mode', dataType: 'boolean', isPublic: true },
+    { key: 'maintenance_message', value: 'We are currently performing scheduled maintenance. Please check back soon.', category: 'general', description: 'Message displayed during maintenance', dataType: 'string', isPublic: true },
+    { key: 'maintenance_scheduled_start', value: '', category: 'general', description: 'Scheduled maintenance start time (ISO format)', dataType: 'string', isPublic: true },
+    { key: 'maintenance_scheduled_end', value: '', category: 'general', description: 'Scheduled maintenance end time (ISO format)', dataType: 'string', isPublic: true },
+    { key: 'maintenance_allow_admins', value: true, category: 'general', description: 'Allow admins to access during maintenance', dataType: 'boolean', isPublic: false },
     
     // Map settings
     { key: 'map_default_center_lat', value: 9.8500, category: 'map', description: 'Default map center latitude', dataType: 'number', isPublic: true },

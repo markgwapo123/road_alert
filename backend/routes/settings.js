@@ -5,6 +5,111 @@ const { auth, requireSuperAdmin, canAccessSettings, canViewAuditLogs, createAudi
 
 const router = express.Router();
 
+// =============== MAINTENANCE MODE ROUTES ===============
+
+// @route   GET /api/settings/maintenance/status
+// @desc    Get maintenance mode status (public endpoint)
+// @access  Public
+router.get('/maintenance/status', async (req, res) => {
+  try {
+    const maintenanceMode = await SystemSettings.getSetting('maintenance_mode', false);
+    const maintenanceMessage = await SystemSettings.getSetting('maintenance_message', 'We are currently performing scheduled maintenance. Please check back soon.');
+    const scheduledStart = await SystemSettings.getSetting('maintenance_scheduled_start', '');
+    const scheduledEnd = await SystemSettings.getSetting('maintenance_scheduled_end', '');
+    
+    res.json({
+      success: true,
+      maintenance: {
+        enabled: maintenanceMode,
+        message: maintenanceMessage,
+        scheduledStart: scheduledStart,
+        scheduledEnd: scheduledEnd
+      }
+    });
+  } catch (error) {
+    console.error('Get maintenance status error:', error);
+    res.status(500).json({
+      error: 'Server error while fetching maintenance status'
+    });
+  }
+});
+
+// @route   PUT /api/settings/maintenance/toggle
+// @desc    Toggle maintenance mode on/off
+// @access  Private (Super Admin only)
+router.put('/maintenance/toggle', auth, canAccessSettings, async (req, res) => {
+  try {
+    const { enabled, message, scheduledStart, scheduledEnd } = req.body;
+    
+    // Update maintenance mode
+    await SystemSettings.setSetting('maintenance_mode', enabled, {
+      category: 'general',
+      description: 'Enable maintenance mode',
+      dataType: 'boolean',
+      isPublic: true,
+      adminId: req.admin.id
+    });
+    
+    // Update message if provided
+    if (message !== undefined) {
+      await SystemSettings.setSetting('maintenance_message', message, {
+        category: 'general',
+        description: 'Message displayed during maintenance',
+        dataType: 'string',
+        isPublic: true,
+        adminId: req.admin.id
+      });
+    }
+    
+    // Update scheduled times if provided
+    if (scheduledStart !== undefined) {
+      await SystemSettings.setSetting('maintenance_scheduled_start', scheduledStart, {
+        category: 'general',
+        description: 'Scheduled maintenance start time (ISO format)',
+        dataType: 'string',
+        isPublic: true,
+        adminId: req.admin.id
+      });
+    }
+    
+    if (scheduledEnd !== undefined) {
+      await SystemSettings.setSetting('maintenance_scheduled_end', scheduledEnd, {
+        category: 'general',
+        description: 'Scheduled maintenance end time (ISO format)',
+        dataType: 'string',
+        isPublic: true,
+        adminId: req.admin.id
+      });
+    }
+    
+    // Log the action
+    await createAuditLog(req, 'settings_update', 'settings', 
+      `${enabled ? 'Enabled' : 'Disabled'} maintenance mode`, {
+        targetType: 'setting',
+        targetName: 'maintenance_mode',
+        previousValues: { enabled: !enabled },
+        newValues: { enabled, message, scheduledStart, scheduledEnd }
+      }
+    );
+    
+    res.json({
+      success: true,
+      message: `Maintenance mode ${enabled ? 'enabled' : 'disabled'} successfully`,
+      maintenance: {
+        enabled,
+        message: message || await SystemSettings.getSetting('maintenance_message'),
+        scheduledStart: scheduledStart || await SystemSettings.getSetting('maintenance_scheduled_start'),
+        scheduledEnd: scheduledEnd || await SystemSettings.getSetting('maintenance_scheduled_end')
+      }
+    });
+  } catch (error) {
+    console.error('Toggle maintenance mode error:', error);
+    res.status(500).json({
+      error: 'Server error while toggling maintenance mode'
+    });
+  }
+});
+
 // =============== SYSTEM SETTINGS ROUTES (Super Admin Only) ===============
 
 // @route   GET /api/settings
