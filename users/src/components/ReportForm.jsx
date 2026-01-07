@@ -568,6 +568,14 @@ const ReportForm = ({ onReport, onClose }) => {
       setConfirmMessage('Report submitted successfully');
       setShowConfirmModal(true);
       
+      // Auto-close modal after 3 seconds
+      setTimeout(() => {
+        setShowConfirmModal(false);
+        if (onClose) {
+          onClose();
+        }
+      }, 3000);
+      
       // Clear the form
       setForm({ type: '', province: '', city: '', barangay: '', description: '', image: null, location: null });
       setCapturedImage(null);
@@ -872,9 +880,6 @@ const ReportForm = ({ onReport, onClose }) => {
               </button>
               <div className="help-text">
                 Click to open your device's camera and capture a photo of the road condition.
-                <strong style={{ display: 'block', marginTop: '8px', color: '#059669' }}>
-                  🤖 Enhanced AI Privacy: Multi-model detection automatically blurs all faces and people
-                </strong>
               </div>
             </div>
           )}
@@ -939,12 +944,6 @@ const ReportForm = ({ onReport, onClose }) => {
                   🗑️ Remove Photo
                 </button>
               </div>
-              {form.image && (
-                <div className="file-info">
-                  <span>📸</span>
-                  Captured: {form.image.name} ({Math.round(form.image.size / 1024)} KB)
-                </div>
-              )}
             </div>
           )}
 
