@@ -26,6 +26,9 @@ const ReportFormMVP = ({ onReport, onClose }) => {
   const { getReportConfig, getSetting } = useSettings();
   const reportConfig = getReportConfig();
   
+  // Instruction screen state
+  const [showInstructions, setShowInstructions] = useState(true);
+  
   const [form, setForm] = useState({
     type: '',
     province: '',
@@ -590,6 +593,125 @@ const ReportFormMVP = ({ onReport, onClose }) => {
 
   // Get selected hazard type info
   const selectedHazard = ALERT_TYPES.find(t => t.value === form.type);
+
+  // ==================== INSTRUCTION SCREEN ====================
+  if (showInstructions) {
+    return (
+      <div className="mvp-report-overlay">
+        <div className="mvp-report-modal mvp-instructions-modal">
+          {/* Header */}
+          <header className="mvp-report-header mvp-instructions-header">
+            <div className="mvp-header-content">
+              <h1 className="mvp-report-title">📋 How to Submit a Report</h1>
+              <p className="mvp-report-subtitle">Quick guide to reporting road hazards</p>
+            </div>
+            <button 
+              type="button" 
+              className="mvp-close-btn" 
+              onClick={onClose}
+              aria-label="Close"
+            >
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </header>
+
+          {/* Instructions Content */}
+          <div className="mvp-instructions-content">
+            {/* Steps */}
+            <div className="mvp-steps-container">
+              <div className="mvp-step">
+                <div className="mvp-step-icon">🚧</div>
+                <div className="mvp-step-content">
+                  <h3 className="mvp-step-title">Step 1: Choose Hazard Type</h3>
+                  <p className="mvp-step-desc">Select the type of road hazard (e.g., pothole, flood, accident).</p>
+                </div>
+              </div>
+
+              <div className="mvp-step">
+                <div className="mvp-step-icon">📝</div>
+                <div className="mvp-step-content">
+                  <h3 className="mvp-step-title">Step 2: Add Description</h3>
+                  <p className="mvp-step-desc">Provide a clear and brief description of the hazard.</p>
+                </div>
+              </div>
+
+              <div className="mvp-step">
+                <div className="mvp-step-icon">📍</div>
+                <div className="mvp-step-content">
+                  <h3 className="mvp-step-title">Step 3: Set Location</h3>
+                  <p className="mvp-step-desc">Use GPS or select your location from the dropdown.</p>
+                </div>
+              </div>
+
+              <div className="mvp-step">
+                <div className="mvp-step-icon">📷</div>
+                <div className="mvp-step-content">
+                  <h3 className="mvp-step-title">Step 4: Take or Upload Photos</h3>
+                  <p className="mvp-step-desc">Capture or upload clear photos of the hazard.</p>
+                </div>
+              </div>
+
+              <div className="mvp-step">
+                <div className="mvp-step-icon">🔒</div>
+                <div className="mvp-step-content">
+                  <h3 className="mvp-step-title">Step 5: Privacy Protection</h3>
+                  <p className="mvp-step-desc">Faces and license plates are automatically blurred.</p>
+                </div>
+              </div>
+
+              <div className="mvp-step">
+                <div className="mvp-step-icon">📤</div>
+                <div className="mvp-step-content">
+                  <h3 className="mvp-step-title">Step 6: Submit Report</h3>
+                  <p className="mvp-step-desc">Review your details and submit the report.</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Privacy Notice */}
+            <div className="mvp-privacy-notice">
+              <div className="mvp-privacy-notice-icon">🛡️</div>
+              <div className="mvp-privacy-notice-text">
+                <strong>Your privacy is protected.</strong> Faces and license plates in images are automatically blurred using AI.
+              </div>
+            </div>
+
+            {/* Tips & Reminders */}
+            <div className="mvp-tips-section">
+              <h4 className="mvp-tips-title">Tips & Reminders</h4>
+              <ul className="mvp-tips-list">
+                <li><span className="mvp-tip-check">✔</span> Make sure all required fields are filled</li>
+                <li><span className="mvp-tip-check">✔</span> Location and photos improve report accuracy</li>
+                <li><span className="mvp-tip-check">✔</span> You can submit anonymously</li>
+              </ul>
+            </div>
+          </div>
+
+          {/* Footer */}
+          <footer className="mvp-instructions-footer">
+            <button 
+              type="button" 
+              onClick={onClose}
+              className="mvp-btn mvp-btn-text"
+            >
+              Cancel
+            </button>
+            <button 
+              type="button" 
+              onClick={() => setShowInstructions(false)}
+              className="mvp-btn mvp-btn-continue"
+            >
+              <span>Got it, Continue</span>
+              <span className="mvp-btn-arrow">→</span>
+            </button>
+          </footer>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="mvp-report-overlay">
