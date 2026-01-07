@@ -13,9 +13,10 @@ let faceModel = null;
 let personModel = null;
 
 // Confidence thresholds - detections below these will NOT be blurred
-const FACE_CONFIDENCE_THRESHOLD = 0.75;  // BlazeFace confidence (0-1)
+const FACE_CONFIDENCE_THRESHOLD = 0.75;  // BlazeFace confidence (0-1) - DO NOT CHANGE
 const PERSON_CONFIDENCE_THRESHOLD = 0.5; // COCO-SSD person confidence
-const PLATE_CONFIDENCE_THRESHOLD = 0.55; // License plate detection confidence
+const PLATE_CONFIDENCE_THRESHOLD = 0.50; // License plate detection - lowered for privacy safety
+const PLATE_BORDERLINE_THRESHOLD = 0.40; // Borderline plates - prefer blur over skip
 
 /**
  * Load both AI models for comprehensive detection
@@ -530,12 +531,19 @@ const detectPlatesInVehiclesStage2 = (canvas, vehicles) => {
       candidates.sort((a, b) => b.confidence - a.confidence);
       const bestPlate = candidates[0];
       
-      // Only add if confidence meets threshold - prevents false positives
+      // PRIVACY SAFETY: Prefer blur over skip for borderline cases
+      // If confidence >= PLATE_CONFIDENCE_THRESHOLD (0.50): definitely blur
+      // If confidence >= PLATE_BORDERLINE_THRESHOLD (0.40): blur for safety
+      // If confidence < PLATE_BORDERLINE_THRESHOLD: skip to avoid false positives
       if (bestPlate.confidence >= PLATE_CONFIDENCE_THRESHOLD) {
         detectedPlates.push(bestPlate);
         console.log(`    ✅ Found ${bestPlate.plateType.toUpperCase()} plate (conf: ${(bestPlate.confidence * 100).toFixed(0)}%)`);
+      } else if (bestPlate.confidence >= PLATE_BORDERLINE_THRESHOLD) {
+        // Borderline case - prefer blur for privacy safety
+        detectedPlates.push(bestPlate);
+        console.log(`    ⚠️ Borderline ${bestPlate.plateType.toUpperCase()} plate (conf: ${(bestPlate.confidence * 100).toFixed(0)}%) - blurring for privacy safety`);
       } else {
-        console.log(`    ⚠️ Plate candidate rejected - confidence ${(bestPlate.confidence * 100).toFixed(0)}% below threshold ${(PLATE_CONFIDENCE_THRESHOLD * 100)}%`);
+        console.log(`    ❌ Plate candidate rejected - confidence ${(bestPlate.confidence * 100).toFixed(0)}% too low`);
       }
     }
   });
@@ -546,7 +554,7 @@ const detectPlatesInVehiclesStage2 = (canvas, vehicles) => {
 
 /**
  * Apply adaptive blur to detected plates
- * Blur strength scales with plate size
+ * Blur ONLY the license plate region - NEVER headlights, bumper, or vehicle body
  * @param {HTMLCanvasElement} canvas - Canvas
  * @param {Array} plates - Detected plates
  */
@@ -556,20 +564,20 @@ const blurPlatesAdaptive = (canvas, plates) => {
   const context = canvas.getContext('2d');
   
   plates.forEach((plate, index) => {
-    // TIGHT bounding box - minimal 5% padding for precision
-    // Only blur the license plate area, NOT the vehicle body
-    const padX = plate.width * 0.05;
-    const padY = plate.height * 0.08;
+    // TIGHT bounding box - 3-5% expansion max for precision
+    // Rule: Blur ONLY the plate, NOT headlights, bumper, grille, or vehicle body
+    const padX = plate.width * 0.03;  // 3% horizontal padding
+    const padY = plate.height * 0.05; // 5% vertical padding
     
     const blurX = Math.max(0, plate.x - padX);
     const blurY = Math.max(0, plate.y - padY);
     const blurW = plate.width + padX * 2;
     const blurH = plate.height + padY * 2;
     
-    // Strong blur to ensure plate is unreadable
-    const blurStrength = Math.max(30, Math.min(50, plate.width / 2));
+    // Strong blur to ensure plate is completely unreadable
+    const blurStrength = Math.max(35, Math.min(55, plate.width / 2));
     
-    console.log(`🔒 Blurring ${plate.plateType} plate ${index + 1} (${(plate.confidence * 100).toFixed(0)}% conf): ${Math.round(blurW)}x${Math.round(blurH)} at (${Math.round(blurX)}, ${Math.round(blurY)})`);
+    console.log(`🔒 Blurring ${plate.plateType || 'unknown'} plate ${index + 1} (${(plate.confidence * 100).toFixed(0)}% conf): ${Math.round(blurW)}x${Math.round(blurH)} at (${Math.round(blurX)}, ${Math.round(blurY)})`);
     applyGaussianBlur(context, blurX, blurY, blurW, blurH, blurStrength);
   });
 };
@@ -641,7 +649,8 @@ const detectPlatesFallback = (canvas) => {
         
         const confidence = colorRatio * 0.5 + darkRatio * 0.3;
         
-        if (confidence >= PLATE_CONFIDENCE_THRESHOLD) {
+        // PRIVACY SAFETY: Include borderline plates
+        if (confidence >= PLATE_BORDERLINE_THRESHOLD) {
           const overlaps = candidates.some(c => 
             Math.abs(c.x - x) < testW * 0.4 && Math.abs(c.y - y) < testH * 0.4
           );
@@ -655,10 +664,13 @@ const detectPlatesFallback = (canvas) => {
   }
   
   candidates.sort((a, b) => b.confidence - a.confidence);
-  const result = candidates.slice(0, 1); // Only best match in fallback
+  const result = candidates.slice(0, 3); // Top 3 matches in fallback for better coverage
   
   if (result.length > 0) {
-    console.log(`🔄 FALLBACK found ${result[0].plateType} plate (conf: ${(result[0].confidence * 100).toFixed(0)}%)`);
+    result.forEach((plate, i) => {
+      const status = plate.confidence >= PLATE_CONFIDENCE_THRESHOLD ? '✅' : '⚠️ borderline';
+      console.log(`🔄 FALLBACK ${i + 1}: ${status} ${plate.plateType} plate (conf: ${(plate.confidence * 100).toFixed(0)}%)`);
+    });
   }
   
   return result;
@@ -716,7 +728,7 @@ export const applyAIPrivacyProtection = async (canvas) => {
     let vehiclesDetected = 0;
     
     // ═══════════════════════════════════════════════════
-    // FACE & PERSON DETECTION
+    // FACE & PERSON DETECTION (INDEPENDENT - runs always)
     // ═══════════════════════════════════════════════════
     console.log('\n👤 DETECTING FACES & PEOPLE...');
     const [faces, people] = await Promise.all([
@@ -739,38 +751,48 @@ export const applyAIPrivacyProtection = async (canvas) => {
     }
     
     // ═══════════════════════════════════════════════════
-    // 2-STAGE LICENSE PLATE DETECTION
+    // LICENSE PLATE DETECTION (INDEPENDENT - runs always, not suppressed by face detection)
+    // Rule: Face detection MUST NOT suppress plate detection
     // ═══════════════════════════════════════════════════
-    console.log('\n🚗 2-STAGE LICENSE PLATE DETECTION...');
+    console.log('\n🚗 LICENSE PLATE DETECTION (independent of face detection)...');
     
-    // STAGE 1: Detect vehicles
+    // Collect all detected plates from multiple methods
+    let allPlates = [];
+    
+    // STAGE 1: Detect vehicles to help locate plates
     const vehicles = await detectVehiclesStage1(canvas);
     vehiclesDetected = vehicles.length;
     
     if (vehicles.length > 0) {
-      // STAGE 2: Search for plates INSIDE detected vehicles only
-      const plates = detectPlatesInVehiclesStage2(canvas, vehicles);
-      
-      if (plates.length > 0) {
-        // Apply adaptive blur based on plate size
-        blurPlatesAdaptive(canvas, plates);
-        platesDetected = plates.length;
-        totalDetections += plates.length;
-        console.log(`✅ Blurred ${plates.length} license plate(s) in ${vehicles.length} vehicle(s)`);
-      } else {
-        console.log('⚠️ Vehicles detected but no plates found inside them');
+      // STAGE 2: Search for plates INSIDE detected vehicles
+      const vehiclePlates = detectPlatesInVehiclesStage2(canvas, vehicles);
+      allPlates = allPlates.concat(vehiclePlates);
+      console.log(`🔍 Found ${vehiclePlates.length} plate(s) in ${vehicles.length} vehicle region(s)`);
+    }
+    
+    // ALWAYS run fallback to catch plates that vehicle detection might miss
+    // This ensures plates are detected even when vehicle detection fails
+    console.log('🔄 Running fallback plate detection (catches missed plates)...');
+    const fallbackPlates = detectPlatesFallback(canvas);
+    
+    // Merge fallback plates (avoid duplicates by checking overlap)
+    fallbackPlates.forEach(fp => {
+      const isDuplicate = allPlates.some(p => 
+        Math.abs(p.x - fp.x) < p.width * 0.5 && Math.abs(p.y - fp.y) < p.height * 0.5
+      );
+      if (!isDuplicate) {
+        allPlates.push(fp);
       }
+    });
+    
+    // Blur all detected plates
+    if (allPlates.length > 0) {
+      blurPlatesAdaptive(canvas, allPlates);
+      platesDetected = allPlates.length;
+      totalDetections += allPlates.length;
+      console.log(`✅ Blurred ${allPlates.length} license plate(s) total`);
     } else {
-      // FALLBACK: If no vehicles detected, try direct plate search
-      console.log('⚠️ No vehicles detected, trying fallback...');
-      const fallbackPlates = detectPlatesFallback(canvas);
-      
-      if (fallbackPlates.length > 0) {
-        blurPlatesAdaptive(canvas, fallbackPlates);
-        platesDetected = fallbackPlates.length;
-        totalDetections += fallbackPlates.length;
-        console.log(`✅ Fallback: Blurred ${fallbackPlates.length} plate(s)`);
-      }
+      console.log('ℹ️ No license plates detected in image');
     }
     
     // ═══════════════════════════════════════════════════
