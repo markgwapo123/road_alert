@@ -59,7 +59,6 @@ const Navbar = () => {
     { name: 'Dashboard', href: '/dashboard', icon: ChartBarIcon },
     { name: 'Reports', href: '/reports', icon: DocumentTextIcon },
     { name: 'Users', href: '/users', icon: UsersIcon },
-    { name: 'Analytics', href: '/admin/analytics', icon: PresentationChartLineIcon },
     { name: 'Map View', href: '/map', icon: MapPinIcon },
     // News Management - available to both roles
     { name: 'News', href: '/admin/news', icon: NewspaperIcon, permission: 'create_news_posts' },
