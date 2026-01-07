@@ -50,6 +50,44 @@ const ReportForm = ({ onReport, onClose }) => {
   const [processingImage, setProcessingImage] = useState(false);
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
+  
+  // Daily limit state
+  const [dailyLimit, setDailyLimit] = useState(null);
+  const [checkingLimit, setCheckingLimit] = useState(true);
+
+  // Check daily limit on component mount
+  useEffect(() => {
+    checkDailyLimit();
+  }, []);
+
+  const checkDailyLimit = async () => {
+    try {
+      setCheckingLimit(true);
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setCheckingLimit(false);
+        return;
+      }
+      
+      const res = await axios.get(`${config.API_BASE_URL}/reports/daily-limit`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      
+      if (res.data.success) {
+        setDailyLimit(res.data.dailyLimit);
+        
+        // If user has reached limit, show error
+        if (!res.data.dailyLimit.canSubmit) {
+          setError(`You have reached your daily limit of ${res.data.dailyLimit.maxReports} reports. Please try again tomorrow.`);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to check daily limit:', err);
+      // Don't block submission if limit check fails
+    } finally {
+      setCheckingLimit(false);
+    }
+  };
 
   // Preload AI face detection model on component mount
   useEffect(() => {
@@ -568,6 +606,9 @@ const ReportForm = ({ onReport, onClose }) => {
       setConfirmMessage('Report submitted successfully');
       setShowConfirmModal(true);
       
+      // Refresh daily limit after successful submission
+      checkDailyLimit();
+      
       // Auto-close modal after 3 seconds
       setTimeout(() => {
         setShowConfirmModal(false);
@@ -594,6 +635,12 @@ const ReportForm = ({ onReport, onClose }) => {
       
       if (err.response?.status === 413) {
         errorMessage = '❌ File is too large. Please select a smaller image (max 5MB).';
+      } else if (err.response?.status === 429) {
+        // Daily limit reached
+        const errorData = err.response.data;
+        errorMessage = `⚠️ ${errorData?.error || 'Daily report limit reached. Please try again tomorrow.'}`;
+        // Refresh daily limit status
+        checkDailyLimit();
       } else if (err.response?.status === 400) {
         const errorData = err.response.data;
         if (errorData?.details && Array.isArray(errorData.details)) {
@@ -665,6 +712,44 @@ const ReportForm = ({ onReport, onClose }) => {
       <p className="form-subtitle">
         Help keep our roads safe by reporting hazards, construction, or incidents in your area.
       </p>
+      
+      {/* Daily Limit Indicator */}
+      {dailyLimit && (
+        <div style={{ 
+          marginBottom: '1rem', 
+          padding: '0.75rem 1rem', 
+          background: dailyLimit.canSubmit ? '#f0fdf4' : '#fef2f2', 
+          border: `2px solid ${dailyLimit.canSubmit ? '#22c55e' : '#ef4444'}`,
+          borderRadius: '8px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <span style={{ fontSize: '1.25rem' }}>{dailyLimit.canSubmit ? '📊' : '⚠️'}</span>
+            <div>
+              <div style={{ fontWeight: '600', fontSize: '0.9rem', color: dailyLimit.canSubmit ? '#166534' : '#991b1b' }}>
+                {dailyLimit.canSubmit 
+                  ? `${dailyLimit.remaining} report${dailyLimit.remaining !== 1 ? 's' : ''} remaining today`
+                  : 'Daily limit reached'}
+              </div>
+              <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                {dailyLimit.usedToday} of {dailyLimit.maxReports} reports used
+              </div>
+            </div>
+          </div>
+          <div style={{
+            background: dailyLimit.canSubmit ? '#dcfce7' : '#fee2e2',
+            padding: '0.25rem 0.75rem',
+            borderRadius: '20px',
+            fontSize: '0.8rem',
+            fontWeight: '600',
+            color: dailyLimit.canSubmit ? '#166534' : '#991b1b'
+          }}>
+            {dailyLimit.remaining}/{dailyLimit.maxReports}
+          </div>
+        </div>
+      )}
       
       {/* LOCATION TOGGLE */}
       <div style={{ 
@@ -1005,12 +1090,23 @@ const ReportForm = ({ onReport, onClose }) => {
         <button 
           type="submit" 
           className="submit-button"
-          disabled={submitting}
+          disabled={submitting || checkingLimit || (dailyLimit && !dailyLimit.canSubmit)}
+          style={dailyLimit && !dailyLimit.canSubmit ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
         >
           {submitting ? (
             <>
               <div className="button-spinner"></div>
               Submitting Report...
+            </>
+          ) : checkingLimit ? (
+            <>
+              <div className="button-spinner"></div>
+              Checking limit...
+            </>
+          ) : dailyLimit && !dailyLimit.canSubmit ? (
+            <>
+              <span className="submit-icon">🚫</span>
+              Daily Limit Reached
             </>
           ) : (
             <>

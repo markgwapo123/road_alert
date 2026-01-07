@@ -5,6 +5,7 @@ const fs = require('fs');
 const { body, validationResult } = require('express-validator');
 const Report = require('../models/Report');
 const User = require('../models/User');
+const SystemSettings = require('../models/SystemSettings');
 const { auth, canManageReports, canDeleteReports, createAuditLog } = require('../middleware/roleAuth');
 const NotificationService = require('../services/NotificationService');
 
@@ -291,6 +292,47 @@ router.get('/stats', async (req, res) => {
     console.error('Get stats error:', error);
     res.status(500).json({
       error: 'Server error while fetching statistics'
+    });
+  }
+});
+
+// @route   GET /api/reports/daily-limit
+// @desc    Get user's daily report limit status
+// @access  Private
+router.get('/daily-limit', require('../middleware/userAuth'), async (req, res) => {
+  try {
+    // Get max reports per day from system settings
+    const maxReportsPerDay = await SystemSettings.getSetting('max_reports_per_day', 10);
+    
+    // Count user's reports today
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date();
+    endOfDay.setHours(23, 59, 59, 999);
+    
+    const todayReportsCount = await Report.countDocuments({
+      'reportedBy.id': req.user.id,
+      createdAt: { $gte: startOfDay, $lte: endOfDay }
+    });
+    
+    const remainingReports = Math.max(0, maxReportsPerDay - todayReportsCount);
+    const canSubmit = todayReportsCount < maxReportsPerDay;
+    
+    res.json({
+      success: true,
+      dailyLimit: {
+        maxReports: maxReportsPerDay,
+        usedToday: todayReportsCount,
+        remaining: remainingReports,
+        canSubmit: canSubmit,
+        resetsAt: endOfDay.toISOString()
+      }
+    });
+  } catch (error) {
+    console.error('Get daily limit error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Server error while fetching daily limit'
     });
   }
 });
@@ -788,6 +830,30 @@ router.post('/user', require('../middleware/userAuth'), upload.array('images', 5
         success: false,
         error: 'Account is not active. Please contact support.',
         frozen: req.user.isFrozen || false
+      });
+    }
+
+    // Check daily report limit from system settings
+    const maxReportsPerDay = await SystemSettings.getSetting('max_reports_per_day', 10);
+    
+    // Count user's reports today
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date();
+    endOfDay.setHours(23, 59, 59, 999);
+    
+    const todayReportsCount = await Report.countDocuments({
+      'reportedBy.id': req.user.id,
+      createdAt: { $gte: startOfDay, $lte: endOfDay }
+    });
+    
+    if (todayReportsCount >= maxReportsPerDay) {
+      return res.status(429).json({
+        success: false,
+        error: `Daily report limit reached. You can only submit ${maxReportsPerDay} reports per day.`,
+        limitReached: true,
+        maxReports: maxReportsPerDay,
+        currentCount: todayReportsCount
       });
     }
 
