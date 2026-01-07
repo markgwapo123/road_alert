@@ -1,6 +1,16 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ExclamationTriangleIcon, ClockIcon, CheckCircleIcon, XMarkIcon } from '@heroicons/react/24/outline'
+import { 
+  ExclamationTriangleIcon, 
+  ClockIcon, 
+  CheckCircleIcon, 
+  XMarkIcon,
+  DocumentChartBarIcon,
+  CalendarDaysIcon,
+  ArrowTrendingUpIcon,
+  ArrowTrendingDownIcon,
+  CheckBadgeIcon
+} from '@heroicons/react/24/outline'
 import { reportsAPI } from '../services/api'
 import SystemStatus from '../components/SystemStatus'
 import config from '../config/index.js'
@@ -98,9 +108,9 @@ const Dashboard = () => {
     }
   }, [])
 
-  const StatCard = ({ title, value, icon: Icon, color, onClick }) => (
+  const StatCard = ({ title, value, icon: Icon, bgColor, iconColor, textColor, onClick }) => (
     <div 
-      className="bg-white rounded-lg shadow p-4 sm:p-6 cursor-pointer transition-all duration-200 hover:shadow-lg hover:scale-105 transform"
+      className="bg-white rounded-xl shadow-sm p-5 cursor-pointer transition-all duration-200 hover:shadow-lg hover:scale-105 transform"
       onClick={onClick}
       role="button"
       tabIndex={0}
@@ -112,13 +122,12 @@ const Dashboard = () => {
     >
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-xs sm:text-sm font-medium text-gray-600">{title}</p>
-          <p className="text-2xl sm:text-3xl font-bold text-gray-900">{loading ? '...' : value}</p>
+          <p className="text-sm text-gray-500">{title}</p>
+          <p className={`text-2xl font-bold ${textColor || 'text-gray-900'}`}>{loading ? '...' : value}</p>
         </div>
-        <Icon className={`h-6 w-6 sm:h-8 sm:w-8 ${color}`} />
-      </div>
-      <div className="mt-2 text-xs text-gray-500">
-        Click to view details
+        <div className={`${bgColor} p-3 rounded-lg`}>
+          <Icon className={`h-6 w-6 ${iconColor}`} />
+        </div>
       </div>
     </div>
   )
@@ -214,33 +223,41 @@ const Dashboard = () => {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           title="Total Reports"
           value={stats.totalReports}
-          icon={ExclamationTriangleIcon}
-          color="text-blue-600"
+          icon={DocumentChartBarIcon}
+          bgColor="bg-blue-100"
+          iconColor="text-blue-600"
+          textColor="text-gray-900"
           onClick={handleTotalReportsClick}
         />
         <StatCard
           title="Pending Review"
           value={stats.pendingReports}
-          icon={ClockIcon}
-          color="text-yellow-600"
+          icon={CalendarDaysIcon}
+          bgColor="bg-yellow-100"
+          iconColor="text-yellow-600"
+          textColor="text-yellow-600"
           onClick={handlePendingReportsClick}
         />
         <StatCard
           title="Verified"
           value={stats.verifiedReports}
-          icon={CheckCircleIcon}
-          color="text-green-600"
+          icon={ArrowTrendingUpIcon}
+          bgColor="bg-green-100"
+          iconColor="text-green-600"
+          textColor="text-green-600"
           onClick={handleVerifiedReportsClick}
         />
         <StatCard
           title="Rejected"
           value={stats.rejectedReports}
-          icon={XMarkIcon}
-          color="text-red-600"
+          icon={ArrowTrendingDownIcon}
+          bgColor="bg-red-100"
+          iconColor="text-red-600"
+          textColor="text-red-600"
           onClick={handleRejectedReportsClick}
         />
       </div>
