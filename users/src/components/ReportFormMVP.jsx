@@ -65,6 +65,10 @@ const ReportFormMVP = ({ onReport, onClose }) => {
   
   // AI Privacy state for display
   const [aiStatus, setAiStatus] = useState({ faces: 0, people: 0, plates: 0, active: false });
+  
+  // Processing steps state for UI feedback
+  const [processingStep, setProcessingStep] = useState('');
+
 
   // Check daily limit on component mount
   useEffect(() => {
@@ -284,7 +288,8 @@ const ReportFormMVP = ({ onReport, onClose }) => {
     if (!videoRef.current || !canvasRef.current) return;
     
     setProcessingImage(true);
-    setSuccess('Capturing image...');
+    setProcessingStep('capturing');
+    setSuccess('');
     
     const video = videoRef.current;
     const canvas = canvasRef.current;
@@ -294,7 +299,9 @@ const ReportFormMVP = ({ onReport, onClose }) => {
     canvas.height = video.videoHeight;
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
     
-    setSuccess('AI detecting faces and vehicles...');
+    // Small delay to show capturing step
+    await new Promise(resolve => setTimeout(resolve, 300));
+    setProcessingStep('detecting');
     
     try {
       const startTime = Date.now();
@@ -302,6 +309,9 @@ const ReportFormMVP = ({ onReport, onClose }) => {
       const processingTime = Date.now() - startTime;
       
       console.log(`⚡ Privacy protection completed in ${processingTime}ms`);
+      
+      setProcessingStep('blurring');
+      await new Promise(resolve => setTimeout(resolve, 200));
       
       // Update AI status
       setAiStatus({
@@ -311,18 +321,21 @@ const ReportFormMVP = ({ onReport, onClose }) => {
         active: true
       });
       
+      setProcessingStep('complete');
+      
       if (result.totalBlurred > 0) {
         const details = [];
         if (result.facesDetected > 0) details.push(`${result.facesDetected} face(s)`);
         if (result.peopleDetected > 0) details.push(`${result.peopleDetected} head(s)`);
         if (result.vehiclesDetected > 0) details.push(`${result.vehiclesDetected} plate(s)`);
-        setSuccess(`Privacy protected: ${details.join(', ')} blurred`);
+        setSuccess(`✅ Privacy protected: ${details.join(', ')} blurred`);
       } else {
-        setSuccess('Image captured - no faces or plates detected');
+        setSuccess('✅ Image captured - no faces or plates detected');
       }
     } catch (error) {
       console.warn('⚠️ Privacy protection failed:', error);
-      setSuccess('Image captured');
+      setProcessingStep('complete');
+      setSuccess('✅ Image captured');
     }
     
     canvas.toBlob((blob) => {
@@ -944,33 +957,58 @@ const ReportFormMVP = ({ onReport, onClose }) => {
                       className="mvp-camera-video"
                     />
                     <canvas ref={canvasRef} style={{ display: 'none' }} />
-                    <div className="mvp-camera-overlay">
-                      <button 
-                        type="button" 
-                        onClick={capturePhoto}
-                        className="mvp-capture-btn"
-                        disabled={processingImage}
-                      >
-                        {processingImage ? (
-                          <>
-                            <div className="mvp-spinner-small"></div>
-                            <span>Processing...</span>
-                          </>
-                        ) : (
-                          <>
-                            <span className="mvp-capture-icon">📷</span>
-                            <span>Capture</span>
-                          </>
-                        )}
-                      </button>
-                      <button 
-                        type="button" 
-                        onClick={stopCamera}
-                        className="mvp-cancel-camera-btn"
-                      >
-                        Cancel
-                      </button>
-                    </div>
+                    
+                    {/* Processing Overlay */}
+                    {processingImage && (
+                      <div className="mvp-processing-overlay">
+                        <div className="mvp-processing-card">
+                          <div className="mvp-processing-spinner"></div>
+                          <div className="mvp-processing-steps">
+                            <div className={`mvp-processing-step ${processingStep === 'capturing' ? 'active' : processingStep !== 'capturing' && processingStep ? 'done' : ''}`}>
+                              <span className="mvp-step-indicator">
+                                {processingStep !== 'capturing' && processingStep ? '✓' : '1'}
+                              </span>
+                              <span>Capturing image...</span>
+                            </div>
+                            <div className={`mvp-processing-step ${processingStep === 'detecting' ? 'active' : (processingStep === 'blurring' || processingStep === 'complete') ? 'done' : ''}`}>
+                              <span className="mvp-step-indicator">
+                                {(processingStep === 'blurring' || processingStep === 'complete') ? '✓' : '2'}
+                              </span>
+                              <span>Detecting faces & plates...</span>
+                            </div>
+                            <div className={`mvp-processing-step ${processingStep === 'blurring' ? 'active' : processingStep === 'complete' ? 'done' : ''}`}>
+                              <span className="mvp-step-indicator">
+                                {processingStep === 'complete' ? '✓' : '3'}
+                              </span>
+                              <span>Applying privacy blur...</span>
+                            </div>
+                          </div>
+                          <p className="mvp-processing-note">🔒 Protecting privacy automatically</p>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Camera Controls */}
+                    {!processingImage && (
+                      <div className="mvp-camera-overlay">
+                        <button 
+                          type="button" 
+                          onClick={capturePhoto}
+                          className="mvp-capture-btn"
+                          disabled={processingImage}
+                        >
+                          <span className="mvp-capture-icon">📷</span>
+                          <span>Capture</span>
+                        </button>
+                        <button 
+                          type="button" 
+                          onClick={stopCamera}
+                          className="mvp-cancel-camera-btn"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )}
 
