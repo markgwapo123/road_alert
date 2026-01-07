@@ -199,7 +199,7 @@ const ReportDetailModal = ({ report, isOpen, onClose, reportUser }) => {
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                 {reportUser.profile?.profileImage ? (
                   <img 
-                    src={`${config.BACKEND_URL}${reportUser.profile.profileImage}`}
+                    src={reportUser.profile.profileImage.startsWith('data:') ? reportUser.profile.profileImage : `${config.BACKEND_URL}${reportUser.profile.profileImage}`}
                     alt="Reporter"
                     style={{
                       width: '40px',

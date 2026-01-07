@@ -447,7 +447,7 @@ const Users = () => {
                           <div className="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center overflow-hidden">
                             {user.profile?.profileImage ? (
                               <img 
-                                src={`${config.BACKEND_URL}${user.profile.profileImage}`}
+                                src={user.profile.profileImage.startsWith('data:') ? user.profile.profileImage : `${config.BACKEND_URL}${user.profile.profileImage}`}
                                 alt={`${user.name}'s profile`}
                                 className="h-full w-full object-cover"
                               />
@@ -541,7 +541,7 @@ const Users = () => {
                           <div className="h-16 w-16 rounded-full bg-gray-300 flex items-center justify-center overflow-hidden">
                             {selectedUser.profile?.profileImage ? (
                               <img 
-                                src={`${config.BACKEND_URL}${selectedUser.profile.profileImage}`}
+                                src={selectedUser.profile.profileImage.startsWith('data:') ? selectedUser.profile.profileImage : `${config.BACKEND_URL}${selectedUser.profile.profileImage}`}
                                 alt={`${selectedUser.name}'s profile`}
                                 className="h-full w-full object-cover"
                               />

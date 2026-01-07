@@ -993,7 +993,7 @@ const NewsFeed = ({ user }) => {
                         }}>
                           {report.reportedBy?.profile?.profileImage ? (
                             <img 
-                              src={`${config.BACKEND_URL}${report.reportedBy.profile.profileImage}`}
+                              src={report.reportedBy.profile.profileImage.startsWith('data:') ? report.reportedBy.profile.profileImage : `${config.BACKEND_URL}${report.reportedBy.profile.profileImage}`}
                               alt="Reporter"
                               style={{
                                 width: '100%',

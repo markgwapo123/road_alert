@@ -451,7 +451,7 @@ function AppContent() {
               }}>
                 {user?.profileImage ? (
                   <img 
-                    src={`${config.BACKEND_URL}${user.profileImage}`}
+                    src={user.profileImage.startsWith('data:') ? user.profileImage : `${config.BACKEND_URL}${user.profileImage}`}
                     alt="Profile"
                     style={{
                       width: '100%',

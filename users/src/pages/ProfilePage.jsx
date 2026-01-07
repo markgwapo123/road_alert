@@ -59,8 +59,15 @@ const ProfilePage = ({ onBack, onLogout, onUserUpdate }) => {
             notificationsEnabled: userData.profile?.notificationsEnabled !== false
           });
           
+          // Handle profile image - check if it's a data URL or a path
           if (userData.profileImage) {
-            setProfileImage(`${config.BACKEND_URL}${userData.profileImage}`);
+            if (userData.profileImage.startsWith('data:')) {
+              // It's a Base64 data URL, use directly
+              setProfileImage(userData.profileImage);
+            } else {
+              // It's a path, prepend backend URL
+              setProfileImage(`${config.BACKEND_URL}${userData.profileImage}`);
+            }
           }
         }
         
@@ -140,7 +147,13 @@ const ProfilePage = ({ onBack, onLogout, onUserUpdate }) => {
         }
       });
       
-      setProfileImage(`${config.BACKEND_URL}${res.data.imageUrl}`);
+      // Handle response - check if it's a data URL or a path
+      const imageUrl = res.data.imageUrl;
+      if (imageUrl.startsWith('data:')) {
+        setProfileImage(imageUrl);
+      } else {
+        setProfileImage(`${config.BACKEND_URL}${imageUrl}`);
+      }
       setSelectedFile(null);
       setPreviewImage(null);
       showSuccess('Profile picture updated!');
