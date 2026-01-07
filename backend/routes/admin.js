@@ -2,10 +2,49 @@ const express = require('express');
 const Admin = require('../models/Admin');
 const Report = require('../models/Report');
 const User = require('../models/User');
-const auth = require('../middleware/auth');
-const { requireSuperAdmin, requirePermission, canManageReports } = require('../middleware/roleAuth');
+const { 
+  auth,
+  requireSuperAdmin, 
+  requirePermission, 
+  canManageReports,
+  canDeleteUsers,
+  canManageAdmins,
+  createAuditLog,
+  PERMISSIONS
+} = require('../middleware/roleAuth');
 
 const router = express.Router();
+
+// =============== HELPER: Get admin role info for frontend ===============
+// @route   GET /api/admin/role-info
+// @desc    Get current admin's role and permissions
+// @access  Private
+router.get('/role-info', auth, async (req, res) => {
+  try {
+    res.json({
+      success: true,
+      roleInfo: {
+        id: req.admin.id,
+        username: req.admin.username,
+        role: req.admin.role,
+        isSuperAdmin: req.admin.isSuperAdmin,
+        permissions: req.admin.allPermissions,
+        // Specific permission flags for UI
+        canDeleteReports: req.admin.isSuperAdmin,
+        canDeleteUsers: req.admin.isSuperAdmin,
+        canManageAdmins: req.admin.isSuperAdmin,
+        canAccessSettings: req.admin.isSuperAdmin,
+        canViewAuditLogs: req.admin.isSuperAdmin,
+        canOverride: req.admin.isSuperAdmin
+      }
+    });
+  } catch (error) {
+    console.error('Role info error:', error);
+    res.status(500).json({
+      error: 'Server error while fetching role info'
+    });
+  }
+});
 
 // @route   GET /api/admin/dashboard
 // @desc    Get admin dashboard data
@@ -98,6 +137,16 @@ router.post('/create-admin-user', auth, requireSuperAdmin, async (req, res) => {
 
     await newAdmin.save();
 
+    // Log the admin creation
+    await createAuditLog(req, 'admin_create', 'admins', 
+      `Created new admin user: ${username}`, {
+        targetType: 'admin',
+        targetId: newAdmin._id,
+        targetName: username,
+        newValues: { username, email, role: 'admin_user' }
+      }
+    );
+
     // Return admin without password
     const adminResponse = newAdmin.toObject();
     delete adminResponse.password;
@@ -166,9 +215,22 @@ router.put('/admin-user/:id/toggle-status', auth, requireSuperAdmin, async (req,
       });
     }
 
+    const previousStatus = adminUser.isActive;
+    
     // Toggle status
     adminUser.isActive = !adminUser.isActive;
     await adminUser.save();
+
+    // Log the status change
+    await createAuditLog(req, adminUser.isActive ? 'admin_activate' : 'admin_deactivate', 'admins', 
+      `${adminUser.isActive ? 'Activated' : 'Deactivated'} admin user: ${adminUser.username}`, {
+        targetType: 'admin',
+        targetId: adminUser._id,
+        targetName: adminUser.username,
+        previousValues: { isActive: previousStatus },
+        newValues: { isActive: adminUser.isActive }
+      }
+    );
 
     const adminResponse = adminUser.toObject();
     delete adminResponse.password;
@@ -205,7 +267,19 @@ router.delete('/admin-user/:id', auth, requireSuperAdmin, async (req, res) => {
       });
     }
 
+    const deletedUsername = adminUser.username;
+    const deletedId = adminUser._id;
+    
     await Admin.findByIdAndDelete(req.params.id);
+
+    // Log the admin deletion
+    await createAuditLog(req, 'admin_delete', 'admins', 
+      `Deleted admin user: ${deletedUsername}`, {
+        targetType: 'admin',
+        targetId: deletedId,
+        targetName: deletedUsername
+      }
+    );
 
     res.json({
       message: 'Admin user deleted successfully'
@@ -350,6 +424,8 @@ router.patch('/user-freeze/:userId', auth, async (req, res) => {
       });
     }
 
+    const previousStatus = user.isFrozen;
+
     // Update the user's freeze status
     const updatedUser = await User.findByIdAndUpdate(
       userId,
@@ -361,8 +437,18 @@ router.patch('/user-freeze/:userId', auth, async (req, res) => {
       { new: true }
     ).select('-password');
 
-    // Log the admin action
-    console.log(`Admin ${req.admin.email} ${isFrozen ? 'froze' : 'unfroze'} user ${user.email}`);
+    // Log the admin action with audit
+    await createAuditLog(req, isFrozen ? 'user_freeze' : 'user_unfreeze', 'users', 
+      `${isFrozen ? 'Froze' : 'Unfroze'} user account: ${user.username || user.email}`, {
+        targetType: 'user',
+        targetId: user._id,
+        targetName: user.username || user.email,
+        previousValues: { isFrozen: previousStatus },
+        newValues: { isFrozen }
+      }
+    );
+
+    console.log(`Admin ${req.admin.username} ${isFrozen ? 'froze' : 'unfroze'} user ${user.email}`);
 
     res.json({
       success: true,
@@ -383,6 +469,52 @@ router.patch('/user-freeze/:userId', auth, async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Server error while updating user freeze status'
+    });
+  }
+});
+
+// @route   DELETE /api/admin/user/:userId
+// @desc    Delete a user account (Super Admin only)
+// @access  Private (Super Admin only)
+router.delete('/user/:userId', auth, canDeleteUsers, async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    // Verify the user exists
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: 'User not found'
+      });
+    }
+
+    const deletedUsername = user.username;
+    const deletedEmail = user.email;
+    const deletedId = user._id;
+
+    // Delete the user
+    await User.findByIdAndDelete(userId);
+
+    // Log the user deletion
+    await createAuditLog(req, 'user_delete', 'users', 
+      `Deleted user account: ${deletedUsername || deletedEmail}`, {
+        targetType: 'user',
+        targetId: deletedId,
+        targetName: deletedUsername || deletedEmail
+      }
+    );
+
+    res.json({
+      success: true,
+      message: 'User deleted successfully'
+    });
+
+  } catch (error) {
+    console.error('Delete user error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Server error while deleting user'
     });
   }
 });

@@ -177,6 +177,7 @@ app.use('/api/admin', require('./routes/admin'));
 app.use('/api/users', require('./routes/users'));
 app.use('/api/notifications', require('./routes/notifications'));
 app.use('/api/news', require('./routes/news'));
+app.use('/api/settings', require('./routes/settings'));
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

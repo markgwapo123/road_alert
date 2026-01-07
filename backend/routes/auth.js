@@ -4,7 +4,7 @@ const jwt = require('jsonwebtoken');
 const { OAuth2Client } = require('google-auth-library');
 const User = require('../models/User');
 const Admin = require('../models/Admin');
-const auth = require('../middleware/auth');
+const { auth } = require('../middleware/roleAuth');
 const NotificationService = require('../services/NotificationService');
 
 const router = express.Router();

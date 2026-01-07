@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react'
-import { UsersIcon, ClockIcon, CheckCircleIcon, XCircleIcon, UserGroupIcon, EyeIcon, DocumentTextIcon, CalendarIcon, MapPinIcon, PhoneIcon, FunnelIcon, UserIcon } from '@heroicons/react/24/outline'
+import { UsersIcon, ClockIcon, CheckCircleIcon, XCircleIcon, UserGroupIcon, EyeIcon, DocumentTextIcon, CalendarIcon, MapPinIcon, PhoneIcon, FunnelIcon, UserIcon, TrashIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline'
+import { useAuth } from '../context/AuthContext'
 import config from '../config/index.js'
 
 const Users = () => {
+  const { isSuperAdmin, canDeleteUsers } = useAuth()
   const [users, setUsers] = useState([])
   const [stats, setStats] = useState({})
   const [loading, setLoading] = useState(true)
@@ -14,6 +16,9 @@ const Users = () => {
   const [selectedReport, setSelectedReport] = useState(null)
   const [showReportModal, setShowReportModal] = useState(false)
   const [loadingFreezeAction, setLoadingFreezeAction] = useState(false)
+  const [loadingDeleteAction, setLoadingDeleteAction] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [userToDelete, setUserToDelete] = useState(null)
   const [filterType, setFilterType] = useState('all')
   const [filteredUsers, setFilteredUsers] = useState([])
 
@@ -199,9 +204,63 @@ const Users = () => {
     }
   }
 
+  // Delete user (Super Admin only)
+  const deleteUser = async (userId) => {
+    try {
+      setLoadingDeleteAction(true)
+      const token = localStorage.getItem('adminToken')
+      
+      const response = await fetch(`${config.API_BASE_URL}/admin/user/${userId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      })
+
+      if (response.ok) {
+        // Remove user from list
+        setUsers(prev => prev.filter(user => user._id !== userId))
+        
+        // Close modals
+        setShowDeleteConfirm(false)
+        setUserToDelete(null)
+        setShowUserModal(false)
+        setSelectedUser(null)
+        
+        // Update stats
+        setStats(prev => ({
+          ...prev,
+          totalUsers: (prev.totalUsers || 0) - 1
+        }))
+        
+        console.log('User deleted successfully')
+      } else {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to delete user')
+      }
+    } catch (err) {
+      console.error('Error deleting user:', err)
+      alert(err.message || 'Failed to delete user. Please try again.')
+    } finally {
+      setLoadingDeleteAction(false)
+    }
+  }
+
+  const confirmDeleteUser = (user) => {
+    setUserToDelete(user)
+    setShowDeleteConfirm(true)
+  }
+
+  const cancelDeleteUser = () => {
+    setUserToDelete(null)
+    setShowDeleteConfirm(false)
+  }
+
   const handleStatCardClick = (filterType) => {
     setFilterType(filterType)
   }
+
 
   const clearFilter = () => {
     setFilterType('all')
@@ -669,13 +728,76 @@ const Users = () => {
               </div>
 
               {/* Modal Footer */}
-              <div className="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
+              <div className="px-6 py-4 border-t border-gray-200 flex justify-between items-center">
+                {/* Delete Button - Super Admin Only */}
+                <div>
+                  {isSuperAdmin() && (
+                    <button
+                      onClick={() => confirmDeleteUser(selectedUser)}
+                      className="px-4 py-2 text-red-600 bg-red-50 rounded-md hover:bg-red-100 transition-colors flex items-center gap-2"
+                    >
+                      <TrashIcon className="h-4 w-4" />
+                      Delete User
+                    </button>
+                  )}
+                </div>
                 <button
                   onClick={closeUserModal}
                   className="px-4 py-2 text-gray-600 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
                 >
                   Close
                 </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Delete User Confirmation Modal */}
+        {showDeleteConfirm && userToDelete && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[60]">
+            <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+              <div className="p-6">
+                <div className="flex items-center justify-center mb-4">
+                  <div className="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center">
+                    <ExclamationTriangleIcon className="h-6 w-6 text-red-600" />
+                  </div>
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 text-center mb-2">
+                  Delete User Account
+                </h3>
+                <p className="text-gray-600 text-center mb-4">
+                  Are you sure you want to permanently delete the user{' '}
+                  <span className="font-semibold">{userToDelete.username || userToDelete.email}</span>?
+                </p>
+                <p className="text-sm text-red-600 bg-red-50 p-3 rounded-md mb-4">
+                  ⚠️ This action cannot be undone. All user data and reports will be permanently removed.
+                </p>
+                <div className="flex gap-3">
+                  <button
+                    onClick={cancelDeleteUser}
+                    disabled={loadingDeleteAction}
+                    className="flex-1 px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => deleteUser(userToDelete._id)}
+                    disabled={loadingDeleteAction}
+                    className="flex-1 px-4 py-2 text-white bg-red-600 rounded-md hover:bg-red-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    {loadingDeleteAction ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                        Deleting...
+                      </>
+                    ) : (
+                      <>
+                        <TrashIcon className="h-4 w-4" />
+                        Delete User
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
             </div>
           </div>

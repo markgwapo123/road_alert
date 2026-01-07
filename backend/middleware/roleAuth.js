@@ -1,5 +1,142 @@
 const jwt = require('jsonwebtoken');
 const Admin = require('../models/Admin');
+const AuditLog = require('../models/AuditLog');
+
+// =============== ROLE-BASED ACCESS CONTROL (RBAC) DEFINITIONS ===============
+
+// Define all permissions
+const PERMISSIONS = {
+  // Report permissions
+  REPORT_VIEW: 'report_view',
+  REPORT_EDIT: 'report_edit',
+  REPORT_VERIFY: 'report_verify',
+  REPORT_REJECT: 'report_reject',
+  REPORT_DELETE: 'report_delete',
+  REPORT_RESOLVE: 'report_resolve',
+  
+  // User permissions
+  USER_VIEW: 'user_view',
+  USER_FREEZE: 'user_freeze',
+  USER_DELETE: 'user_delete',
+  
+  // Admin permissions
+  ADMIN_VIEW: 'admin_view',
+  ADMIN_CREATE: 'admin_create',
+  ADMIN_EDIT: 'admin_edit',
+  ADMIN_DELETE: 'admin_delete',
+  ADMIN_ROLE_CHANGE: 'admin_role_change',
+  
+  // System permissions
+  SETTINGS_VIEW: 'settings_view',
+  SETTINGS_UPDATE: 'settings_update',
+  ANALYTICS_VIEW: 'analytics_view',
+  AUDIT_LOGS_VIEW: 'audit_logs_view',
+  
+  // News permissions
+  NEWS_CREATE: 'news_create',
+  NEWS_EDIT: 'news_edit',
+  NEWS_DELETE: 'news_delete',
+  
+  // Override permission (Super Admin only)
+  OVERRIDE: 'override'
+};
+
+// Role-based permission mappings
+const ROLE_PERMISSIONS = {
+  super_admin: [
+    // All report permissions
+    PERMISSIONS.REPORT_VIEW,
+    PERMISSIONS.REPORT_EDIT,
+    PERMISSIONS.REPORT_VERIFY,
+    PERMISSIONS.REPORT_REJECT,
+    PERMISSIONS.REPORT_DELETE,
+    PERMISSIONS.REPORT_RESOLVE,
+    // All user permissions
+    PERMISSIONS.USER_VIEW,
+    PERMISSIONS.USER_FREEZE,
+    PERMISSIONS.USER_DELETE,
+    // All admin permissions
+    PERMISSIONS.ADMIN_VIEW,
+    PERMISSIONS.ADMIN_CREATE,
+    PERMISSIONS.ADMIN_EDIT,
+    PERMISSIONS.ADMIN_DELETE,
+    PERMISSIONS.ADMIN_ROLE_CHANGE,
+    // All system permissions
+    PERMISSIONS.SETTINGS_VIEW,
+    PERMISSIONS.SETTINGS_UPDATE,
+    PERMISSIONS.ANALYTICS_VIEW,
+    PERMISSIONS.AUDIT_LOGS_VIEW,
+    // All news permissions
+    PERMISSIONS.NEWS_CREATE,
+    PERMISSIONS.NEWS_EDIT,
+    PERMISSIONS.NEWS_DELETE,
+    // Override permission
+    PERMISSIONS.OVERRIDE
+  ],
+  admin_user: [
+    // Limited report permissions (no delete)
+    PERMISSIONS.REPORT_VIEW,
+    PERMISSIONS.REPORT_EDIT,
+    PERMISSIONS.REPORT_VERIFY,
+    PERMISSIONS.REPORT_REJECT,
+    PERMISSIONS.REPORT_RESOLVE,
+    // Limited user permissions (view and freeze only, no delete)
+    PERMISSIONS.USER_VIEW,
+    PERMISSIONS.USER_FREEZE,
+    // No admin management permissions
+    // No system settings permissions
+    // Analytics view only
+    PERMISSIONS.ANALYTICS_VIEW,
+    // News permissions
+    PERMISSIONS.NEWS_CREATE,
+    PERMISSIONS.NEWS_EDIT,
+    PERMISSIONS.NEWS_DELETE
+  ]
+};
+
+// Helper function to check if a role has a permission
+const roleHasPermission = (role, permission) => {
+  const rolePerms = ROLE_PERMISSIONS[role] || [];
+  return rolePerms.includes(permission);
+};
+
+// Helper function to get client IP
+const getClientIP = (req) => {
+  return req.headers['x-forwarded-for']?.split(',')[0]?.trim() || 
+         req.connection?.remoteAddress || 
+         req.socket?.remoteAddress ||
+         'unknown';
+};
+
+// Helper function to create audit log
+const createAuditLog = async (req, action, category, description, options = {}) => {
+  if (!req.admin) return null;
+  
+  try {
+    return await AuditLog.log({
+      adminId: req.admin.id,
+      adminUsername: req.admin.username,
+      adminRole: req.admin.role,
+      action,
+      category,
+      description,
+      targetType: options.targetType || null,
+      targetId: options.targetId || null,
+      targetName: options.targetName || null,
+      details: options.details || {},
+      previousValues: options.previousValues || null,
+      newValues: options.newValues || null,
+      ipAddress: getClientIP(req),
+      userAgent: req.headers['user-agent'] || null,
+      status: options.status || 'success',
+      errorMessage: options.errorMessage || null,
+      isOverride: options.isOverride || false
+    });
+  } catch (error) {
+    console.error('Failed to create audit log:', error);
+    return null;
+  }
+};
 
 // Base authentication middleware
 const auth = async (req, res, next) => {
@@ -39,20 +176,27 @@ const auth = async (req, res, next) => {
       });
     }
 
+    // Get role-based permissions
+    const rolePermissions = ROLE_PERMISSIONS[admin.role] || [];
+
     // Add admin to request object with full details
     req.admin = {
       id: admin._id,
       username: admin.username,
       role: admin.role,
-      permissions: admin.permissions || [], // Ensure permissions is always an array
-      profile: admin.profile
+      permissions: admin.permissions || [], // Legacy permissions from DB
+      rolePermissions: rolePermissions, // Role-based permissions
+      allPermissions: [...new Set([...(admin.permissions || []), ...rolePermissions])],
+      profile: admin.profile,
+      isSuperAdmin: admin.role === 'super_admin'
     };
 
     console.log('🔐 Admin attached to request:', {
       id: req.admin.id,
       username: req.admin.username,
       role: req.admin.role,
-      permissionsCount: req.admin.permissions.length
+      isSuperAdmin: req.admin.isSuperAdmin,
+      permissionsCount: req.admin.allPermissions.length
     });
 
     next();
@@ -77,7 +221,7 @@ const auth = async (req, res, next) => {
   }
 };
 
-// Check if admin has specific permission
+// Check if admin has specific permission (RBAC-based)
 const requirePermission = (permission) => {
   return (req, res, next) => {
     if (!req.admin) {
@@ -86,9 +230,24 @@ const requirePermission = (permission) => {
       });
     }
 
-    if (!req.admin.permissions.includes(permission)) {
+    // Super admin always has all permissions
+    if (req.admin.isSuperAdmin) {
+      return next();
+    }
+
+    // Check role-based permission
+    if (!roleHasPermission(req.admin.role, permission)) {
+      // Log the blocked action
+      createAuditLog(req, 'blocked_action', 'auth', 
+        `Attempted action requiring permission: ${permission}`, {
+          status: 'blocked',
+          details: { requiredPermission: permission }
+        }
+      );
+      
       return res.status(403).json({
-        error: `Access denied. Required permission: ${permission}`
+        error: `Access denied. Required permission: ${permission}`,
+        requiredPermission: permission
       });
     }
 
@@ -105,6 +264,14 @@ const requireSuperAdmin = (req, res, next) => {
   }
 
   if (req.admin.role !== 'super_admin') {
+    // Log the blocked action
+    createAuditLog(req, 'blocked_action', 'auth', 
+      'Attempted action requiring Super Admin privileges', {
+        status: 'blocked',
+        details: { requiredRole: 'super_admin', actualRole: req.admin.role }
+      }
+    );
+    
     return res.status(403).json({
       error: 'Access denied. Super admin privileges required.'
     });
@@ -113,7 +280,7 @@ const requireSuperAdmin = (req, res, next) => {
   next();
 };
 
-// Check if admin can manage reports (both roles can)
+// Check if admin can manage reports (both roles can, but with different permissions)
 const canManageReports = (req, res, next) => {
   if (!req.admin) {
     return res.status(401).json({
@@ -126,31 +293,144 @@ const canManageReports = (req, res, next) => {
     adminId: req.admin.id,
     username: req.admin.username,
     role: req.admin.role,
-    permissions: req.admin.permissions
+    isSuperAdmin: req.admin.isSuperAdmin
   });
 
-  // Ensure permissions is an array
-  const permissions = req.admin.permissions || [];
-  
-  const canReview = permissions.includes('review_reports');
-  const canAccept = permissions.includes('accept_reports');
-  const canReject = permissions.includes('reject_reports');
+  // Super admin always has access
+  if (req.admin.isSuperAdmin) {
+    return next();
+  }
 
-  console.log('🔐 Permission checks:', {
-    canReview,
-    canAccept,
-    canReject,
-    hasAllPermissions: canReview && canAccept && canReject
+  // Check role-based permissions for report management
+  const canView = roleHasPermission(req.admin.role, PERMISSIONS.REPORT_VIEW);
+  const canEdit = roleHasPermission(req.admin.role, PERMISSIONS.REPORT_EDIT);
+  const canVerify = roleHasPermission(req.admin.role, PERMISSIONS.REPORT_VERIFY);
+  const canReject = roleHasPermission(req.admin.role, PERMISSIONS.REPORT_REJECT);
+
+  console.log('🔐 Report permission checks:', {
+    canView,
+    canEdit,
+    canVerify,
+    canReject
   });
 
-  if (!canReview || !canAccept || !canReject) {
+  if (!canView) {
     return res.status(403).json({
-      error: 'Access denied. Report management privileges required.',
-      missingPermissions: {
-        review: !canReview,
-        accept: !canAccept,
-        reject: !canReject
+      error: 'Access denied. Report viewing privileges required.'
+    });
+  }
+
+  next();
+};
+
+// Check if admin can delete reports (Super Admin only)
+const canDeleteReports = (req, res, next) => {
+  if (!req.admin) {
+    return res.status(401).json({
+      error: 'Authentication required'
+    });
+  }
+
+  if (!req.admin.isSuperAdmin && !roleHasPermission(req.admin.role, PERMISSIONS.REPORT_DELETE)) {
+    createAuditLog(req, 'blocked_action', 'reports', 
+      'Attempted to delete report without permission', {
+        status: 'blocked',
+        targetType: 'report',
+        targetId: req.params.id
       }
+    );
+    
+    return res.status(403).json({
+      error: 'Access denied. Only Super Admins can delete reports.'
+    });
+  }
+
+  next();
+};
+
+// Check if admin can delete users (Super Admin only)
+const canDeleteUsers = (req, res, next) => {
+  if (!req.admin) {
+    return res.status(401).json({
+      error: 'Authentication required'
+    });
+  }
+
+  if (!req.admin.isSuperAdmin) {
+    createAuditLog(req, 'blocked_action', 'users', 
+      'Attempted to delete user without permission', {
+        status: 'blocked',
+        targetType: 'user',
+        targetId: req.params.id || req.params.userId
+      }
+    );
+    
+    return res.status(403).json({
+      error: 'Access denied. Only Super Admins can delete users.'
+    });
+  }
+
+  next();
+};
+
+// Check if admin can manage other admins (Super Admin only)
+const canManageAdmins = (req, res, next) => {
+  if (!req.admin) {
+    return res.status(401).json({
+      error: 'Authentication required'
+    });
+  }
+
+  if (!req.admin.isSuperAdmin) {
+    createAuditLog(req, 'blocked_action', 'admins', 
+      'Attempted admin management action without permission', {
+        status: 'blocked',
+        details: { attemptedAction: req.method + ' ' + req.path }
+      }
+    );
+    
+    return res.status(403).json({
+      error: 'Access denied. Only Super Admins can manage other admin accounts.'
+    });
+  }
+
+  next();
+};
+
+// Check if admin can access system settings (Super Admin only)
+const canAccessSettings = (req, res, next) => {
+  if (!req.admin) {
+    return res.status(401).json({
+      error: 'Authentication required'
+    });
+  }
+
+  if (!req.admin.isSuperAdmin) {
+    createAuditLog(req, 'blocked_action', 'settings', 
+      'Attempted to access system settings without permission', {
+        status: 'blocked'
+      }
+    );
+    
+    return res.status(403).json({
+      error: 'Access denied. Only Super Admins can access system settings.'
+    });
+  }
+
+  next();
+};
+
+// Check if admin can view audit logs (Super Admin only)
+const canViewAuditLogs = (req, res, next) => {
+  if (!req.admin) {
+    return res.status(401).json({
+      error: 'Authentication required'
+    });
+  }
+
+  if (!req.admin.isSuperAdmin) {
+    return res.status(403).json({
+      error: 'Access denied. Only Super Admins can view audit logs.'
     });
   }
 
@@ -165,7 +445,7 @@ const canCreateNews = (req, res, next) => {
     });
   }
 
-  if (!req.admin.permissions.includes('create_news_posts')) {
+  if (!roleHasPermission(req.admin.role, PERMISSIONS.NEWS_CREATE)) {
     return res.status(403).json({
       error: 'Access denied. News creation privileges required.'
     });
@@ -179,5 +459,14 @@ module.exports = {
   requirePermission,
   requireSuperAdmin,
   canManageReports,
-  canCreateNews
+  canDeleteReports,
+  canDeleteUsers,
+  canManageAdmins,
+  canAccessSettings,
+  canViewAuditLogs,
+  canCreateNews,
+  createAuditLog,
+  PERMISSIONS,
+  ROLE_PERMISSIONS,
+  roleHasPermission
 };

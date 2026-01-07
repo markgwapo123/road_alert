@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom'
-import { MapPinIcon, ChartBarIcon, DocumentTextIcon, UserIcon, ChevronDownIcon, CogIcon, KeyIcon, UserPlusIcon, ArrowRightOnRectangleIcon, UsersIcon, NewspaperIcon, ShieldCheckIcon, Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline'
+import { MapPinIcon, ChartBarIcon, DocumentTextIcon, UserIcon, ChevronDownIcon, CogIcon, KeyIcon, UserPlusIcon, ArrowRightOnRectangleIcon, UsersIcon, NewspaperIcon, ShieldCheckIcon, Bars3Icon, XMarkIcon, PresentationChartLineIcon, ClipboardDocumentListIcon, Cog6ToothIcon } from '@heroicons/react/24/outline'
 import { useState, useEffect } from 'react'
 import AdminLogoutConfirmModal from './AdminLogoutConfirmModal'
 import axios from 'axios'
@@ -11,6 +11,9 @@ const Navbar = () => {
   const [showLogoutModal, setShowLogoutModal] = useState(false)
   const [currentAdmin, setCurrentAdmin] = useState(null)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  
+  // Check if current admin is super admin
+  const isSuperAdmin = currentAdmin?.role === 'super_admin'
   
   useEffect(() => {
     if (location.pathname !== '/login') {
@@ -43,6 +46,7 @@ const Navbar = () => {
     { name: 'Dashboard', href: '/dashboard', icon: ChartBarIcon },
     { name: 'Reports', href: '/reports', icon: DocumentTextIcon },
     { name: 'Users', href: '/users', icon: UsersIcon },
+    { name: 'Analytics', href: '/admin/analytics', icon: PresentationChartLineIcon },
     { name: 'Map View', href: '/map', icon: MapPinIcon },
     // News Management - available to both roles
     { name: 'News', href: '/admin/news', icon: NewspaperIcon, permission: 'create_news_posts' },
@@ -76,6 +80,16 @@ const Navbar = () => {
           <div className="flex items-center space-x-2">
             <MapPinIcon className="h-6 w-6 sm:h-8 sm:w-8 text-red-600" />
             <span className="text-lg sm:text-xl font-bold text-gray-900">BantayDalan</span>
+            {/* Role Badge */}
+            {currentAdmin && (
+              <span className={`ml-2 px-2 py-0.5 text-xs font-medium rounded-full ${
+                isSuperAdmin 
+                  ? 'bg-red-100 text-red-700' 
+                  : 'bg-blue-100 text-blue-700'
+              }`}>
+                {isSuperAdmin ? 'Super Admin' : 'Admin'}
+              </span>
+            )}
           </div>
 
           {/* Desktop Navigation Links */}
@@ -148,6 +162,11 @@ const Navbar = () => {
                   {currentAdmin?.role === 'super_admin' && (
                     <>
                       <hr className="my-1" />
+                      <div className="px-4 py-1">
+                        <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                          Super Admin
+                        </span>
+                      </div>
                       <Link
                         to="/admin/manage-admins"
                         className={`flex items-center px-4 py-2 text-sm transition-colors ${
@@ -172,9 +191,34 @@ const Navbar = () => {
                         <UserPlusIcon className="h-4 w-4 mr-3" />
                         Create Admin Account
                       </Link>
+                      <Link
+                        to="/admin/settings"
+                        className={`flex items-center px-4 py-2 text-sm transition-colors ${
+                          location.pathname === '/admin/settings'
+                            ? 'bg-red-50 text-red-700 border-r-2 border-red-500'
+                            : 'text-gray-700 hover:bg-gray-100'
+                        }`}
+                        onClick={() => setShowAdminDropdown(false)}
+                      >
+                        <Cog6ToothIcon className="h-4 w-4 mr-3" />
+                        System Settings
+                      </Link>
+                      <Link
+                        to="/admin/audit-logs"
+                        className={`flex items-center px-4 py-2 text-sm transition-colors ${
+                          location.pathname === '/admin/audit-logs'
+                            ? 'bg-red-50 text-red-700 border-r-2 border-red-500'
+                            : 'text-gray-700 hover:bg-gray-100'
+                        }`}
+                        onClick={() => setShowAdminDropdown(false)}
+                      >
+                        <ClipboardDocumentListIcon className="h-4 w-4 mr-3" />
+                        Audit Logs
+                      </Link>
                     </>
                   )}
                   
+                  <hr className="my-1" />
                   <Link
                     to="/admin/reports-pdf"
                     className={`flex items-center px-4 py-2 text-sm transition-colors ${

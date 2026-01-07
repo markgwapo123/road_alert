@@ -5,8 +5,7 @@ const fs = require('fs');
 const { body, validationResult } = require('express-validator');
 const Report = require('../models/Report');
 const User = require('../models/User');
-const auth = require('../middleware/auth');
-const { canManageReports } = require('../middleware/roleAuth');
+const { auth, canManageReports, canDeleteReports, createAuditLog } = require('../middleware/roleAuth');
 const NotificationService = require('../services/NotificationService');
 
 const router = express.Router();
@@ -714,17 +713,30 @@ router.post('/:id/resolve', auth, upload.single('evidencePhoto'), async (req, re
 });
 
 // @route   DELETE /api/reports/:id
-// @desc    Delete report
-// @access  Private
-router.delete('/:id', auth, async (req, res) => {
+// @desc    Delete report (Super Admin only)
+// @access  Private - Super Admin
+router.delete('/:id', auth, canDeleteReports, async (req, res) => {
   try {
-    const report = await Report.findByIdAndDelete(req.params.id);
+    const report = await Report.findById(req.params.id);
 
     if (!report) {
       return res.status(404).json({
         error: 'Report not found'
       });
     }
+
+    // Store report data for audit log before deletion
+    const reportData = {
+      title: report.title,
+      description: report.description,
+      status: report.status,
+      location: report.location,
+      hazardType: report.hazardType,
+      reporter: report.reporter
+    };
+
+    // Delete the report
+    await Report.findByIdAndDelete(req.params.id);
 
     // Delete associated images
     if (report.images && report.images.length > 0) {
@@ -735,6 +747,13 @@ router.delete('/:id', auth, async (req, res) => {
         }
       });
     }
+
+    // Create audit log
+    await createAuditLog(req, 'DELETE_REPORT', 'reports', `Deleted report: ${reportData.title}`, {
+      targetType: 'Report',
+      targetId: req.params.id,
+      previousValues: reportData
+    });
 
     res.json({
       success: true,

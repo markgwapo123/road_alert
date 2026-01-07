@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useLocation, useSearchParams } from 'react-router-dom'
-import { MagnifyingGlassIcon, FunnelIcon } from '@heroicons/react/24/outline'
+import { MagnifyingGlassIcon, FunnelIcon, TrashIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline'
 import { reportsAPI } from '../services/api'
+import { useAuth } from '../context/AuthContext'
 import config from '../config/index.js'
 import EditReportModal from '../components/EditReportModal'
 import ResolveReportModal from '../components/ResolveReportModal'
@@ -9,6 +10,7 @@ import ResolveReportModal from '../components/ResolveReportModal'
 const ReportsManagement = () => {
   const location = useLocation()
   const [searchParams] = useSearchParams()
+  const { isSuperAdmin, canDeleteReports } = useAuth()
   
   const [searchTerm, setSearchTerm] = useState('')
   const [filterStatus, setFilterStatus] = useState('all')
@@ -20,6 +22,9 @@ const ReportsManagement = () => {
   const [actionLoading, setActionLoading] = useState(false)
   const [showSuccessModal, setShowSuccessModal] = useState(false)
   const [successMessage, setSuccessMessage] = useState('')
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [reportToDelete, setReportToDelete] = useState(null)
+  const [deleteLoading, setDeleteLoading] = useState(false)
   
   // Set initial filter from URL parameter
   useEffect(() => {
@@ -121,14 +126,36 @@ const ReportsManagement = () => {
     }
   }
 
+  // Delete report - Super Admin only
+  const confirmDeleteReport = (report) => {
+    if (!isSuperAdmin()) {
+      alert('Only Super Admins can delete reports.')
+      return
+    }
+    setReportToDelete(report)
+    setShowDeleteConfirm(true)
+  }
+
+  const cancelDeleteReport = () => {
+    setReportToDelete(null)
+    setShowDeleteConfirm(false)
+  }
+
   const handleDelete = async (reportId) => {
-    if (!window.confirm('Are you sure you want to delete this report? This action cannot be undone.')) return;
+    if (!isSuperAdmin()) {
+      alert('Only Super Admins can delete reports.')
+      return
+    }
     
-    setActionLoading(true)
+    setDeleteLoading(true)
     try {
       console.log('🗑️ Deleting report with ID:', reportId);
       await reportsAPI.deleteReport(reportId);
       await fetchReports();
+      
+      // Close confirmation modal
+      setShowDeleteConfirm(false)
+      setReportToDelete(null)
       
       // Show success modal
       setSuccessMessage('🗑️ Report deleted successfully!')
@@ -140,7 +167,7 @@ const ReportsManagement = () => {
       console.error('❌ Error response:', error.response?.data);
       alert('Failed to delete report: ' + (error.response?.data?.error || error.message));
     } finally {
-      setActionLoading(false)
+      setDeleteLoading(false)
     }
   }
 
@@ -511,7 +538,7 @@ const ReportsManagement = () => {
                 {report.status === 'pending' ? (
                   <div className="space-y-3">
                     <p className="text-xs font-bold text-gray-700 text-center">Action Required</p>
-                    <div className="grid grid-cols-4 gap-2">
+                    <div className={`grid ${isSuperAdmin() ? 'grid-cols-4' : 'grid-cols-3'} gap-2`}>
                       <button
                         onClick={() => handleEdit(report)}
                         className="px-3 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 transition-colors font-medium text-center flex flex-col items-center justify-center"
@@ -533,13 +560,15 @@ const ReportsManagement = () => {
                         <span className="text-base mb-1">✗</span>
                         <span className="text-xs">Reject</span>
                       </button>
-                      <button
-                        onClick={() => handleDelete(report._id)}
-                        className="px-3 py-2 bg-gray-600 text-white text-sm rounded-lg hover:bg-gray-700 focus:ring-2 focus:ring-gray-500 focus:ring-offset-1 transition-colors font-medium text-center flex flex-col items-center justify-center"
-                      >
-                        <span className="text-base mb-1">🗑️</span>
-                        <span className="text-xs">Delete</span>
-                      </button>
+                      {isSuperAdmin() && (
+                        <button
+                          onClick={() => confirmDeleteReport(report)}
+                          className="px-3 py-2 bg-gray-600 text-white text-sm rounded-lg hover:bg-gray-700 focus:ring-2 focus:ring-gray-500 focus:ring-offset-1 transition-colors font-medium text-center flex flex-col items-center justify-center"
+                        >
+                          <TrashIcon className="h-4 w-4 mb-1" />
+                          <span className="text-xs">Delete</span>
+                        </button>
+                      )}
                     </div>
                   </div>
                 ) : (
@@ -569,12 +598,14 @@ const ReportsManagement = () => {
                       >
                         Edit
                       </button>
-                      <button
-                        onClick={() => handleDelete(report._id)}
-                        className="px-3 py-1.5 bg-gray-600 text-white text-xs rounded-md hover:bg-gray-700 transition-colors"
-                      >
-                        Delete
-                      </button>
+                      {isSuperAdmin() && (
+                        <button
+                          onClick={() => confirmDeleteReport(report)}
+                          className="px-3 py-1.5 bg-gray-600 text-white text-xs rounded-md hover:bg-gray-700 transition-colors"
+                        >
+                          Delete
+                        </button>
+                      )}
                     </div>
                   </div>
                 )}
@@ -635,6 +666,69 @@ const ReportsManagement = () => {
             <p className="text-sm text-gray-600">
               {successMessage}
             </p>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal - Super Admin Only */}
+      {showDeleteConfirm && reportToDelete && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999]">
+          <div className="bg-white rounded-lg p-6 max-w-md mx-4 w-full">
+            <div className="flex items-start space-x-4">
+              <div className="flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100">
+                <ExclamationTriangleIcon className="h-6 w-6 text-red-600" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Delete Report
+                </h3>
+                <div className="mt-2">
+                  <p className="text-sm text-gray-600">
+                    Are you sure you want to permanently delete this report?
+                  </p>
+                  <div className="mt-3 p-3 bg-gray-50 rounded-lg">
+                    <p className="text-sm font-medium text-gray-900">{reportToDelete.title}</p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Status: {reportToDelete.status} • Location: {reportToDelete.location?.barangay || 'Unknown'}
+                    </p>
+                  </div>
+                  <p className="text-xs text-red-600 mt-3 font-medium">
+                    ⚠️ This action cannot be undone.
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="mt-6 flex justify-end space-x-3">
+              <button
+                type="button"
+                onClick={cancelDeleteReport}
+                disabled={deleteLoading}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDelete(reportToDelete._id)}
+                disabled={deleteLoading}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 flex items-center"
+              >
+                {deleteLoading ? (
+                  <>
+                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Deleting...
+                  </>
+                ) : (
+                  <>
+                    <TrashIcon className="h-4 w-4 mr-2" />
+                    Delete Report
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       )}

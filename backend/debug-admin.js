@@ -8,21 +8,19 @@ const debugAdmin = async () => {
     await mongoose.connect(process.env.MONGODB_URI);
     console.log('✅ Connected to MongoDB');
 
-    // Find the dp-admin user
-    const admin = await Admin.findOne({ username: 'dp-admin' });
+    // Find all admins
+    const admins = await Admin.find({});
     
-    if (admin) {
-      console.log('\n👤 Found dp-admin:');
+    console.log('\n👤 All admins:');
+    for (const admin of admins) {
+      console.log('-----------------------------------');
       console.log('  - ID:', admin._id);
       console.log('  - Username:', admin.username);
       console.log('  - Role:', admin.role);
-      console.log('  - Permissions:', admin.permissions);
-      console.log('  - Permissions type:', typeof admin.permissions);
-      console.log('  - Permissions array?', Array.isArray(admin.permissions));
+      console.log('  - Role type:', typeof admin.role);
+      console.log('  - Role === "super_admin":', admin.role === 'super_admin');
       console.log('  - Is Active:', admin.isActive);
-      console.log('  - Raw document:', JSON.stringify(admin.toJSON(), null, 2));
-    } else {
-      console.log('❌ dp-admin not found');
+      console.log('  - Permissions:', admin.permissions);
     }
 
   } catch (error) {
