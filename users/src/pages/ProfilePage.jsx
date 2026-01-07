@@ -4,621 +4,461 @@ import config from '../config/index.js';
 import ChangePassword from './ChangePassword.jsx';
 
 const ProfilePage = ({ onBack, onLogout, onUserUpdate }) => {
+  // User data states
   const [user, setUser] = useState(null);
-  // Verification system removed
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [editMode, setEditMode] = useState(false);
-  const [formData, setFormData] = useState({
-    username: '',
-    email: ''
+  const [stats, setStats] = useState({
+    totalReports: 0,
+    pendingReports: 0,
+    verifiedReports: 0,
+    resolvedReports: 0,
+    rejectedReports: 0
   });
-  const [profileImage, setProfileImage] = useState(null);
-  const [uploadSuccess, setUploadSuccess] = useState(false);
+  
+  // UI states
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
-  const [showUploadConfirm, setShowUploadConfirm] = useState(false);
+  const [activeSection, setActiveSection] = useState('view'); // 'view' or 'edit'
+  const [showChangePassword, setShowChangePassword] = useState(false);
+  
+  // Form states
+  const [formData, setFormData] = useState({
+    fullName: '',
+    phone: '',
+    notificationsEnabled: true
+  });
+  
+  // Profile image states
+  const [profileImage, setProfileImage] = useState(null);
   const [selectedFile, setSelectedFile] = useState(null);
   const [previewImage, setPreviewImage] = useState(null);
-  const [showGallery, setShowGallery] = useState(false);
-  const [gallery, setGallery] = useState([]);
-  const [showChangePassword, setShowChangePassword] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
-  const handleImageChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      // Create preview URL
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setPreviewImage(e.target.result);
-      };
-      reader.readAsDataURL(file);
-      
-      setSelectedFile(file);
-      setShowUploadConfirm(true);
-    }
-    // Reset the input value so the same file can be selected again
-    e.target.value = '';
-  };
-
-  const handleConfirmUpload = async () => {
-    if (selectedFile) {
-      const formData = new FormData();
-      formData.append('image', selectedFile);
-      try {
-        const res = await axios.post(`${config.API_BASE_URL}/users/profile-image`, formData, {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`,
-            'Content-Type': 'multipart/form-data'
-          }
-        });
-        setProfileImage(`${config.BACKEND_URL}${res.data.imageUrl}`);
-        setSuccessMessage('Profile picture updated successfully!');
-        setUploadSuccess(true);
-        setTimeout(() => {
-          setUploadSuccess(false);
-          setSuccessMessage('');
-        }, 3000);
-        setShowUploadConfirm(false);
-        setSelectedFile(null);
-        setPreviewImage(null);
-        
-        // Refresh user data in parent component
-        if (onUserUpdate) {
-          onUserUpdate();
-        }
-      } catch (err) {
-        setError('Failed to upload image');
-        console.error('Image upload error:', err);
-        setShowUploadConfirm(false);
-        setSelectedFile(null);
-        setPreviewImage(null);
-      }
-    }
-  };
-
-  const handleCancelUpload = () => {
-    setShowUploadConfirm(false);
-    setSelectedFile(null);
-    setPreviewImage(null);
-  };
-
-  const handleRemoveProfilePicture = async () => {
-    if (!profileImage) return;
-    
-    const confirmed = window.confirm('Are you sure you want to remove your profile picture?');
-    if (confirmed) {
-      try {
-        await axios.delete(`${config.API_BASE_URL}/users/profile-image`, {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
-        });
-        setProfileImage(null);
-        setSuccessMessage('Profile picture removed successfully!');
-        setUploadSuccess(true);
-        setTimeout(() => {
-          setUploadSuccess(false);
-          setSuccessMessage('');
-        }, 3000);
-        
-        // Refresh user data in parent component
-        if (onUserUpdate) {
-          onUserUpdate();
-        }
-      } catch (err) {
-        setError('Failed to remove profile picture');
-        console.error('Remove profile picture error:', err);
-      }
-    }
-  };
-
-  const handleViewGallery = () => {
-    setShowGallery(true);
-  };
-
-  const handleCloseGallery = () => {
-    setShowGallery(false);
-  };
-
-  const handleSetCurrentPicture = async (imageUrl) => {
-    try {
-      await axios.post(`${config.API_BASE_URL}/users/profile-gallery/set-current`, 
-        { imageUrl },
-        {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
-        }
-      );
-      
-      setProfileImage(`${config.BACKEND_URL}${imageUrl}`);
-      setSuccessMessage('Profile picture updated successfully!');
-      setUploadSuccess(true);
-      setTimeout(() => {
-        setUploadSuccess(false);
-        setSuccessMessage('');
-      }, 3000);
-      
-      // Update gallery state
-      setGallery(prev => prev.map(item => ({
-        ...item,
-        isCurrent: item.imageUrl === imageUrl
-      })));
-      
-      setShowGallery(false);
-      
-      // Refresh user data in parent component
-      if (onUserUpdate) {
-        onUserUpdate();
-      }
-    } catch (err) {
-      setError('Failed to update profile picture');
-      console.error('Set current picture error:', err);
-    }
-  };
-
-  const handleDeleteFromGallery = async (imageUrl) => {
-    const confirmed = window.confirm('Are you sure you want to permanently delete this picture from your gallery?');
-    if (confirmed) {
-      try {
-        const encodedUrl = encodeURIComponent(imageUrl.substring(1)); // Remove leading slash and encode
-        await axios.delete(`${config.API_BASE_URL}/users/profile-gallery/${encodedUrl}`, {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
-        });
-        
-        // Update gallery state
-        setGallery(prev => prev.filter(item => item.imageUrl !== imageUrl));
-        
-        // If deleted image was current, clear profile image
-        if (profileImage && profileImage.includes(imageUrl)) {
-          setProfileImage(null);
-        }
-        
-        setSuccessMessage('Picture deleted from gallery successfully!');
-        setUploadSuccess(true);
-        setTimeout(() => {
-          setUploadSuccess(false);
-          setSuccessMessage('');
-        }, 3000);
-        
-      } catch (err) {
-        setError('Failed to delete picture from gallery');
-        console.error('Delete from gallery error:', err);
-      }
-    }
-  };
-
+  // Fetch user profile and stats
   useEffect(() => {
-    const fetchProfile = async () => {
+    const fetchData = async () => {
       setLoading(true);
       setError('');
       try {
-        const res = await axios.get(`${config.API_BASE_URL}/users/me`, {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-        });
-        setUser(res.data.data);
-        setFormData({
-          username: res.data.data.username,
-          email: res.data.data.email
-        });
+        const token = localStorage.getItem('token');
+        const headers = { 'Authorization': `Bearer ${token}` };
         
-        // Set existing profile image if available
-        if (res.data.data.profileImage) {
-          setProfileImage(`${config.BACKEND_URL}${res.data.data.profileImage}`);
+        // Fetch profile and stats in parallel
+        const [profileRes, statsRes] = await Promise.all([
+          axios.get(`${config.API_BASE_URL}/users/me`, { headers }),
+          axios.get(`${config.API_BASE_URL}/users/me/stats`, { headers }).catch(() => ({ data: { success: false } }))
+        ]);
+        
+        if (profileRes.data.success) {
+          const userData = profileRes.data.data;
+          setUser(userData);
+          setFormData({
+            fullName: userData.profile?.fullName || userData.username || '',
+            phone: userData.profile?.phone || '',
+            notificationsEnabled: userData.profile?.notificationsEnabled !== false
+          });
+          
+          if (userData.profileImage) {
+            setProfileImage(`${config.BACKEND_URL}${userData.profileImage}`);
+          }
         }
-
-        // Set gallery data
-        if (res.data.data.profileGallery) {
-          setGallery(res.data.data.profileGallery);
+        
+        if (statsRes.data?.success) {
+          setStats(statsRes.data.data);
         }
-
-        // No verification status fetch
       } catch (err) {
         setError('Failed to load profile');
         console.error('Profile fetch error:', err);
       }
       setLoading(false);
     };
-    fetchProfile();
+    
+    fetchData();
   }, []);
 
+  // Handle form input changes
   const handleInputChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
+    const { name, value, type, checked } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value
+    }));
   };
 
-  const handleSaveProfile = async () => {
+  // Handle image selection
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        setError('Image size must be less than 5MB');
+        return;
+      }
+      
+      const reader = new FileReader();
+      reader.onload = (e) => setPreviewImage(e.target.result);
+      reader.readAsDataURL(file);
+      setSelectedFile(file);
+    }
+    e.target.value = '';
+  };
+
+  // Upload profile image
+  const handleUploadImage = async () => {
+    if (!selectedFile) return;
+    
+    setUploadingImage(true);
+    setError('');
+    
     try {
-      const res = await axios.put(`${config.API_BASE_URL}/auth/profile`, formData, {
+      const formDataUpload = new FormData();
+      formDataUpload.append('image', selectedFile);
+      
+      const res = await axios.post(`${config.API_BASE_URL}/users/profile-image`, formDataUpload, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      
+      setProfileImage(`${config.BACKEND_URL}${res.data.imageUrl}`);
+      setSelectedFile(null);
+      setPreviewImage(null);
+      showSuccess('Profile picture updated!');
+      
+      if (onUserUpdate) onUserUpdate();
+    } catch (err) {
+      setError('Failed to upload image');
+      console.error('Image upload error:', err);
+    }
+    setUploadingImage(false);
+  };
+
+  // Cancel image selection
+  const handleCancelImage = () => {
+    setSelectedFile(null);
+    setPreviewImage(null);
+  };
+
+  // Remove profile image
+  const handleRemoveImage = async () => {
+    if (!profileImage) return;
+    
+    if (!window.confirm('Remove your profile picture?')) return;
+    
+    try {
+      await axios.delete(`${config.API_BASE_URL}/users/profile-image`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
-      setUser(res.data);
-      setEditMode(false);
+      
+      setProfileImage(null);
+      showSuccess('Profile picture removed!');
+      if (onUserUpdate) onUserUpdate();
     } catch (err) {
-      setError('Failed to update profile');
-      console.error('Profile update error:', err);
+      setError('Failed to remove profile picture');
     }
   };
 
-  const status = { text: 'Member Account', icon: '👤', className: 'status-member', description: 'Standard account' };
+  // Save profile changes
+  const handleSaveProfile = async () => {
+    setSaving(true);
+    setError('');
+    
+    try {
+      const res = await axios.put(`${config.API_BASE_URL}/users/me`, {
+        profile: {
+          fullName: formData.fullName,
+          phone: formData.phone,
+          notificationsEnabled: formData.notificationsEnabled
+        }
+      }, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      
+      if (res.data.success) {
+        setUser(res.data.data);
+        showSuccess('Profile updated successfully!');
+        setActiveSection('view');
+        if (onUserUpdate) onUserUpdate();
+      }
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to update profile');
+    }
+    setSaving(false);
+  };
 
+  // Show success message temporarily
+  const showSuccess = (message) => {
+    setSuccessMessage(message);
+    setTimeout(() => setSuccessMessage(''), 3000);
+  };
+
+  // Get user role display
+  const getUserRole = () => {
+    if (user?.role === 'admin' || user?.type === 'admin') return { label: 'Admin', icon: '👑', color: '#f59e0b' };
+    return { label: 'Citizen', icon: '👤', color: '#3b82f6' };
+  };
+
+  // Loading state
   if (loading) {
     return (
-      <div className="profile-page">
-        <div className="profile-container">
-          <div className="profile-loading">
-            <div className="loading-spinner"></div>
-            <p>Loading your profile...</p>
-          </div>
+      <div className="mvp-profile-page">
+        <div className="mvp-profile-loading">
+          <div className="loading-spinner"></div>
+          <p>Loading profile...</p>
         </div>
       </div>
     );
   }
 
+  // Error state (no user)
   if (error && !user) {
     return (
-      <div className="profile-page">
-        <div className="profile-container">
-          <div className="profile-error">
-            <span className="error-icon">⚠️</span>
-            <h2>Error Loading Profile</h2>
-            <p>{error}</p>
-            <button onClick={onBack} className="back-btn">
-              ← Back to Home
-            </button>
-          </div>
+      <div className="mvp-profile-page">
+        <div className="mvp-profile-error">
+          <span className="error-icon">⚠️</span>
+          <h2>Error Loading Profile</h2>
+          <p>{error}</p>
+          <button onClick={onBack} className="mvp-btn mvp-btn-secondary">← Back</button>
         </div>
       </div>
     );
   }
 
-  // Show Change Password component if requested
+  // Change password view
   if (showChangePassword) {
-    return (
-      <ChangePassword 
-        onBack={() => setShowChangePassword(false)}
-        onLogout={onLogout}
-      />
-    );
+    return <ChangePassword onBack={() => setShowChangePassword(false)} onLogout={onLogout} />;
   }
 
+  const role = getUserRole();
+
   return (
-    <div className="profile-page">
-      <div className="profile-container">
-        {/* Facebook-style Profile Header */}
-        <div className="facebook-profile-header">
-          {/* Profile Info Section */}
-          <div className="profile-info-section">
-            <div className="profile-main-info">
-              <div className="profile-picture-container">
-                {profileImage ? (
-                  <img 
-                    src={profileImage} 
-                    alt="Profile" 
-                    className="facebook-profile-image"
-                    onError={(e) => {
-                      console.log('Profile page image failed to load:', e.target.src);
-                      e.target.style.display = 'none';
-                      e.target.parentElement.innerHTML = '<div className="default-profile-icon">👤</div>';
-                    }}
-                  />
-                ) : (
-                  <div className="default-profile-icon">👤</div>
-                )}
-                <div className="profile-picture-upload">
-                  <input
-                    type="file"
-                    id="profileImageInput"
-                    accept="image/*"
-                    onChange={handleImageChange}
-                    style={{ display: 'none' }}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => document.getElementById('profileImageInput').click()}
-                    className="upload-btn"
-                    title="Change profile picture"
-                  >
-                    📷
-                  </button>
-                  {profileImage && (
-                    <button
-                      type="button"
-                      onClick={handleRemoveProfilePicture}
-                      className="remove-btn"
-                      title="Remove profile picture"
-                    >
-                      🗑️
-                    </button>
-                  )}
+    <div className="mvp-profile-page">
+      <div className="mvp-profile-container">
+        
+        {/* Success Message */}
+        {successMessage && (
+          <div className="mvp-success-toast">
+            <span>✓</span> {successMessage}
+          </div>
+        )}
+
+        {/* Error Message */}
+        {error && (
+          <div className="mvp-error-toast">
+            <span>⚠️</span> {error}
+            <button onClick={() => setError('')}>×</button>
+          </div>
+        )}
+
+        {/* ==================== VIEW PROFILE SECTION ==================== */}
+        <section className="mvp-profile-section mvp-view-section">
+          <div className="mvp-profile-header">
+            {/* Avatar */}
+            <div className="mvp-avatar-container">
+              {profileImage ? (
+                <img src={profileImage} alt="Profile" className="mvp-avatar" />
+              ) : (
+                <div className="mvp-avatar mvp-avatar-default">
+                  <span>👤</span>
                 </div>
-              </div>
-              
-              <div className="profile-details">
-                <h1 className="profile-name">{user?.username}</h1>
-                <div className="profile-status">
-                  <span className={`status-badge ${status.className}`}>
-                    {status.icon} {status.text}
-                  </span>
-                </div>
+              )}
+            </div>
+
+            {/* User Info */}
+            <div className="mvp-user-info">
+              <h1 className="mvp-user-name">
+                {user?.profile?.fullName || user?.username || 'User'}
+              </h1>
+              <p className="mvp-user-email">{user?.email}</p>
+              {user?.profile?.phone && (
+                <p className="mvp-user-phone">📱 {user.profile.phone}</p>
+              )}
+              <div className="mvp-user-meta">
+                <span className="mvp-role-badge" style={{ backgroundColor: role.color }}>
+                  {role.icon} {role.label}
+                </span>
+                <span className="mvp-join-date">
+                  📅 Joined {user?.createdAt ? new Date(user.createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : 'Unknown'}
+                </span>
               </div>
             </div>
-            
-            {gallery.length > 0 && (
-              <div className="profile-actions">
-                <button
-                  type="button"
-                  onClick={handleViewGallery}
-                  className="gallery-btn"
-                  title="View profile picture gallery"
-                >
-                  🖼️ View Gallery ({gallery.length})
-                </button>
+          </div>
+
+          {/* Report Summary Stats */}
+          <div className="mvp-stats-section">
+            <h3 className="mvp-section-title">📊 Report Summary</h3>
+            <div className="mvp-stats-grid">
+              <div className="mvp-stat-card">
+                <span className="mvp-stat-number">{stats.totalReports}</span>
+                <span className="mvp-stat-label">Total Reports</span>
               </div>
+              <div className="mvp-stat-card mvp-stat-pending">
+                <span className="mvp-stat-number">{stats.pendingReports}</span>
+                <span className="mvp-stat-label">Pending</span>
+              </div>
+              <div className="mvp-stat-card mvp-stat-resolved">
+                <span className="mvp-stat-number">{stats.resolvedReports}</span>
+                <span className="mvp-stat-label">Resolved</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Section Divider */}
+        <div className="mvp-section-divider"></div>
+
+        {/* ==================== EDIT PROFILE SECTION ==================== */}
+        <section className="mvp-profile-section mvp-edit-section">
+          <div className="mvp-section-header">
+            <h2 className="mvp-section-title">✏️ Edit Profile</h2>
+            {activeSection === 'edit' && (
+              <button 
+                onClick={() => setActiveSection('view')} 
+                className="mvp-btn mvp-btn-text"
+              >
+                Cancel
+              </button>
             )}
           </div>
-        </div>
 
-        {/* Upload Success Message */}
-        {uploadSuccess && (
-          <div className="upload-success-message">
-            ✅ {successMessage}
-          </div>
-        )}
-
-        {/* Upload Confirmation Dialog */}
-        {showUploadConfirm && (
-          <div className="upload-confirm-overlay">
-            <div className="upload-confirm-dialog">
-              <div className="confirm-header">
-                <h3>Confirm Profile Picture Update</h3>
-                <button 
-                  className="close-btn"
-                  onClick={handleCancelUpload}
-                >
-                  ✕
-                </button>
-              </div>
-              
-              <div className="confirm-content">
-                <div className="image-preview-section">
-                  <div className="current-image">
-                    <h4>Current</h4>
-                    {profileImage ? (
-                      <img 
-                        src={profileImage} 
-                        alt="Current Profile"
-                        onError={(e) => {
-                          console.log('Current profile image failed to load:', e.target.src);
-                          e.target.style.display = 'none';
-                          e.target.parentElement.innerHTML = '<div className="default-profile-icon">👤</div>';
-                        }}
-                      />
+          {activeSection === 'view' ? (
+            /* View Mode - Show Edit Button */
+            <button 
+              onClick={() => setActiveSection('edit')} 
+              className="mvp-btn mvp-btn-primary mvp-btn-block"
+            >
+              ✏️ Edit Profile Information
+            </button>
+          ) : (
+            /* Edit Mode - Show Form */
+            <div className="mvp-edit-form">
+              {/* Profile Picture Upload */}
+              <div className="mvp-form-group">
+                <label className="mvp-form-label">Profile Picture</label>
+                <div className="mvp-image-upload">
+                  <div className="mvp-image-preview">
+                    {previewImage ? (
+                      <img src={previewImage} alt="Preview" />
+                    ) : profileImage ? (
+                      <img src={profileImage} alt="Current" />
                     ) : (
-                      <div className="default-profile-icon">👤</div>
+                      <div className="mvp-image-placeholder">👤</div>
                     )}
                   </div>
-                  
-                  <div className="arrow-icon">→</div>
-                  
-                  <div className="new-image">
-                    <h4>New</h4>
-                    {previewImage && (
-                      <img src={previewImage} alt="New Profile Preview" />
+                  <div className="mvp-image-actions">
+                    {previewImage ? (
+                      <>
+                        <button 
+                          onClick={handleUploadImage} 
+                          className="mvp-btn mvp-btn-success mvp-btn-sm"
+                          disabled={uploadingImage}
+                        >
+                          {uploadingImage ? 'Uploading...' : '✓ Save'}
+                        </button>
+                        <button 
+                          onClick={handleCancelImage} 
+                          className="mvp-btn mvp-btn-secondary mvp-btn-sm"
+                        >
+                          Cancel
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <label className="mvp-btn mvp-btn-secondary mvp-btn-sm">
+                          📷 Change
+                          <input 
+                            type="file" 
+                            accept="image/*" 
+                            onChange={handleImageChange}
+                            style={{ display: 'none' }}
+                          />
+                        </label>
+                        {profileImage && (
+                          <button 
+                            onClick={handleRemoveImage} 
+                            className="mvp-btn mvp-btn-danger mvp-btn-sm"
+                          >
+                            🗑️ Remove
+                          </button>
+                        )}
+                      </>
                     )}
                   </div>
                 </div>
-                
-                <p className="confirm-message">
-                  Are you sure you want to update your profile picture?
-                </p>
               </div>
-              
-              <div className="confirm-actions">
-                <button 
-                  className="cancel-btn"
-                  onClick={handleCancelUpload}
-                >
-                  Cancel
-                </button>
-                <button 
-                  className="confirm-btn"
-                  onClick={handleConfirmUpload}
-                >
-                  Update Picture
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
 
-        {/* Profile Picture Gallery Modal */}
-        {showGallery && (
-          <div className="gallery-overlay">
-            <div className="gallery-modal">
-              <div className="gallery-header">
-                <h3>Profile Picture Gallery</h3>
-                <button 
-                  className="close-btn"
-                  onClick={handleCloseGallery}
-                >
-                  ✕
-                </button>
+              {/* Full Name */}
+              <div className="mvp-form-group">
+                <label className="mvp-form-label">Full Name</label>
+                <input
+                  type="text"
+                  name="fullName"
+                  value={formData.fullName}
+                  onChange={handleInputChange}
+                  className="mvp-form-input"
+                  placeholder="Enter your full name"
+                />
               </div>
-              
-              <div className="gallery-content">
-                {gallery.length === 0 ? (
-                  <div className="empty-gallery">
-                    <p>No pictures in your gallery yet.</p>
-                  </div>
-                ) : (
-                  <div className="gallery-grid">
-                    {gallery.map((item, index) => (
-                      <div key={index} className="gallery-item">
-                        <div className="gallery-image-container">
-                          <img 
-                            src={`${config.BACKEND_URL}${item.imageUrl}`} 
-                            alt={`Profile ${index + 1}`}
-                            className="gallery-image"
-                          />
-                          {item.isCurrent && (
-                            <div className="current-badge">Current</div>
-                          )}
-                        </div>
-                        
-                        <div className="gallery-item-info">
-                          <p className="upload-date">
-                            {new Date(item.uploadedAt).toLocaleDateString()}
-                          </p>
-                          
-                          <div className="gallery-actions">
-                            {!item.isCurrent && (
-                              <button
-                                onClick={() => handleSetCurrentPicture(item.imageUrl)}
-                                className="set-current-btn"
-                                title="Set as current profile picture"
-                              >
-                                Set Current
-                              </button>
-                            )}
-                            <button
-                              onClick={() => handleDeleteFromGallery(item.imageUrl)}
-                              className="delete-gallery-btn"
-                              title="Delete from gallery"
-                            >
-                              🗑️
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
 
-        {/* Profile Content */}
-        <div className="profile-content">
-          {/* User Info Card */}
-          <div className="profile-card">
-            <div className="card-header">
-              <h2>
-                Account Information
-                {/* Verification badge removed */}
-              </h2>
+              {/* Contact Number */}
+              <div className="mvp-form-group">
+                <label className="mvp-form-label">Contact Number</label>
+                <input
+                  type="tel"
+                  name="phone"
+                  value={formData.phone}
+                  onChange={handleInputChange}
+                  className="mvp-form-input"
+                  placeholder="e.g. +63 912 345 6789"
+                />
+              </div>
+
+              {/* Notification Toggle */}
+              <div className="mvp-form-group mvp-toggle-group">
+                <div className="mvp-toggle-info">
+                  <label className="mvp-form-label">🔔 Notifications</label>
+                  <span className="mvp-toggle-desc">Receive alerts about your reports</span>
+                </div>
+                <label className="mvp-toggle">
+                  <input
+                    type="checkbox"
+                    name="notificationsEnabled"
+                    checked={formData.notificationsEnabled}
+                    onChange={handleInputChange}
+                  />
+                  <span className="mvp-toggle-slider"></span>
+                </label>
+              </div>
+
+              {/* Save Button */}
               <button 
-                onClick={() => setEditMode(!editMode)}
-                className="edit-btn"
+                onClick={handleSaveProfile}
+                className="mvp-btn mvp-btn-primary mvp-btn-block"
+                disabled={saving}
               >
-                {editMode ? '✕ Cancel' : '✏️ Edit'}
+                {saving ? 'Saving...' : '💾 Save Changes'}
               </button>
             </div>
+          )}
 
-            <div className="profile-form">
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Username</label>
-                  {editMode ? (
-                    <input
-                      type="text"
-                      name="username"
-                      value={formData.username}
-                      onChange={handleInputChange}
-                    />
-                  ) : (
-                    <div className="form-display">{user?.username}</div>
-                  )}
-                </div>
+          {/* Change Password Button */}
+          <button 
+            onClick={() => setShowChangePassword(true)}
+            className="mvp-btn mvp-btn-outline mvp-btn-block"
+            style={{ marginTop: '12px' }}
+          >
+            🔒 Change Password
+          </button>
+        </section>
 
-                <div className="form-group">
-                  <label>Email Address</label>
-                  {editMode ? (
-                    <input
-                      type="email"
-                      name="email"
-                      value={formData.email}
-                      onChange={handleInputChange}
-                    />
-                  ) : (
-                    <div className="form-display">{user?.email}</div>
-                  )}
-                </div>
-              </div>
+        {/* ==================== ACCOUNT ACTIONS ==================== */}
+        <section className="mvp-profile-section mvp-actions-section">
+          <button onClick={onLogout} className="mvp-btn mvp-btn-danger mvp-btn-block">
+            🚪 Logout
+          </button>
+        </section>
 
-              <div className="form-group">
-                <label>Account Type</label>
-                <div className="form-display">
-                  <span className="account-type">
-                    {user?.type === 'admin' ? '👑 Administrator' : '👤 Regular User'}
-                  </span>
-                </div>
-              </div>
-
-              <div className="form-group">
-                <label>Member Since</label>
-                <div className="form-display">
-                  {user?.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'Unknown'}
-                </div>
-              </div>
-
-              {/* Add verification data if user is verified */}
-              {/* Verified information section removed */}
-
-              {editMode && (
-                <div className="form-actions">
-                  <button onClick={handleSaveProfile} className="save-btn">
-                    💾 Save Changes
-                  </button>
-                  <button onClick={() => setEditMode(false)} className="cancel-btn">
-                    Cancel
-                  </button>
-                </div>
-              )}
-
-              {error && (
-                <div className="error-message">
-                  ⚠️ {error}
-                </div>
-              )}
-
-              {/* Account Actions Card - moved below verified info */}
-              <div className="actions-card">
-                <div className="card-header">
-                  <h2>Account Actions</h2>
-                </div>
-
-                <div className="actions-grid">
-                  <button 
-                    className="action-item change-password" 
-                    onClick={() => setShowChangePassword(true)}
-                  >
-                    <span className="action-icon">🔒</span>
-                    <div className="action-info">
-                      <h3>Change Password</h3>
-                      <p>Update your account password</p>
-                    </div>
-                  </button>
-
-                  <button onClick={onLogout} className="action-item logout-action">
-                    <span className="action-icon">🚪</span>
-                    <div className="action-info">
-                      <h3>Logout</h3>
-                      <p>Sign out of your account</p>
-                    </div>
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Verification status card removed */}
-        </div>
       </div>
     </div>
   );

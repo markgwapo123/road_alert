@@ -5,6 +5,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const User = require('../models/User');
+const Report = require('../models/Report');
 const userAuth = require('../middleware/userAuth');
 
 const router = express.Router();
@@ -61,6 +62,42 @@ router.get('/me', userAuth, async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Server error while fetching profile'
+    });
+  }
+});
+
+// @route   GET /api/users/me/stats
+// @desc    Get current user's report statistics
+// @access  Private
+router.get('/me/stats', userAuth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    
+    // Get report counts by status
+    const [totalReports, pendingReports, verifiedReports, resolvedReports, rejectedReports] = await Promise.all([
+      Report.countDocuments({ 'reportedBy.id': userId }),
+      Report.countDocuments({ 'reportedBy.id': userId, status: 'pending' }),
+      Report.countDocuments({ 'reportedBy.id': userId, status: 'verified' }),
+      Report.countDocuments({ 'reportedBy.id': userId, status: 'resolved' }),
+      Report.countDocuments({ 'reportedBy.id': userId, status: 'rejected' })
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        totalReports,
+        pendingReports,
+        verifiedReports,
+        resolvedReports,
+        rejectedReports
+      }
+    });
+
+  } catch (error) {
+    console.error('Get user stats error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Server error while fetching statistics'
     });
   }
 });
