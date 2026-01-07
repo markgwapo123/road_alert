@@ -136,22 +136,10 @@ systemSettingsSchema.statics.initializeDefaults = async function() {
     { key: 'map_style', value: 'streets', category: 'map', description: 'Map style (streets/satellite/dark)', dataType: 'string', isPublic: true },
     { key: 'map_cluster_radius', value: 50, category: 'map', description: 'Marker cluster radius in pixels', dataType: 'number', isPublic: true },
     
-    // ==================== NOTIFICATION SETTINGS ====================
-    { key: 'notifications_enabled', value: true, category: 'notifications', description: 'Enable push notifications globally', dataType: 'boolean', isPublic: true },
-    { key: 'email_notifications', value: true, category: 'notifications', description: 'Enable email notifications', dataType: 'boolean', isPublic: true },
-    { key: 'sms_notifications', value: false, category: 'notifications', description: 'Enable SMS notifications', dataType: 'boolean', isPublic: true },
-    { key: 'push_notifications', value: true, category: 'notifications', description: 'Enable browser push notifications', dataType: 'boolean', isPublic: true },
-    { key: 'notification_frequency', value: 'immediate', category: 'notifications', description: 'Notification frequency (immediate/hourly/daily)', dataType: 'string', isPublic: true },
-    { key: 'notification_radius_km', value: 5, category: 'notifications', description: 'Radius for nearby report notifications (km)', dataType: 'number', isPublic: true },
-    
     // ==================== REPORT SETTINGS ====================
     { key: 'max_reports_per_day', value: 10, category: 'reports', description: 'Maximum reports a user can submit per day', dataType: 'number', isPublic: true },
     { key: 'require_image', value: true, category: 'reports', description: 'Require at least one image for reports', dataType: 'boolean', isPublic: true },
     { key: 'require_location', value: true, category: 'reports', description: 'Require GPS location for reports', dataType: 'boolean', isPublic: true },
-    { key: 'max_images_per_report', value: 5, category: 'reports', description: 'Maximum images per report', dataType: 'number', isPublic: true },
-    { key: 'auto_verify_threshold', value: 5, category: 'reports', description: 'Upvotes needed to auto-verify a report', dataType: 'number', isPublic: false },
-    { key: 'report_expiry_days', value: 30, category: 'reports', description: 'Days until reports auto-expire', dataType: 'number', isPublic: true },
-    { key: 'allow_anonymous_reports', value: false, category: 'reports', description: 'Allow anonymous report submissions', dataType: 'boolean', isPublic: true },
     
     // ==================== USER SETTINGS ====================
     { key: 'allow_user_registration', value: true, category: 'users', description: 'Allow new user registrations', dataType: 'boolean', isPublic: true },
@@ -162,14 +150,32 @@ systemSettingsSchema.statics.initializeDefaults = async function() {
     { key: 'lockout_duration_minutes', value: 30, category: 'users', description: 'Account lockout duration in minutes', dataType: 'number', isPublic: false },
     
     // ==================== SECURITY SETTINGS ====================
-    { key: 'two_factor_auth', value: false, category: 'security', description: 'Enable two-factor authentication', dataType: 'boolean', isPublic: true },
     { key: 'require_strong_passwords', value: true, category: 'security', description: 'Require strong passwords', dataType: 'boolean', isPublic: true },
     { key: 'rate_limiting', value: true, category: 'security', description: 'Enable rate limiting for API requests', dataType: 'boolean', isPublic: false },
     { key: 'rate_limit_requests', value: 100, category: 'security', description: 'Max requests per rate limit window', dataType: 'number', isPublic: false },
-    { key: 'rate_limit_window_minutes', value: 15, category: 'security', description: 'Rate limit window in minutes', dataType: 'number', isPublic: false },
-    { key: 'ip_whitelist', value: '', category: 'security', description: 'IP whitelist for admin access (comma-separated)', dataType: 'string', isPublic: false },
-    { key: 'data_retention_days', value: 365, category: 'security', description: 'Days to retain user data before auto-deletion', dataType: 'number', isPublic: false }
+    { key: 'rate_limit_window_minutes', value: 15, category: 'security', description: 'Rate limit window in minutes', dataType: 'number', isPublic: false }
   ];
+  
+  // Remove old/duplicate settings that are no longer needed
+  const settingsToRemove = [
+    'report_auto_expire_days',
+    'report_expiry_days', 
+    'enable_anonymous_reports',
+    'allow_anonymous_reports',
+    'max_images_per_report',
+    'auto_verify_threshold',
+    'notifications_enabled',
+    'email_notifications',
+    'sms_notifications',
+    'push_notifications',
+    'notification_frequency',
+    'notification_radius_km',
+    'two_factor_auth',
+    'ip_whitelist',
+    'data_retention_days'
+  ];
+  
+  await this.deleteMany({ key: { $in: settingsToRemove } });
   
   for (const setting of defaults) {
     await this.findOneAndUpdate(

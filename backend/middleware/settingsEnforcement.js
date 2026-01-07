@@ -330,71 +330,6 @@ const checkLoginAttempts = async (req, res, next) => {
   }
 };
 
-/**
- * Auto-expire old reports based on settings
- */
-const processReportExpiry = async () => {
-  try {
-    const Report = require('../models/Report');
-    const expiryDays = await getSetting('report_expiry_days', 30);
-    
-    if (expiryDays <= 0) {
-      return; // Expiry disabled
-    }
-    
-    const expiryDate = new Date();
-    expiryDate.setDate(expiryDate.getDate() - expiryDays);
-    
-    // Mark old reports as expired (don't delete, just change status)
-    const result = await Report.updateMany(
-      {
-        createdAt: { $lt: expiryDate },
-        status: { $nin: ['resolved', 'expired', 'rejected'] }
-      },
-      {
-        $set: { status: 'expired' }
-      }
-    );
-    
-    if (result.modifiedCount > 0) {
-      console.log(`📅 Auto-expired ${result.modifiedCount} old reports`);
-    }
-  } catch (error) {
-    console.error('Report expiry processing error:', error);
-  }
-};
-
-/**
- * Auto-verify reports based on upvote threshold
- */
-const processAutoVerification = async (reportId) => {
-  try {
-    const Report = require('../models/Report');
-    const threshold = await getSetting('auto_verify_threshold', 5);
-    
-    if (threshold <= 0) {
-      return; // Auto-verify disabled
-    }
-    
-    const report = await Report.findById(reportId);
-    if (!report || report.status !== 'pending') {
-      return;
-    }
-    
-    const upvoteCount = report.upvotes?.length || 0;
-    
-    if (upvoteCount >= threshold) {
-      report.status = 'verified';
-      report.verifiedAt = new Date();
-      report.verificationMethod = 'auto-upvotes';
-      await report.save();
-      console.log(`✅ Auto-verified report ${reportId} with ${upvoteCount} upvotes`);
-    }
-  } catch (error) {
-    console.error('Auto-verification error:', error);
-  }
-};
-
 module.exports = {
   getSetting,
   clearSettingsCache,
@@ -405,7 +340,5 @@ module.exports = {
   checkDailyReportLimit,
   validateReportRequirements,
   settingsBasedRateLimit,
-  checkLoginAttempts,
-  processReportExpiry,
-  processAutoVerification
+  checkLoginAttempts
 };

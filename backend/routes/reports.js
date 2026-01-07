@@ -11,7 +11,6 @@ const NotificationService = require('../services/NotificationService');
 const { 
   checkDailyReportLimit, 
   validateReportRequirements,
-  processAutoVerification,
   getSetting 
 } = require('../middleware/settingsEnforcement');
 

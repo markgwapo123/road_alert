@@ -273,7 +273,7 @@ app.use('*', (req, res) => {
 // Database connection
 const connectDB = require('./config/database');
 const SystemSettings = require('./models/SystemSettings');
-const { processReportExpiry, clearSettingsCache } = require('./middleware/settingsEnforcement');
+const { clearSettingsCache } = require('./middleware/settingsEnforcement');
 
 // Initialize database and settings
 const initializeDatabase = async () => {
@@ -300,15 +300,6 @@ const initializeDatabase = async () => {
 
 // Scheduled tasks for settings enforcement
 const startScheduledTasks = () => {
-  // Process report expiry every hour
-  setInterval(async () => {
-    try {
-      await processReportExpiry();
-    } catch (error) {
-      console.error('Report expiry task error:', error);
-    }
-  }, 60 * 60 * 1000); // Every hour
-  
   // Clear settings cache every 5 minutes to pick up changes
   setInterval(() => {
     clearSettingsCache();
