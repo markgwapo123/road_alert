@@ -12,6 +12,11 @@ import * as cocoSsd from '@tensorflow-models/coco-ssd';
 let faceModel = null;
 let personModel = null;
 
+// Confidence thresholds - detections below these will NOT be blurred
+const FACE_CONFIDENCE_THRESHOLD = 0.75;  // BlazeFace confidence (0-1)
+const PERSON_CONFIDENCE_THRESHOLD = 0.5; // COCO-SSD person confidence
+const PLATE_CONFIDENCE_THRESHOLD = 0.55; // License plate detection confidence
+
 /**
  * Load both AI models for comprehensive detection
  * @returns {Promise<void>}
@@ -206,9 +211,17 @@ export const blurFaces = (canvas, faces) => {
   }
   
   const context = canvas.getContext('2d');
+  let blurredCount = 0;
   
   faces.forEach((face, index) => {
     try {
+      // Check confidence threshold - skip low confidence detections
+      const confidence = face.probability?.[0] || face.probability || 1;
+      if (confidence < FACE_CONFIDENCE_THRESHOLD) {
+        console.log(`⚠️ Face ${index + 1} skipped - confidence ${(confidence * 100).toFixed(0)}% below threshold ${(FACE_CONFIDENCE_THRESHOLD * 100)}%`);
+        return;
+      }
+      
       // Get face bounding box from BlazeFace
       const [x1, y1] = face.topLeft;
       const [x2, y2] = face.bottomRight;
@@ -217,24 +230,25 @@ export const blurFaces = (canvas, faces) => {
       const faceWidth = x2 - x1;
       const faceHeight = y2 - y1;
       
-      // MINIMAL expansion - just 10% for slight coverage
-      const expansion = 1.1;
+      // TIGHT bounding box - minimal 5% expansion for precision
+      const expansion = 1.05;
       const blurWidth = faceWidth * expansion;
       const blurHeight = faceHeight * expansion;
       const blurX = x1 - (blurWidth - faceWidth) / 2;
       const blurY = y1 - (blurHeight - faceHeight) / 2;
       
-      console.log(`🔒 Blurring face ${index + 1}: ${Math.round(blurWidth)}x${Math.round(blurHeight)} at (${Math.round(blurX)}, ${Math.round(blurY)})`);
+      console.log(`🔒 Blurring face ${index + 1} (${(confidence * 100).toFixed(0)}% conf): ${Math.round(blurWidth)}x${Math.round(blurHeight)} at (${Math.round(blurX)}, ${Math.round(blurY)})`);
       
-      // Apply blur to ONLY the face area
+      // Apply blur to ONLY the face area - not body, not background
       applyGaussianBlur(context, blurX, blurY, blurWidth, blurHeight, 35);
+      blurredCount++;
       
     } catch (error) {
       console.error(`Error blurring face ${index}:`, error);
     }
   });
   
-  console.log('✅ Face blurring complete');
+  console.log(`✅ Face blurring complete - ${blurredCount}/${faces.length} faces blurred`);
 };
 
 /**
@@ -249,30 +263,38 @@ export const blurPeople = (canvas, people) => {
   }
   
   const context = canvas.getContext('2d');
+  let blurredCount = 0;
   
   people.forEach((person, index) => {
     try {
+      // Check confidence threshold - skip low confidence detections
+      if (person.score < PERSON_CONFIDENCE_THRESHOLD) {
+        console.log(`⚠️ Person ${index + 1} skipped - confidence ${(person.score * 100).toFixed(0)}% below threshold ${(PERSON_CONFIDENCE_THRESHOLD * 100)}%`);
+        return;
+      }
+      
       // COCO-SSD returns bbox as [x, y, width, height]
       const [x, y, width, height] = person.bbox;
       
-      // HEAD ONLY - top 18% of person, narrow width
+      // FACE REGION ONLY - top 15% of person for tighter precision
       // Human head is roughly 1/7 to 1/8 of body height
-      const headHeight = height * 0.18;
+      const headHeight = height * 0.15;
       const headWidth = Math.min(width * 0.5, headHeight * 0.9); // Head is roughly as wide as tall
       const headX = x + (width - headWidth) / 2; // Center horizontally
       const headY = y; // Start from very top
       
-      console.log(`🔒 Blurring head ${index + 1}: ${Math.round(headWidth)}x${Math.round(headHeight)} at (${Math.round(headX)}, ${Math.round(headY)})`);
+      console.log(`🔒 Blurring face region ${index + 1} (${(person.score * 100).toFixed(0)}% conf): ${Math.round(headWidth)}x${Math.round(headHeight)} at (${Math.round(headX)}, ${Math.round(headY)})`);
       
-      // Apply blur to ONLY the head
+      // Apply blur to ONLY the face region - not body, not clothing
       applyGaussianBlur(context, headX, headY, headWidth, headHeight, 35);
+      blurredCount++;
       
     } catch (error) {
       console.error(`Error blurring person ${index}:`, error);
     }
   });
   
-  console.log('✅ Head blurring complete');
+  console.log(`✅ Face region blurring complete - ${blurredCount}/${people.length} people processed`);
 };
 
 // ============================================================================
@@ -508,10 +530,12 @@ const detectPlatesInVehiclesStage2 = (canvas, vehicles) => {
       candidates.sort((a, b) => b.confidence - a.confidence);
       const bestPlate = candidates[0];
       
-      // Only add if confidence > 0.55
-      if (bestPlate.confidence > 0.55) {
+      // Only add if confidence meets threshold - prevents false positives
+      if (bestPlate.confidence >= PLATE_CONFIDENCE_THRESHOLD) {
         detectedPlates.push(bestPlate);
         console.log(`    ✅ Found ${bestPlate.plateType.toUpperCase()} plate (conf: ${(bestPlate.confidence * 100).toFixed(0)}%)`);
+      } else {
+        console.log(`    ⚠️ Plate candidate rejected - confidence ${(bestPlate.confidence * 100).toFixed(0)}% below threshold ${(PLATE_CONFIDENCE_THRESHOLD * 100)}%`);
       }
     }
   });
@@ -532,19 +556,20 @@ const blurPlatesAdaptive = (canvas, plates) => {
   const context = canvas.getContext('2d');
   
   plates.forEach((plate, index) => {
-    // Add padding
-    const padX = plate.width * 0.12;
-    const padY = plate.height * 0.18;
+    // TIGHT bounding box - minimal 5% padding for precision
+    // Only blur the license plate area, NOT the vehicle body
+    const padX = plate.width * 0.05;
+    const padY = plate.height * 0.08;
     
     const blurX = Math.max(0, plate.x - padX);
     const blurY = Math.max(0, plate.y - padY);
     const blurW = plate.width + padX * 2;
     const blurH = plate.height + padY * 2;
     
-    // Adaptive blur strength based on plate width
-    const blurStrength = Math.max(25, Math.min(50, plate.width / 2.5));
+    // Strong blur to ensure plate is unreadable
+    const blurStrength = Math.max(30, Math.min(50, plate.width / 2));
     
-    console.log(`🔒 Blurring ${plate.plateType} plate ${index + 1}: ${Math.round(blurW)}x${Math.round(blurH)} (blur: ${Math.round(blurStrength)})`);
+    console.log(`🔒 Blurring ${plate.plateType} plate ${index + 1} (${(plate.confidence * 100).toFixed(0)}% conf): ${Math.round(blurW)}x${Math.round(blurH)} at (${Math.round(blurX)}, ${Math.round(blurY)})`);
     applyGaussianBlur(context, blurX, blurY, blurW, blurH, blurStrength);
   });
 };
@@ -616,7 +641,7 @@ const detectPlatesFallback = (canvas) => {
         
         const confidence = colorRatio * 0.5 + darkRatio * 0.3;
         
-        if (confidence > 0.55) {
+        if (confidence >= PLATE_CONFIDENCE_THRESHOLD) {
           const overlaps = candidates.some(c => 
             Math.abs(c.x - x) < testW * 0.4 && Math.abs(c.y - y) < testH * 0.4
           );
