@@ -86,20 +86,39 @@ const ProfilePage = ({ onBack, onLogout, onUserUpdate }) => {
     }));
   };
 
-  // Handle image selection
+  // Constants
+  const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+  const MAX_FILE_SIZE_MB = 5;
+
+  // Handle image selection with strict 5MB validation
   const handleImageChange = (e) => {
     const file = e.target.files[0];
-    if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        setError('Image size must be less than 5MB');
-        return;
-      }
-      
-      const reader = new FileReader();
-      reader.onload = (e) => setPreviewImage(e.target.result);
-      reader.readAsDataURL(file);
-      setSelectedFile(file);
+    if (!file) {
+      e.target.value = '';
+      return;
     }
+
+    // Strict 5MB file size validation
+    if (file.size > MAX_FILE_SIZE) {
+      const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
+      setError(`Profile photo must be ${MAX_FILE_SIZE_MB}MB or less. Your file is ${fileSizeMB}MB.`);
+      e.target.value = '';
+      return;
+    }
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      setError('Please select a valid image file (JPG, PNG, GIF)');
+      e.target.value = '';
+      return;
+    }
+    
+    const reader = new FileReader();
+    reader.onload = (event) => setPreviewImage(event.target.result);
+    reader.onerror = () => setError('Failed to read image file');
+    reader.readAsDataURL(file);
+    setSelectedFile(file);
+    setError(''); // Clear any previous errors
     e.target.value = '';
   };
 
@@ -254,18 +273,28 @@ const ProfilePage = ({ onBack, onLogout, onUserUpdate }) => {
         {/* ==================== VIEW PROFILE SECTION ==================== */}
         <section className="mvp-profile-section mvp-view-section">
           <div className="mvp-profile-header">
-            {/* Avatar */}
-            <div className="mvp-avatar-container">
-              {profileImage ? (
-                <img src={profileImage} alt="Profile" className="mvp-avatar" />
-              ) : (
-                <div className="mvp-avatar mvp-avatar-default">
-                  <span>👤</span>
-                </div>
-              )}
+            {/* Avatar - Fixed size container with proper aspect ratio */}
+            <div className="mvp-avatar-wrapper">
+              <div className="mvp-avatar-container">
+                {profileImage ? (
+                  <img 
+                    src={profileImage} 
+                    alt="Profile" 
+                    className="mvp-avatar"
+                    onError={(e) => {
+                      e.target.style.display = 'none';
+                      e.target.parentElement.classList.add('mvp-avatar-error');
+                    }}
+                  />
+                ) : (
+                  <div className="mvp-avatar-default">
+                    <span>👤</span>
+                  </div>
+                )}
+              </div>
             </div>
 
-            {/* User Info */}
+            {/* User Info - with consistent spacing */}
             <div className="mvp-user-info">
               <h1 className="mvp-user-name">
                 {user?.profile?.fullName || user?.username || 'User'}
@@ -369,7 +398,7 @@ const ProfilePage = ({ onBack, onLogout, onUserUpdate }) => {
                           📷 Change
                           <input 
                             type="file" 
-                            accept="image/*" 
+                            accept="image/jpeg,image/png,image/gif,image/webp" 
                             onChange={handleImageChange}
                             style={{ display: 'none' }}
                           />
@@ -386,6 +415,7 @@ const ProfilePage = ({ onBack, onLogout, onUserUpdate }) => {
                     )}
                   </div>
                 </div>
+                <p className="mvp-file-hint">Max file size: 5MB. Supported formats: JPG, PNG, GIF</p>
               </div>
 
               {/* Full Name */}
