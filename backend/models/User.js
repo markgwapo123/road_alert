@@ -36,7 +36,14 @@ const userSchema = new mongoose.Schema({
     profile: {
         firstName: String,
         lastName: String,
+        fullName: String,
         phone: String,
+        address: String,
+        gender: {
+            type: String,
+            enum: ['male', 'female', 'other', 'prefer-not-to-say', null],
+            default: null
+        },
         profileImage: String,
         profilePictureGallery: [{
             imageUrl: String,
@@ -48,7 +55,11 @@ const userSchema = new mongoose.Schema({
                 type: Boolean,
                 default: false
             }
-        }]
+        }],
+        notificationsEnabled: {
+            type: Boolean,
+            default: true
+        }
     },
     isFrozen: {
         type: Boolean,

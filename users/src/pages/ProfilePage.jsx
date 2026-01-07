@@ -26,6 +26,8 @@ const ProfilePage = ({ onBack, onLogout, onUserUpdate }) => {
   const [formData, setFormData] = useState({
     fullName: '',
     phone: '',
+    address: '',
+    gender: '',
     notificationsEnabled: true
   });
   
@@ -56,6 +58,8 @@ const ProfilePage = ({ onBack, onLogout, onUserUpdate }) => {
           setFormData({
             fullName: userData.profile?.fullName || userData.username || '',
             phone: userData.profile?.phone || '',
+            address: userData.profile?.address || '',
+            gender: userData.profile?.gender || '',
             notificationsEnabled: userData.profile?.notificationsEnabled !== false
           });
           
@@ -201,6 +205,8 @@ const ProfilePage = ({ onBack, onLogout, onUserUpdate }) => {
         profile: {
           fullName: formData.fullName,
           phone: formData.phone,
+          address: formData.address,
+          gender: formData.gender,
           notificationsEnabled: formData.notificationsEnabled
         }
       }, {
@@ -223,12 +229,6 @@ const ProfilePage = ({ onBack, onLogout, onUserUpdate }) => {
   const showSuccess = (message) => {
     setSuccessMessage(message);
     setTimeout(() => setSuccessMessage(''), 3000);
-  };
-
-  // Get user role display
-  const getUserRole = () => {
-    if (user?.role === 'admin' || user?.type === 'admin') return { label: 'Admin', icon: '👑', color: '#f59e0b' };
-    return { label: 'Citizen', icon: '👤', color: '#3b82f6' };
   };
 
   // Loading state
@@ -261,8 +261,6 @@ const ProfilePage = ({ onBack, onLogout, onUserUpdate }) => {
   if (showChangePassword) {
     return <ChangePassword onBack={() => setShowChangePassword(false)} onLogout={onLogout} />;
   }
-
-  const role = getUserRole();
 
   return (
     <div className="mvp-profile-page">
@@ -316,10 +314,15 @@ const ProfilePage = ({ onBack, onLogout, onUserUpdate }) => {
               {user?.profile?.phone && (
                 <p className="mvp-user-phone">📱 {user.profile.phone}</p>
               )}
+              {user?.profile?.gender && (
+                <p className="mvp-user-gender">
+                  {user.profile.gender === 'male' ? '👨' : user.profile.gender === 'female' ? '👩' : '🧑'} {user.profile.gender.charAt(0).toUpperCase() + user.profile.gender.slice(1).replace('-', ' ')}
+                </p>
+              )}
+              {user?.profile?.address && (
+                <p className="mvp-user-address">📍 {user.profile.address}</p>
+              )}
               <div className="mvp-user-meta">
-                <span className="mvp-role-badge" style={{ backgroundColor: role.color }}>
-                  {role.icon} {role.label}
-                </span>
                 <span className="mvp-join-date">
                   📅 Joined {user?.createdAt ? new Date(user.createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : 'Unknown'}
                 </span>
@@ -454,6 +457,36 @@ const ProfilePage = ({ onBack, onLogout, onUserUpdate }) => {
                   onChange={handleInputChange}
                   className="mvp-form-input"
                   placeholder="e.g. +63 912 345 6789"
+                />
+              </div>
+
+              {/* Gender Selection */}
+              <div className="mvp-form-group">
+                <label className="mvp-form-label">Gender</label>
+                <select
+                  name="gender"
+                  value={formData.gender}
+                  onChange={handleInputChange}
+                  className="mvp-form-input mvp-form-select"
+                >
+                  <option value="">Select Gender</option>
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                  <option value="other">Other</option>
+                  <option value="prefer-not-to-say">Prefer not to say</option>
+                </select>
+              </div>
+
+              {/* Address */}
+              <div className="mvp-form-group">
+                <label className="mvp-form-label">Address</label>
+                <textarea
+                  name="address"
+                  value={formData.address}
+                  onChange={handleInputChange}
+                  className="mvp-form-input mvp-form-textarea"
+                  placeholder="Enter your address"
+                  rows="3"
                 />
               </div>
 
