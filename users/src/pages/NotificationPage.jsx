@@ -1,33 +1,134 @@
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import React, { useState, useEffect, useCallback } from 'react';
+import './NotificationPage.css';
 
-const NotificationPage = ({ notifications, unreadCount, onMarkAsRead, onMarkAllAsRead, onRefresh }) => {
+/**
+ * NotificationPage Component
+ * 
+ * Full-page notification view with filtering, sorting, and detailed views.
+ * Supports both context-based and props-based usage for backward compatibility.
+ */
+const NotificationPage = ({ 
+  notifications: propNotifications = [],
+  unreadCount: propUnreadCount = 0,
+  onMarkAsRead,
+  onMarkAllAsRead,
+  onRefresh
+}) => {
+  const notifications = propNotifications;
+  const unreadCount = propUnreadCount;
+
   const [filterType, setFilterType] = useState('all');
   const [sortBy, setSortBy] = useState('newest');
+  const [selectedNotification, setSelectedNotification] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [locallyRead, setLocallyRead] = useState(() => {
+    try {
+      const raw = localStorage.getItem('locallyReadNotifications');
+      if (!raw) return new Set();
+      const arr = JSON.parse(raw);
+      return new Set(Array.isArray(arr) ? arr : []);
+    } catch (e) {
+      return new Set();
+    }
+  });
 
+  // Refresh notifications on mount
   useEffect(() => {
-    // Refresh notifications when page loads
-    onRefresh();
-  }, [onRefresh]);
+    if (onRefresh) {
+      onRefresh();
+    }
+  }, []);
 
+  // Keep locallyRead in sync with server
+  useEffect(() => {
+    if (locallyRead.size === 0) return;
+    setLocallyRead(prev => {
+      const next = new Set(prev);
+      for (const id of Array.from(prev)) {
+        const serverNotif = notifications.find(n => n._id === id);
+        if (serverNotif && (serverNotif.read || serverNotif.isRead)) next.delete(id);
+      }
+      if (next.size !== prev.size) {
+        localStorage.setItem('locallyReadNotifications', JSON.stringify(Array.from(next)));
+      }
+      return next;
+    });
+  }, [notifications]);
+
+  // Get notification icon based on type
+  const getNotificationIcon = (type) => {
+    switch (type) {
+      case 'admin_response': return '📩';
+      case 'status_update':
+      case 'report_status_update': return '🔄';
+      case 'announcement': return '📢';
+      case 'verification_status': return '🔐';
+      case 'new_report': return '🚨';
+      case 'system_alert': return '⚠️';
+      case 'report_resolved': return '✅';
+      case 'welcome': return '👋';
+      default: return '🔔';
+    }
+  };
+
+  // Get notification type label
+  const getNotificationTypeLabel = (type) => {
+    switch (type) {
+      case 'admin_response': return 'Admin Response';
+      case 'status_update':
+      case 'report_status_update': return 'Status Update';
+      case 'announcement': return 'Announcement';
+      case 'verification_status': return 'Verification';
+      case 'new_report': return 'New Report';
+      case 'system_alert': return 'System Alert';
+      default: return 'Notification';
+    }
+  };
+
+  // Get relative time
+  const getRelativeTime = (date) => {
+    const now = new Date();
+    const notifDate = new Date(date);
+    const diffInMinutes = Math.floor((now - notifDate) / (1000 * 60));
+    if (diffInMinutes < 1) return 'Just now';
+    if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
+    const diffInHours = Math.floor(diffInMinutes / 60);
+    if (diffInHours < 24) return `${diffInHours}h ago`;
+    const diffInDays = Math.floor(diffInHours / 24);
+    if (diffInDays < 7) return `${diffInDays}d ago`;
+    return notifDate.toLocaleDateString();
+  };
+
+  // Calculate counts for filters
+  const adminResponseCount = notifications.filter(n => n.type === 'admin_response').length;
+  const statusUpdateCount = notifications.filter(n => 
+    n.type === 'status_update' || n.type === 'report_status_update'
+  ).length;
+  const announcementCount = notifications.filter(n => n.type === 'announcement').length;
+
+  // Filter options
   const filterOptions = [
-    { value: 'all', label: 'All Notifications', count: notifications.length },
-    { value: 'unread', label: 'Unread', count: unreadCount },
-    { value: 'verification_status', label: 'Verification', count: notifications.filter(n => n.type === 'verification_status').length },
-    { value: 'new_report', label: 'Reports', count: notifications.filter(n => n.type === 'new_report').length },
-    { value: 'system_alert', label: 'System', count: notifications.filter(n => n.type === 'system_alert').length }
+    { value: 'all', label: 'All', icon: '📋', count: notifications.length },
+    { value: 'unread', label: 'Unread', icon: '🔵', count: unreadCount },
+    { value: 'admin_response', label: 'Admin Responses', icon: '📩', count: adminResponseCount },
+    { value: 'status_update', label: 'Status Updates', icon: '🔄', count: statusUpdateCount },
+    { value: 'announcement', label: 'Announcements', icon: '📢', count: announcementCount }
   ];
 
-  const getFilteredNotifications = () => {
+  // Get filtered and sorted notifications
+  const getFilteredNotifications = useCallback(() => {
     let filtered = [...notifications];
 
     // Apply type filter
-    if (filterType !== 'all') {
-      if (filterType === 'unread') {
-        filtered = filtered.filter(n => !n.read);
-      } else {
-        filtered = filtered.filter(n => n.type === filterType);
-      }
+    if (filterType === 'unread') {
+      filtered = filtered.filter(n => !(n.read || n.isRead) && !locallyRead.has(n._id));
+    } else if (filterType !== 'all') {
+      filtered = filtered.filter(n => {
+        if (filterType === 'status_update') {
+          return n.type === 'status_update' || n.type === 'report_status_update';
+        }
+        return n.type === filterType;
+      });
     }
 
     // Apply sorting
@@ -37,134 +138,110 @@ const NotificationPage = ({ notifications, unreadCount, onMarkAsRead, onMarkAllA
       filtered.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
     } else if (sortBy === 'unread') {
       filtered.sort((a, b) => {
-        if (a.read && !b.read) return 1;
-        if (!a.read && b.read) return -1;
+        const aRead = (a.read || a.isRead) || locallyRead.has(a._id);
+        const bRead = (b.read || b.isRead) || locallyRead.has(b._id);
+        if (aRead && !bRead) return 1;
+        if (!aRead && bRead) return -1;
+        return new Date(b.createdAt) - new Date(a.createdAt);
+      });
+    } else if (sortBy === 'priority') {
+      const priorityOrder = { urgent: 0, high: 1, normal: 2, low: 3 };
+      filtered.sort((a, b) => {
+        const priorityA = priorityOrder[a.priority] ?? 2;
+        const priorityB = priorityOrder[b.priority] ?? 2;
+        if (priorityA !== priorityB) return priorityA - priorityB;
         return new Date(b.createdAt) - new Date(a.createdAt);
       });
     }
 
     return filtered;
-  };
-
-  const getNotificationIcon = (type) => {
-    switch (type) {
-      case 'verification_status':
-        return '🔐';
-      case 'new_report':
-        return '🚨';
-      case 'report_resolved':
-        return '✅';
-      case 'system_alert':
-        return '⚠️';
-      case 'welcome':
-        return '👋';
-      default:
-        return '📢';
-    }
-  };
-
-  const getRelativeTime = (date) => {
-    const now = new Date();
-    const notifDate = new Date(date);
-    const diffInMinutes = Math.floor((now - notifDate) / (1000 * 60));
-    
-    if (diffInMinutes < 1) return 'Just now';
-    if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
-    
-    const diffInHours = Math.floor(diffInMinutes / 60);
-    if (diffInHours < 24) return `${diffInHours}h ago`;
-    
-    const diffInDays = Math.floor(diffInHours / 24);
-    if (diffInDays < 7) return `${diffInDays}d ago`;
-    
-    return notifDate.toLocaleDateString();
-  };
-
-  const handleMarkAllAsRead = async () => {
-    try {
-      await onMarkAllAsRead();
-      onRefresh();
-    } catch (error) {
-      console.error('Error marking all as read:', error);
-    }
-  };
+  }, [notifications, filterType, sortBy, locallyRead]);
 
   const filteredNotifications = getFilteredNotifications();
 
-  const [selectedNotif, setSelectedNotif] = useState(null);
-  // locallyRead persists IDs in localStorage so read state survives a page refresh
-  const LOCAL_STORAGE_KEY = 'locallyReadNotifications';
-  const loadLocalReadSet = () => {
+  // Handle mark all as read
+  const handleMarkAllAsRead = async () => {
     try {
-      const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
-      if (!raw) return new Set();
-      const arr = JSON.parse(raw);
-      return new Set(Array.isArray(arr) ? arr : []);
-    } catch (e) {
-      return new Set();
+      if (onMarkAllAsRead) {
+        await onMarkAllAsRead();
+      }
+      if (onRefresh) {
+        onRefresh();
+      }
+    } catch (err) {
+      console.error('Error marking all as read:', err);
     }
   };
 
-  const saveLocalReadSet = (set) => {
-    try {
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(Array.from(set)));
-    } catch (e) {
-      // ignore
-    }
-  };
-
-  const [locallyRead, setLocallyRead] = useState(() => loadLocalReadSet());
-  const [isModalOpen, setIsModalOpen] = useState(false);
-
-
-  const openModal = (notif) => {
-    setSelectedNotif(notif);
+  // Open notification modal
+  const openModal = (notification) => {
+    setSelectedNotification(notification);
     setIsModalOpen(true);
   };
 
+  // Close modal and mark as read
   const closeModal = async () => {
     try {
-      if (selectedNotif && !selectedNotif.read) {
-        // mark locally as read so the dot hides for this specific notification
+      if (selectedNotification && !(selectedNotification.read || selectedNotification.isRead)) {
+        // Mark locally as read
         setLocallyRead(prev => {
           const next = new Set(prev);
-          next.add(selectedNotif._id);
-          saveLocalReadSet(next);
+          next.add(selectedNotification._id);
+          localStorage.setItem('locallyReadNotifications', JSON.stringify(Array.from(next)));
           return next;
         });
-        await onMarkAsRead(selectedNotif._id);
+        
+        if (onMarkAsRead) {
+          await onMarkAsRead(selectedNotification._id);
+        }
       }
     } catch (err) {
-      console.error('Error marking as read on modal close:', err);
+      console.error('Error marking as read:', err);
     }
     setIsModalOpen(false);
-    setSelectedNotif(null);
-    // refresh to sync with server
-    onRefresh();
+    setSelectedNotification(null);
+    if (onRefresh) {
+      onRefresh();
+    }
   };
 
-  // keep locallyRead in sync: if server reports a notification read, remove it from locallyRead
-  useEffect(() => {
-    if (locallyRead.size === 0) return;
-    setLocallyRead(prev => {
-      const next = new Set(prev);
-      for (const id of Array.from(prev)) {
-        const serverNotif = notifications.find(n => n._id === id);
-        if (serverNotif && serverNotif.read) next.delete(id);
-      }
-      if (next.size !== prev.size) saveLocalReadSet(next);
-      return next;
-    });
-  }, [notifications]);
+  // Get status display info
+  const getStatusInfo = (status) => {
+    const statusMap = {
+      pending: { label: 'Pending', class: 'status-pending', icon: '⏳' },
+      under_review: { label: 'Under Review', class: 'status-review', icon: '🔍' },
+      verified: { label: 'Verified', class: 'status-verified', icon: '✅' },
+      resolved: { label: 'Resolved', class: 'status-resolved', icon: '✅' },
+      rejected: { label: 'Rejected', class: 'status-rejected', icon: '❌' }
+    };
+    return statusMap[status] || { label: status, class: 'status-default', icon: '📋' };
+  };
+
+  // Get type-specific accent class
+  const getTypeAccentClass = (type) => {
+    switch (type) {
+      case 'admin_response': return 'accent-admin-response';
+      case 'status_update':
+      case 'report_status_update': return 'accent-status-update';
+      case 'announcement': return 'accent-announcement';
+      case 'verification_status': return 'accent-verification';
+      case 'system_alert': return 'accent-system';
+      default: return 'accent-default';
+    }
+  };
 
   return (
     <div className="notification-page">
+      {/* Page Header */}
       <div className="notification-page-header">
         <div className="page-title-section">
           <h1 className="page-title">
             <span className="page-icon">🔔</span>
             Notifications
           </h1>
+          <p className="page-subtitle">
+            Stay updated with your reports and announcements
+          </p>
         </div>
         
         {unreadCount > 0 && (
@@ -172,15 +249,17 @@ const NotificationPage = ({ notifications, unreadCount, onMarkAsRead, onMarkAllA
             className="mark-all-read-btn"
             onClick={handleMarkAllAsRead}
           >
-            <span className="btn-icon">✓</span>
-            Mark All Read ({unreadCount})
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+            <span>Mark All Read</span>
+            <span className="unread-badge">{unreadCount}</span>
           </button>
         )}
       </div>
 
-      {/* Filter by Type - moved up directly under title */}
+      {/* Filter Tabs */}
       <div className="filter-section">
-        <h3>Filter by Type</h3>
         <div className="filter-tabs">
           {filterOptions.map(option => (
             <button
@@ -188,7 +267,8 @@ const NotificationPage = ({ notifications, unreadCount, onMarkAsRead, onMarkAllA
               className={`filter-tab ${filterType === option.value ? 'active' : ''}`}
               onClick={() => setFilterType(option.value)}
             >
-              {option.label}
+              <span className="filter-icon">{option.icon}</span>
+              <span className="filter-label">{option.label}</span>
               {option.count > 0 && (
                 <span className="filter-count">{option.count}</span>
               )}
@@ -197,100 +277,209 @@ const NotificationPage = ({ notifications, unreadCount, onMarkAsRead, onMarkAllA
         </div>
       </div>
 
-      {/* Sort by - moved up with spacing */}
-      <div className="sort-section" style={{ marginTop: '16px', marginBottom: '20px' }}>
-        <label htmlFor="sort-select" style={{ marginRight: '8px' }}>Sort by:</label>
-        <select 
-          id="sort-select"
-          value={sortBy} 
-          onChange={(e) => setSortBy(e.target.value)}
-          className="sort-select"
-          style={{ padding: '6px 12px', borderRadius: '4px', border: '1px solid #d1d5db' }}
+      {/* Sort & Actions Bar */}
+      <div className="actions-bar">
+        <div className="sort-section">
+          <label htmlFor="sort-select">Sort by:</label>
+          <select 
+            id="sort-select"
+            value={sortBy} 
+            onChange={(e) => setSortBy(e.target.value)}
+            className="sort-select"
+          >
+            <option value="newest">Newest First</option>
+            <option value="oldest">Oldest First</option>
+            <option value="unread">Unread First</option>
+            <option value="priority">Priority</option>
+          </select>
+        </div>
+
+        <button 
+          className="refresh-btn"
+          onClick={() => onRefresh && onRefresh()}
         >
-          <option value="newest">Newest First</option>
-          <option value="oldest">Oldest First</option>
-          <option value="unread">Unread First</option>
-        </select>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <polyline points="23 4 23 10 17 10"></polyline>
+            <polyline points="1 20 1 14 7 14"></polyline>
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+          </svg>
+          Refresh
+        </button>
       </div>
 
+      {/* Notifications List */}
       <div className="notifications-container">
         {filteredNotifications.length === 0 ? (
-          <div className="no-notifications-page">
-            <div className="empty-state">
-              <span className="empty-icon">📭</span>
-              <h3>No notifications found</h3>
-              <p>
-                {filterType === 'all' 
-                  ? "You don't have any notifications yet."
-                  : `No ${filterType === 'unread' ? 'unread' : filterType.replace('_', ' ')} notifications found.`
-                }
-              </p>
-            </div>
+          <div className="empty-state">
+            <span className="empty-icon">📭</span>
+            <h3>No notifications found</h3>
+            <p>
+              {filterType === 'all' 
+                ? "You don't have any notifications yet. They'll appear here when there's activity on your reports."
+                : filterType === 'unread'
+                ? "You're all caught up! No unread notifications."
+                : `No ${filterType.replace('_', ' ')} notifications found.`
+              }
+            </p>
           </div>
         ) : (
-          <div className="notifications-grid">
+          <div className="notifications-list">
             {filteredNotifications.map((notif) => {
-              const isUnread = !notif.read && !locallyRead.has(notif._id);
+              const isUnread = !(notif.read || notif.isRead) && !locallyRead.has(notif._id);
+              
               return (
-              <div 
-                key={notif._id} 
-                className={`notification-card ${isUnread ? 'unread' : 'read'}`}
-                data-type={notif.type}
-                data-title={notif.title}
-                onClick={() => openModal(notif)}
-              >
-                <div className="notification-card-header">
-                  <div className="notification-icon">
-                    {getNotificationIcon(notif.type)}
+                <div 
+                  key={notif._id} 
+                  className={`notification-card ${isUnread ? 'unread' : 'read'} ${getTypeAccentClass(notif.type)}`}
+                  onClick={() => openModal(notif)}
+                >
+                  {/* Left accent bar */}
+                  <div className="notification-accent"></div>
+                  
+                  {/* Icon */}
+                  <div className="notification-icon-wrapper">
+                    <span className="notification-icon">{getNotificationIcon(notif.type)}</span>
+                    {isUnread && <span className="unread-dot"></span>}
                   </div>
-                  <div className="notification-meta">
-                    <span className="notification-type">
-                      {notif.type.replace('_', ' ').toUpperCase()}
-                    </span>
-                    <span className="notification-time">
-                      {getRelativeTime(notif.createdAt)}
-                    </span>
-                  </div>
-                  {isUnread && (
-                    <div className="unread-indicator">
-                      <span className="unread-dot"></span>
+                  
+                  {/* Content */}
+                  <div className="notification-content">
+                    <div className="notification-header">
+                      <span className="notification-type-badge">
+                        {getNotificationTypeLabel(notif.type)}
+                        {notif.isBroadcast && (
+                          <span className="broadcast-tag">ALL</span>
+                        )}
+                      </span>
+                      <span className="notification-time">{getRelativeTime(notif.createdAt)}</span>
                     </div>
-                  )}
-                </div>
-                
-                <div className="notification-content">
-                  <h4 className="notification-title">{notif.title}</h4>
-                  <p className="notification-message">{notif.message}</p>
-                </div>
+                    
+                    <h4 className="notification-title">{notif.title}</h4>
+                    <p className="notification-message">{notif.message}</p>
+                    
+                    {/* Status badge */}
+                    {notif.status && (
+                      <div className={`notification-status-badge ${getStatusInfo(notif.status).class}`}>
+                        {getStatusInfo(notif.status).icon} {getStatusInfo(notif.status).label}
+                      </div>
+                    )}
+                    
+                    {/* Priority badge for urgent */}
+                    {notif.priority && notif.priority !== 'normal' && (
+                      <div className={`notification-priority-badge priority-${notif.priority}`}>
+                        {notif.priority.toUpperCase()}
+                      </div>
+                    )}
 
-                <div className="notification-card-footer">
-                  <span className="full-time">
-                    {new Date(notif.createdAt).toLocaleString()}
-                  </span>
-                  {isUnread && (
-                    <span className="read-action">Click to mark as read</span>
-                  )}
+                    {/* Admin message preview */}
+                    {notif.adminMessage && (
+                      <div className="admin-message-preview">
+                        <span className="admin-label">Admin:</span>
+                        <span className="admin-preview">
+                          {notif.adminMessage.length > 100 
+                            ? `${notif.adminMessage.substring(0, 100)}...` 
+                            : notif.adminMessage
+                          }
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Chevron */}
+                  <div className="notification-chevron">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <polyline points="9 18 15 12 9 6"></polyline>
+                    </svg>
+                  </div>
                 </div>
-              </div>
               );
             })}
           </div>
         )}
       </div>
 
-      {isModalOpen && selectedNotif && (
-        <div className="notif-modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) closeModal(); }}>
-          <div className="notif-modal">
-            <div className="notif-modal-header">
-              <h3>{selectedNotif.title}</h3>
-              <button className="notif-modal-close" onClick={closeModal}>✕</button>
+      {/* Notification Detail Modal */}
+      {isModalOpen && selectedNotification && (
+        <div 
+          className="notification-modal-overlay"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) closeModal();
+          }}
+        >
+          <div className="notification-modal">
+            <div className="notification-modal-header">
+              <div className="modal-type-info">
+                <span className="modal-icon">{getNotificationIcon(selectedNotification.type)}</span>
+                <div className="modal-meta">
+                  <span className="modal-type">
+                    {getNotificationTypeLabel(selectedNotification.type)}
+                    {selectedNotification.isBroadcast && (
+                      <span className="broadcast-badge">BROADCAST</span>
+                    )}
+                  </span>
+                  <span className="modal-time">
+                    {new Date(selectedNotification.createdAt).toLocaleString()}
+                  </span>
+                </div>
+              </div>
+              <button className="modal-close-btn" onClick={closeModal}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              </button>
             </div>
-            <div className="notif-modal-body">
-              <p className="notif-modal-time">{new Date(selectedNotif.createdAt).toLocaleString()}</p>
-              <p className="notif-modal-message">{selectedNotif.message}</p>
+
+            <div className="notification-modal-body">
+              <h2 className="modal-title">{selectedNotification.title}</h2>
+              <p className="modal-message">{selectedNotification.message}</p>
+
+              {/* Admin Response Section */}
+              {selectedNotification.adminMessage && (
+                <div className="admin-response-section">
+                  <div className="admin-response-header">
+                    <span className="admin-icon">👤</span>
+                    <span className="admin-response-label">Admin Response</span>
+                  </div>
+                  <p className="admin-response-message">
+                    {selectedNotification.adminMessage}
+                  </p>
+                </div>
+              )}
+
+              {/* Status Section */}
+              {selectedNotification.status && (
+                <div className="status-section">
+                  <span className="status-label">Current Status:</span>
+                  <div className={`status-badge-large ${getStatusInfo(selectedNotification.status).class}`}>
+                    <span>{getStatusInfo(selectedNotification.status).icon}</span>
+                    <span>{getStatusInfo(selectedNotification.status).label}</span>
+                  </div>
+                  
+                  {selectedNotification.previousStatus && (
+                    <div className="status-change">
+                      <span className="change-label">Changed from:</span>
+                      <span className={`previous-status ${getStatusInfo(selectedNotification.previousStatus).class}`}>
+                        {getStatusInfo(selectedNotification.previousStatus).label}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Priority Badge */}
+              {selectedNotification.priority && selectedNotification.priority !== 'normal' && (
+                <div className={`priority-section priority-${selectedNotification.priority}`}>
+                  <span className="priority-label">Priority:</span>
+                  <span className="priority-value">{selectedNotification.priority.toUpperCase()}</span>
+                </div>
+              )}
             </div>
-            <div className="notif-modal-footer">
-              <button className="btn btn-primary" onClick={closeModal}>Close</button>
+
+            <div className="notification-modal-footer">
+              <button className="modal-btn modal-btn-primary" onClick={closeModal}>
+                Close
+              </button>
             </div>
           </div>
         </div>

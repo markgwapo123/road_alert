@@ -1,0 +1,121 @@
+/* NotificationBell Styles */
+.notification-bell {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: #64748b;
+}
+
+.notification-bell:hover {
+  background: rgba(99, 102, 241, 0.1);
+  color: #6366f1;
+}
+
+.notification-bell.active {
+  background: rgba(99, 102, 241, 0.15);
+  color: #6366f1;
+}
+
+.notification-bell:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+}
+
+.notification-bell-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  z-index: 1;
+}
+
+.notification-bell-icon svg {
+  width: 22px;
+  height: 22px;
+}
+
+/* Badge for unread count */
+.notification-bell-badge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 18px;
+  text-align: center;
+  color: white;
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  border-radius: 9px;
+  box-shadow: 0 2px 4px rgba(239, 68, 68, 0.3);
+  z-index: 2;
+  animation: badgePulse 2s ease-in-out infinite;
+}
+
+/* Animated ring effect */
+.notification-bell-ring {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 36px;
+  height: 36px;
+  border: 2px solid rgba(239, 68, 68, 0.4);
+  border-radius: 50%;
+  animation: ringPulse 2s ease-out infinite;
+  pointer-events: none;
+}
+
+@keyframes badgePulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+@keyframes ringPulse {
+  0% {
+    transform: translate(-50%, -50%) scale(0.8);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1.4);
+    opacity: 0;
+  }
+}
+
+/* Mobile adjustments */
+@media (max-width: 768px) {
+  .notification-bell {
+    width: 40px;
+    height: 40px;
+  }
+  
+  .notification-bell-icon svg {
+    width: 20px;
+    height: 20px;
+  }
+  
+  .notification-bell-badge {
+    top: 2px;
+    right: 2px;
+    min-width: 16px;
+    height: 16px;
+    font-size: 10px;
+    line-height: 16px;
+    padding: 0 4px;
+  }
+}
