@@ -3,6 +3,11 @@
  * Uses TensorFlow.js with BlazeFace and COCO-SSD models for accurate face detection
  * Multi-model approach ensures consistent and reliable face/person detection
  * Automatically blurs detected faces and license plates to protect privacy
+ * 
+ * DISTANCE-AWARE FACE DETECTION:
+ * - Multi-scale detection for faces at varying distances
+ * - Non-Maximum Suppression (NMS) to prevent false positives
+ * - Adaptive blur sizing based on detected face size
  */
 
 import * as tf from '@tensorflow/tfjs';
@@ -12,11 +17,27 @@ import * as cocoSsd from '@tensorflow-models/coco-ssd';
 let faceModel = null;
 let personModel = null;
 
+// ============================================================================
+// DISTANCE-AWARE FACE DETECTION CONFIGURATION
+// ============================================================================
+
 // Confidence thresholds - detections below these will NOT be blurred
-const FACE_CONFIDENCE_THRESHOLD = 0.75;  // BlazeFace confidence (0-1) - DO NOT CHANGE
+const FACE_CONFIDENCE_THRESHOLD = 0.70;  // Lowered from 0.75 for distant faces
+const FACE_HIGH_CONFIDENCE = 0.85;       // High confidence - definitely a face
+const FACE_MIN_CONFIDENCE = 0.55;        // Absolute minimum for multi-scale
 const PERSON_CONFIDENCE_THRESHOLD = 0.5; // COCO-SSD person confidence
 const PLATE_CONFIDENCE_THRESHOLD = 0.50; // License plate detection - lowered for privacy safety
 const PLATE_BORDERLINE_THRESHOLD = 0.40; // Borderline plates - prefer blur over skip
+
+// Multi-scale detection settings
+const SCALE_FACTORS = [1.0, 1.5, 2.0, 2.5]; // Upscale factors for distant faces
+const MIN_FACE_SIZE = 20;   // Minimum face size in pixels to detect
+const MAX_FACE_SIZE = 500;  // Maximum face size in pixels
+const NMS_IOU_THRESHOLD = 0.4; // IoU threshold for Non-Maximum Suppression
+
+// Face aspect ratio validation (width / height)
+const FACE_MIN_ASPECT_RATIO = 0.6;  // Face should not be too narrow
+const FACE_MAX_ASPECT_RATIO = 1.4;  // Face should not be too wide
 
 // License plate aspect ratio constraints (width / height)
 const PLATE_MIN_ASPECT_RATIO = 1.5;  // Minimum: plate must be wider than tall
@@ -131,6 +152,114 @@ const findPlateNearVehicleBottom = (candidates, vehicle) => {
   // Only return if reasonably close to expected position
   const maxDistance = Math.sqrt(vw * vw + vh * vh) * 0.4; // 40% of vehicle diagonal
   return bestDistance <= maxDistance ? bestCandidate : null;
+};
+
+// ============================================================================
+// NON-MAXIMUM SUPPRESSION (NMS) FOR FALSE POSITIVE PREVENTION
+// Filters overlapping/duplicate detections to prevent hallucinated blur regions
+// ============================================================================
+
+/**
+ * Calculate Intersection over Union (IoU) between two bounding boxes
+ * @param {Object} box1 - First box {x, y, width, height}
+ * @param {Object} box2 - Second box {x, y, width, height}
+ * @returns {number} IoU value between 0 and 1
+ */
+const calculateIoU = (box1, box2) => {
+  const x1 = Math.max(box1.x, box2.x);
+  const y1 = Math.max(box1.y, box2.y);
+  const x2 = Math.min(box1.x + box1.width, box2.x + box2.width);
+  const y2 = Math.min(box1.y + box1.height, box2.y + box2.height);
+  
+  const intersectionWidth = Math.max(0, x2 - x1);
+  const intersectionHeight = Math.max(0, y2 - y1);
+  const intersectionArea = intersectionWidth * intersectionHeight;
+  
+  const area1 = box1.width * box1.height;
+  const area2 = box2.width * box2.height;
+  const unionArea = area1 + area2 - intersectionArea;
+  
+  return unionArea > 0 ? intersectionArea / unionArea : 0;
+};
+
+/**
+ * Apply Non-Maximum Suppression to filter overlapping detections
+ * Keeps only the highest confidence detection for overlapping regions
+ * @param {Array} detections - Array of {x, y, width, height, confidence}
+ * @param {number} iouThreshold - IoU threshold for considering overlap
+ * @returns {Array} Filtered detections
+ */
+const applyNMS = (detections, iouThreshold = NMS_IOU_THRESHOLD) => {
+  if (!detections || detections.length === 0) return [];
+  
+  // Sort by confidence (highest first)
+  const sorted = [...detections].sort((a, b) => b.confidence - a.confidence);
+  const kept = [];
+  const suppressed = new Set();
+  
+  for (let i = 0; i < sorted.length; i++) {
+    if (suppressed.has(i)) continue;
+    
+    const current = sorted[i];
+    kept.push(current);
+    
+    // Suppress overlapping lower-confidence detections
+    for (let j = i + 1; j < sorted.length; j++) {
+      if (suppressed.has(j)) continue;
+      
+      const iou = calculateIoU(current, sorted[j]);
+      if (iou > iouThreshold) {
+        suppressed.add(j);
+        console.log(`🔇 NMS: Suppressed overlapping detection (IoU: ${(iou * 100).toFixed(0)}%)`);
+      }
+    }
+  }
+  
+  console.log(`🔍 NMS: Kept ${kept.length}/${detections.length} detections`);
+  return kept;
+};
+
+/**
+ * Validate face bounding box to reject false positives
+ * @param {Object} face - Face detection with bounding box
+ * @param {number} imgWidth - Image width
+ * @param {number} imgHeight - Image height
+ * @returns {Object} {isValid, reason}
+ */
+const validateFaceBoundingBox = (face, imgWidth, imgHeight) => {
+  const { x, y, width, height, confidence } = face;
+  
+  // 1. Size validation
+  if (width < MIN_FACE_SIZE || height < MIN_FACE_SIZE) {
+    return { isValid: false, reason: `Too small (${Math.round(width)}x${Math.round(height)})` };
+  }
+  if (width > MAX_FACE_SIZE || height > MAX_FACE_SIZE) {
+    return { isValid: false, reason: `Too large (${Math.round(width)}x${Math.round(height)})` };
+  }
+  
+  // 2. Aspect ratio validation (faces are roughly square)
+  const aspectRatio = width / height;
+  if (aspectRatio < FACE_MIN_ASPECT_RATIO || aspectRatio > FACE_MAX_ASPECT_RATIO) {
+    return { isValid: false, reason: `Invalid aspect ratio ${aspectRatio.toFixed(2)}` };
+  }
+  
+  // 3. Position validation (face should be within image with margin)
+  if (x < -width * 0.2 || y < -height * 0.2 || 
+      x + width > imgWidth * 1.1 || y + height > imgHeight * 1.1) {
+    return { isValid: false, reason: 'Outside image bounds' };
+  }
+  
+  // 4. Confidence-based size validation
+  // High confidence faces can be any valid size
+  // Lower confidence faces need to be larger to be trusted
+  if (confidence < FACE_HIGH_CONFIDENCE) {
+    const minSizeForLowConf = MIN_FACE_SIZE * 1.5;
+    if (width < minSizeForLowConf || height < minSizeForLowConf) {
+      return { isValid: false, reason: `Low conf (${(confidence * 100).toFixed(0)}%) + small size` };
+    }
+  }
+  
+  return { isValid: true, reason: null };
 };
 
 /**
@@ -255,6 +384,7 @@ const applyGaussianBlur = (context, x, y, width, height, blurRadius = 40) => {
 
 /**
  * Detect faces in the image using BlazeFace AI model
+ * ENHANCED: Multi-scale detection for faces at varying distances
  * @param {HTMLCanvasElement} canvas - Canvas containing the image
  * @returns {Promise<Array>} Array of detected face regions
  */
@@ -265,20 +395,99 @@ export const detectFaces = async (canvas) => {
       await loadFaceDetectionModel();
     }
     
-    console.log('🔍 Detecting faces in image...');
+    console.log('🔍 MULTI-SCALE FACE DETECTION starting...');
     
-    // Convert canvas to tensor for the model
-    const image = tf.browser.fromPixels(canvas);
+    const imgWidth = canvas.width;
+    const imgHeight = canvas.height;
+    const allDetections = [];
     
-    // Run face detection with returnTensors=false for better performance
-    const predictions = await faceModel.estimateFaces(image, false);
+    // Create temporary canvas for scaled detection
+    const tempCanvas = document.createElement('canvas');
+    const tempContext = tempCanvas.getContext('2d');
     
-    // Clean up tensor to prevent memory leak
-    image.dispose();
+    // Run detection at multiple scales to catch distant/small faces
+    for (const scale of SCALE_FACTORS) {
+      try {
+        const scaledWidth = Math.round(imgWidth * scale);
+        const scaledHeight = Math.round(imgHeight * scale);
+        
+        // Skip if scaled image would be too large (memory constraint)
+        if (scaledWidth > 2000 || scaledHeight > 2000) {
+          console.log(`⚠️ Skipping scale ${scale}x - too large`);
+          continue;
+        }
+        
+        // Create scaled canvas
+        tempCanvas.width = scaledWidth;
+        tempCanvas.height = scaledHeight;
+        tempContext.drawImage(canvas, 0, 0, scaledWidth, scaledHeight);
+        
+        // Convert to tensor and detect
+        const image = tf.browser.fromPixels(tempCanvas);
+        const predictions = await faceModel.estimateFaces(image, false);
+        image.dispose();
+        
+        console.log(`   Scale ${scale}x (${scaledWidth}x${scaledHeight}): ${predictions.length} face(s)`);
+        
+        // Convert detections back to original scale
+        predictions.forEach(pred => {
+          const [x1, y1] = pred.topLeft;
+          const [x2, y2] = pred.bottomRight;
+          
+          // Scale coordinates back to original image
+          const origX = x1 / scale;
+          const origY = y1 / scale;
+          const origWidth = (x2 - x1) / scale;
+          const origHeight = (y2 - y1) / scale;
+          
+          // Extract confidence
+          const confidence = pred.probability?.[0] || pred.probability || 0.5;
+          
+          // Boost confidence slightly for higher scale detections (small faces)
+          const adjustedConfidence = scale > 1 
+            ? Math.min(confidence + 0.05 * (scale - 1), 0.99)
+            : confidence;
+          
+          allDetections.push({
+            x: origX,
+            y: origY,
+            width: origWidth,
+            height: origHeight,
+            confidence: adjustedConfidence,
+            scale: scale,
+            landmarks: pred.landmarks ? pred.landmarks.map(lm => [lm[0] / scale, lm[1] / scale]) : null,
+            // Keep original format for compatibility
+            topLeft: [origX, origY],
+            bottomRight: [origX + origWidth, origY + origHeight],
+            probability: [adjustedConfidence]
+          });
+        });
+        
+      } catch (scaleError) {
+        console.error(`Error at scale ${scale}:`, scaleError);
+      }
+    }
     
-    console.log(`👤 BlazeFace detected ${predictions.length} face(s)`);
+    console.log(`👤 Multi-scale: ${allDetections.length} total raw detections`);
     
-    return predictions;
+    // Validate and filter detections
+    const validDetections = allDetections.filter(face => {
+      const validation = validateFaceBoundingBox(face, imgWidth, imgHeight);
+      if (!validation.isValid) {
+        console.log(`   ⚠️ Rejected: ${validation.reason}`);
+        return false;
+      }
+      return face.confidence >= FACE_MIN_CONFIDENCE;
+    });
+    
+    console.log(`👤 After validation: ${validDetections.length} valid detections`);
+    
+    // Apply Non-Maximum Suppression to remove duplicates/overlaps
+    const finalDetections = applyNMS(validDetections, NMS_IOU_THRESHOLD);
+    
+    console.log(`👤 After NMS: ${finalDetections.length} final face(s)`);
+    
+    return finalDetections;
   } catch (error) {
     console.error('Error detecting faces:', error);
     return [];
@@ -316,9 +525,10 @@ export const detectPeople = async (canvas) => {
 };
 
 /**
- * Blur all detected faces in the image - ACCURATE face-only blur
+ * Blur all detected faces in the image - DISTANCE-ADAPTIVE face blur
+ * ENHANCED: Adaptive blur region size based on face size/distance
  * @param {HTMLCanvasElement} canvas - Canvas containing the image
- * @param {Array} faces - Array of detected faces from BlazeFace
+ * @param {Array} faces - Array of detected faces from multi-scale detection
  */
 export const blurFaces = (canvas, faces) => {
   if (!faces || faces.length === 0) {
@@ -327,36 +537,106 @@ export const blurFaces = (canvas, faces) => {
   }
   
   const context = canvas.getContext('2d');
+  const imgWidth = canvas.width;
+  const imgHeight = canvas.height;
   let blurredCount = 0;
   
-  faces.forEach((face, index) => {
+  // Sort faces by confidence (highest first) for better overlap handling
+  const sortedFaces = [...faces].sort((a, b) => {
+    const confA = a.confidence || a.probability?.[0] || a.probability || 0;
+    const confB = b.confidence || b.probability?.[0] || b.probability || 0;
+    return confB - confA;
+  });
+  
+  sortedFaces.forEach((face, index) => {
     try {
+      // Get confidence (support both new and old format)
+      const confidence = face.confidence || face.probability?.[0] || face.probability || 1;
+      
       // Check confidence threshold - skip low confidence detections
-      const confidence = face.probability?.[0] || face.probability || 1;
       if (confidence < FACE_CONFIDENCE_THRESHOLD) {
         console.log(`⚠️ Face ${index + 1} skipped - confidence ${(confidence * 100).toFixed(0)}% below threshold ${(FACE_CONFIDENCE_THRESHOLD * 100)}%`);
         return;
       }
       
-      // Get face bounding box from BlazeFace
-      const [x1, y1] = face.topLeft;
-      const [x2, y2] = face.bottomRight;
+      // Get face bounding box (support both formats)
+      let x1, y1, x2, y2;
+      if (face.topLeft && face.bottomRight) {
+        [x1, y1] = face.topLeft;
+        [x2, y2] = face.bottomRight;
+      } else {
+        x1 = face.x;
+        y1 = face.y;
+        x2 = face.x + face.width;
+        y2 = face.y + face.height;
+      }
       
       // Calculate face dimensions
       const faceWidth = x2 - x1;
       const faceHeight = y2 - y1;
       
-      // TIGHT bounding box - minimal 5% expansion for precision
-      const expansion = 1.05;
-      const blurWidth = faceWidth * expansion;
-      const blurHeight = faceHeight * expansion;
+      // ═══════════════════════════════════════════════════════════════
+      // DISTANCE-ADAPTIVE BLUR SIZING
+      // Smaller faces (distant) get proportionally larger blur regions
+      // to ensure complete privacy protection
+      // ═══════════════════════════════════════════════════════════════
+      
+      // Calculate face size relative to image (0 = tiny, 1 = fills image)
+      const relativeFaceSize = Math.sqrt((faceWidth * faceHeight) / (imgWidth * imgHeight));
+      
+      // Adaptive expansion based on face size
+      // Distant/small faces: 15-20% expansion
+      // Close/large faces: 5-8% expansion
+      let expansionFactor;
+      let blurStrength;
+      
+      if (relativeFaceSize < 0.03) {
+        // Very distant/small face - needs larger blur region
+        expansionFactor = 1.20;
+        blurStrength = 25; // Lighter blur for small regions
+        console.log(`   📏 Distant face detected (${(relativeFaceSize * 100).toFixed(1)}% of image)`);
+      } else if (relativeFaceSize < 0.08) {
+        // Medium distance face
+        expansionFactor = 1.12;
+        blurStrength = 30;
+      } else if (relativeFaceSize < 0.15) {
+        // Close face
+        expansionFactor = 1.08;
+        blurStrength = 35;
+      } else {
+        // Very close face - tight blur
+        expansionFactor = 1.05;
+        blurStrength = 40;
+      }
+      
+      // For lower confidence detections, use slightly tighter blur to reduce false positive impact
+      if (confidence < FACE_HIGH_CONFIDENCE && confidence >= FACE_CONFIDENCE_THRESHOLD) {
+        expansionFactor = Math.max(1.05, expansionFactor - 0.05);
+        console.log(`   ⚡ Moderate confidence (${(confidence * 100).toFixed(0)}%) - using tighter blur`);
+      }
+      
+      // Calculate blur region
+      const blurWidth = faceWidth * expansionFactor;
+      const blurHeight = faceHeight * expansionFactor;
       const blurX = x1 - (blurWidth - faceWidth) / 2;
       const blurY = y1 - (blurHeight - faceHeight) / 2;
       
-      console.log(`🔒 Blurring face ${index + 1} (${(confidence * 100).toFixed(0)}% conf): ${Math.round(blurWidth)}x${Math.round(blurHeight)} at (${Math.round(blurX)}, ${Math.round(blurY)})`);
+      // Clamp to image bounds
+      const finalX = Math.max(0, blurX);
+      const finalY = Math.max(0, blurY);
+      const finalW = Math.min(blurWidth, imgWidth - finalX);
+      const finalH = Math.min(blurHeight, imgHeight - finalY);
+      
+      if (finalW <= 0 || finalH <= 0) {
+        console.log(`⚠️ Face ${index + 1} outside bounds - skipping`);
+        return;
+      }
+      
+      const scaleInfo = face.scale ? ` [scale: ${face.scale}x]` : '';
+      console.log(`🔒 Blurring face ${index + 1} (${(confidence * 100).toFixed(0)}% conf)${scaleInfo}: ${Math.round(finalW)}x${Math.round(finalH)} at (${Math.round(finalX)}, ${Math.round(finalY)})`);
       
       // Apply blur to ONLY the face area - not body, not background
-      applyGaussianBlur(context, blurX, blurY, blurWidth, blurHeight, 35);
+      applyGaussianBlur(context, finalX, finalY, finalW, finalH, blurStrength);
       blurredCount++;
       
     } catch (error) {
