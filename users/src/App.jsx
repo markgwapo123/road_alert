@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import config from './config/index.js';
 import { SettingsProvider, useSettings } from './context/SettingsContext.jsx';
+import { ConnectivityProvider } from './context/ConnectivityContext.jsx';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import ProfilePage from './pages/ProfilePage';
@@ -14,6 +15,7 @@ import NotificationPage from './pages/NotificationPage';
 import ConfirmationModal from './components/ConfirmationModal';
 import LogoutConfirmModal from './components/LogoutConfirmModal';
 import MaintenancePage from './pages/MaintenancePage';
+import { OfflineBanner } from './components/OfflineIndicator.jsx';
 import './App.css';
 
 // Main App component wrapped with settings
@@ -689,15 +691,20 @@ function AppContent() {
         type={confirmationType}
         autoCloseDelay={2000}
       />
+      
+      {/* Offline Status Banner */}
+      <OfflineBanner />
     </div>
   );
 }
 
-// Wrap App with SettingsProvider
+// Wrap App with providers
 function App() {
   return (
     <SettingsProvider>
-      <AppContent />
+      <ConnectivityProvider>
+        <AppContent />
+      </ConnectivityProvider>
     </SettingsProvider>
   );
 }

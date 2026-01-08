@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import config from '../config/index.js';
+import { authApi } from '../services/api.js';
 import ErrorModal from '../components/ErrorModal';
 import { useSettings } from '../context/SettingsContext.jsx';
 
@@ -98,21 +98,19 @@ const Register = ({ onRegister, switchToLogin }) => {
     }
 
     try {
-      const res = await axios.post(`${config.API_BASE_URL}/auth/register`, {
+      const res = await authApi.register({
         username: username.trim(),
         email: email.trim(),
         password
-      }, {
-        timeout: 5000
       });
-      if (res.data.token) {
-        onRegister(res.data.token);
+      if (res.token) {
+        onRegister(res.token);
       } else {
         onRegister();
       }
     } catch (err) {
       console.error('Registration error:', err);
-      if (err.code === 'ECONNREFUSED' || (err.message && err.message.includes('Network Error'))) {
+      if (err.code === 'ERR_NETWORK' || err.message?.includes('Cannot connect')) {
         showError('Cannot connect to server. Please check your internet connection.');
       } else if (err.response?.status === 400) {
         showError(err.response.data.error || 'Invalid registration data');

@@ -7,6 +7,8 @@ import { applyAIPrivacyProtection, preloadModel } from '../utils/aiPrivacyProtec
 import { getReverseGeocode } from '../services/geocoding.js';
 import { processGeocodedAddress } from '../utils/addressMatcher.js';
 import { useSettings } from '../context/SettingsContext.jsx';
+import { useConnectivity } from '../context/ConnectivityContext.jsx';
+import { savePendingReport, blobToBase64 } from '../services/offlineStorage.js';
 
 const ALERT_TYPES = [
   { value: 'emergency', label: 'Emergency Alert', icon: '🚨', example: 'ROAD CLOSED - Accident Ahead' },
@@ -26,8 +28,15 @@ const ReportFormMVP = ({ onReport, onClose }) => {
   const { getReportConfig, getSetting } = useSettings();
   const reportConfig = getReportConfig();
   
+  // Get connectivity context for offline support
+  const connectivity = useConnectivity();
+  const { isOnline, pendingCount, triggerSync, updatePendingCount } = connectivity || {};
+  
   // Instruction screen state
   const [showInstructions, setShowInstructions] = useState(true);
+  
+  // Offline submission state
+  const [savedOffline, setSavedOffline] = useState(false);
   
   const [form, setForm] = useState({
     type: '',
@@ -465,6 +474,7 @@ const ReportFormMVP = ({ onReport, onClose }) => {
     setError(''); 
     setSuccess('Submitting report...'); 
     setSubmitting(true);
+    setSavedOffline(false);
     
     if (reportConfig.requireLocation && !form.location) {
       setError('Location is required. Please turn on "Auto-Detect Location" or take a photo with GPS enabled.'); 
@@ -496,17 +506,86 @@ const ReportFormMVP = ({ onReport, onClose }) => {
       return;
     }
     
+    const provinceLabel = NEGROS_PROVINCES.find(p => p.value === form.province)?.label;
+    const cityLabel = NEGROS_CITIES[form.province]?.find(c => c.value === form.city)?.label;
+    const barangayLabel = NEGROS_BARANGAYS[form.city]?.find(b => b.value === form.barangay)?.label;
+    const fullAddress = `${barangayLabel}, ${cityLabel}, ${provinceLabel}`;
+    
+    // ============================================================================
+    // OFFLINE MODE: Save report locally when no internet connection
+    // ============================================================================
+    if (!isOnline) {
+      try {
+        console.log('📴 Offline mode - saving report locally...');
+        setSuccess('Saving report for later sync...');
+        
+        // Convert image to base64 for local storage
+        const imageBase64 = await blobToBase64(form.image);
+        
+        // Prepare report data for offline storage
+        const offlineReport = {
+          type: form.type,
+          province: form.province,
+          city: form.city,
+          barangay: form.barangay,
+          description: form.description,
+          image: imageBase64,
+          location: {
+            address: fullAddress,
+            coordinates: {
+              latitude: form.location.lat,
+              longitude: form.location.lng
+            }
+          },
+          userId: localStorage.getItem('userId'),
+          createdOffline: true
+        };
+        
+        // Save to IndexedDB
+        const localId = await savePendingReport(offlineReport);
+        console.log('✅ Report saved offline with localId:', localId);
+        
+        // Update pending count
+        if (updatePendingCount) {
+          await updatePendingCount();
+        }
+        
+        setSavedOffline(true);
+        setConfirmType('success');
+        setConfirmMessage('Report saved! Will sync when online.');
+        setShowConfirmModal(true);
+        
+        // Reset form
+        setTimeout(() => {
+          setShowConfirmModal(false);
+          setForm({ type: '', province: '', city: '', barangay: '', description: '', image: null, location: null });
+          setCapturedImage(null);
+          setAiStatus({ faces: 0, people: 0, plates: 0, active: false });
+          if (onClose) onClose();
+        }, 2500);
+        
+        setSubmitting(false);
+        return;
+        
+      } catch (offlineError) {
+        console.error('❌ Failed to save report offline:', offlineError);
+        setConfirmType('error');
+        setConfirmMessage('Failed to save report. Please try again.');
+        setShowConfirmModal(true);
+        setSubmitting(false);
+        return;
+      }
+    }
+    
+    // ============================================================================
+    // ONLINE MODE: Submit report to server
+    // ============================================================================
     const data = new FormData();
     data.append('type', form.type);
     data.append('province', form.province);
     data.append('city', form.city);
     data.append('barangay', form.barangay);
     data.append('description', form.description);
-    
-    const provinceLabel = NEGROS_PROVINCES.find(p => p.value === form.province)?.label;
-    const cityLabel = NEGROS_CITIES[form.province]?.find(c => c.value === form.city)?.label;
-    const barangayLabel = NEGROS_BARANGAYS[form.city]?.find(b => b.value === form.barangay)?.label;
-    const fullAddress = `${barangayLabel}, ${cityLabel}, ${provinceLabel}`;
     
     data.append('location[address]', fullAddress);
     data.append('location[coordinates][latitude]', form.location.lat);
@@ -553,6 +632,7 @@ const ReportFormMVP = ({ onReport, onClose }) => {
       console.error('Report submission error:', err);
       
       let errorMessage = '';
+      let shouldSaveOffline = false;
       
       if (err.response?.status === 413) {
         errorMessage = 'File is too large. Please select a smaller image (max 5MB).';
@@ -579,12 +659,68 @@ const ReportFormMVP = ({ onReport, onClose }) => {
         }
       } else if (err.response?.status === 500) {
         errorMessage = 'Server error. Please try again later.';
-      } else if (err.code === 'NETWORK_ERROR' || err.code === 'ECONNREFUSED' || !err.response) {
-        errorMessage = 'Cannot connect to server. Please check your internet connection.';
+      } else if (err.code === 'NETWORK_ERROR' || err.code === 'ECONNREFUSED' || !err.response || err.code === 'ERR_NETWORK') {
+        // Network error - offer to save offline
+        shouldSaveOffline = true;
+        errorMessage = 'Cannot connect to server. Would you like to save for later?';
       } else if (err.code === 'ECONNABORTED') {
-        errorMessage = 'Request timeout. Please try again.';
+        shouldSaveOffline = true;
+        errorMessage = 'Request timeout. Would you like to save for later?';
       } else {
         errorMessage = err.response?.data?.message || err.response?.data?.error || 'Report submission failed.';
+      }
+      
+      // If network error, try to save offline automatically
+      if (shouldSaveOffline) {
+        try {
+          console.log('📴 Network error - saving report offline...');
+          const imageBase64 = await blobToBase64(form.image);
+          
+          const offlineReport = {
+            type: form.type,
+            province: form.province,
+            city: form.city,
+            barangay: form.barangay,
+            description: form.description,
+            image: imageBase64,
+            location: {
+              address: fullAddress,
+              coordinates: {
+                latitude: form.location.lat,
+                longitude: form.location.lng
+              }
+            },
+            userId: localStorage.getItem('userId'),
+            createdOffline: true
+          };
+          
+          const localId = await savePendingReport(offlineReport);
+          console.log('✅ Report saved offline after network error:', localId);
+          
+          if (updatePendingCount) {
+            await updatePendingCount();
+          }
+          
+          setSavedOffline(true);
+          setConfirmType('success');
+          setConfirmMessage('Network error - report saved! Will sync when online.');
+          setShowConfirmModal(true);
+          
+          setTimeout(() => {
+            setShowConfirmModal(false);
+            setForm({ type: '', province: '', city: '', barangay: '', description: '', image: null, location: null });
+            setCapturedImage(null);
+            setAiStatus({ faces: 0, people: 0, plates: 0, active: false });
+            if (onClose) onClose();
+          }, 2500);
+          
+          setSubmitting(false);
+          return;
+          
+        } catch (offlineError) {
+          console.error('Failed to save offline after network error:', offlineError);
+          errorMessage = 'Cannot connect to server and failed to save locally.';
+        }
       }
       
       setConfirmType('error');

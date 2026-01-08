@@ -1,0 +1,351 @@
+/**
+ * Offline Indicator Styles
+ * Clean, minimal design that matches existing UI
+ */
+
+/* ============================================
+   OFFLINE STATUS BADGE
+   ============================================ */
+.offline-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.offline-badge.offline {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.offline-badge.online {
+  background: #d4edda;
+  color: #155724;
+}
+
+.offline-badge.syncing {
+  background: #cce5ff;
+  color: #004085;
+}
+
+.offline-badge.pending {
+  background: #e2e3e5;
+  color: #383d41;
+}
+
+.offline-badge.error {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+.badge-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.offline-badge.syncing .badge-dot {
+  animation: pulse 1.5s infinite;
+}
+
+.badge-text {
+  white-space: nowrap;
+}
+
+/* ============================================
+   SYNC STATUS PILL
+   ============================================ */
+.sync-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 16px;
+  font-size: 11px;
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+}
+
+.sync-pill.offline {
+  background: #fff3cd;
+  border-color: #ffc107;
+}
+
+.sync-pill.syncing {
+  background: #cce5ff;
+  border-color: #007bff;
+}
+
+.pill-icon {
+  font-size: 12px;
+}
+
+.sync-pill.syncing .pill-icon {
+  animation: spin 1s linear infinite;
+}
+
+.pill-count {
+  background: #dc3545;
+  color: white;
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-weight: 600;
+  min-width: 16px;
+  text-align: center;
+}
+
+.pill-progress {
+  font-weight: 500;
+  color: #007bff;
+}
+
+.pill-sync-btn {
+  background: #007bff;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
+  font-size: 10px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pill-sync-btn:hover {
+  background: #0056b3;
+}
+
+/* ============================================
+   OFFLINE BANNER
+   ============================================ */
+.offline-banner {
+  width: 100%;
+  padding: 8px 16px;
+  transition: all 0.3s ease;
+}
+
+.offline-banner.offline {
+  background: linear-gradient(90deg, #fff3cd 0%, #ffeeba 100%);
+  color: #856404;
+}
+
+.offline-banner.online.syncing {
+  background: linear-gradient(90deg, #cce5ff 0%, #b8daff 100%);
+  color: #004085;
+}
+
+.offline-banner.online:not(.syncing) {
+  background: linear-gradient(90deg, #d4edda 0%, #c3e6cb 100%);
+  color: #155724;
+}
+
+.banner-inner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.banner-icon {
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.banner-icon.spinning {
+  animation: spin 1s linear infinite;
+}
+
+.banner-message {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.pending-count {
+  opacity: 0.8;
+  font-weight: normal;
+  margin-left: 4px;
+}
+
+.banner-progress {
+  width: 80px;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.5);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: currentColor;
+  transition: width 0.3s ease;
+}
+
+.banner-sync-btn {
+  background: currentColor;
+  color: white;
+  border: none;
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.offline-banner.online:not(.syncing) .banner-sync-btn {
+  background: #28a745;
+}
+
+/* ============================================
+   FULL OFFLINE STATUS
+   ============================================ */
+.offline-status-full {
+  padding: 16px;
+  border-radius: 8px;
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+}
+
+.offline-status-full.offline {
+  background: #fff9e6;
+  border-color: #ffc107;
+}
+
+.status-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.status-icon {
+  font-size: 20px;
+}
+
+.status-title {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.status-pending,
+.status-lastsync {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid #dee2e6;
+  font-size: 14px;
+}
+
+.pending-value,
+.lastsync-value {
+  font-weight: 500;
+}
+
+.status-error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  margin-top: 8px;
+  background: #f8d7da;
+  border-radius: 4px;
+  color: #721c24;
+  font-size: 13px;
+}
+
+.sync-action-btn {
+  width: 100%;
+  margin-top: 12px;
+  padding: 10px;
+  background: #007bff;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.sync-action-btn:hover {
+  background: #0056b3;
+}
+
+.syncing-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px;
+  margin-top: 12px;
+  background: #cce5ff;
+  border-radius: 6px;
+  color: #004085;
+}
+
+.syncing-spinner {
+  animation: spin 1s linear infinite;
+}
+
+/* ============================================
+   POSITION VARIANTS
+   ============================================ */
+.offline-indicator-wrapper.position-fixed-top {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+}
+
+.offline-indicator-wrapper.position-fixed-bottom {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+}
+
+/* ============================================
+   ANIMATIONS
+   ============================================ */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(1.2); }
+}
+
+/* ============================================
+   MOBILE RESPONSIVE
+   ============================================ */
+@media (max-width: 480px) {
+  .offline-banner {
+    padding: 6px 12px;
+  }
+  
+  .banner-message {
+    font-size: 12px;
+  }
+  
+  .banner-sync-btn {
+    padding: 3px 8px;
+    font-size: 11px;
+  }
+  
+  .offline-badge {
+    padding: 3px 8px;
+    font-size: 11px;
+  }
+}

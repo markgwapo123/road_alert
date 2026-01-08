@@ -31,23 +31,50 @@ app.use(helmet({
   crossOriginEmbedderPolicy: false, // Disable COEP which can block images
   crossOriginResourcePolicy: { policy: "cross-origin" } // Allow cross-origin resource requests
 }));
-app.use(cors({
-  origin: [
-    'http://localhost:5173', 
-    'http://localhost:5174', 
-    'http://localhost:5175', 
-    'http://localhost:5176', 
-    'http://localhost:3000',
-    // Production URLs
-    'https://road-alert-git-main-markstephens-projects.vercel.app',
-    'https://*.vercel.app',
-    'https://road-alert-users.vercel.app',
-    /\.vercel\.app$/ // Allow all vercel.app subdomains
-  ],
+// CORS configuration - Allow mobile apps (Capacitor) and web origins
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Allow requests with no origin (mobile apps, curl, Postman, etc.)
+    if (!origin) {
+      return callback(null, true);
+    }
+    
+    const allowedOrigins = [
+      'http://localhost:5173', 
+      'http://localhost:5174', 
+      'http://localhost:5175', 
+      'http://localhost:5176', 
+      'http://localhost:3000',
+      'http://localhost:8080',
+      'http://localhost:8100',
+      'http://localhost',
+      'https://localhost',
+      // Capacitor origins
+      'capacitor://localhost',
+      'ionic://localhost',
+      // Production URLs
+      'https://road-alert-git-main-markstephens-projects.vercel.app',
+      'https://road-alert-users.vercel.app'
+    ];
+    
+    // Check if origin is in allowed list or matches patterns
+    const isAllowed = allowedOrigins.includes(origin) || 
+                      origin.endsWith('.vercel.app') ||
+                      origin.startsWith('file://') ||
+                      origin === 'null';
+    
+    if (isAllowed) {
+      callback(null, true);
+    } else {
+      console.log(`⚠️ CORS blocked origin: ${origin}`);
+      callback(null, true); // Allow anyway for MVP - log for debugging
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin']
+};
+app.use(cors(corsOptions));
 
 // Rate limiting - temporarily disabled for testing
 // const limiter = rateLimit({

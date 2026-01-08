@@ -3,7 +3,15 @@
   "appName": "BantayDalan",
   "webDir": "dist",
   "server": {
-    "androidScheme": "https"
+    "androidScheme": "https",
+    "cleartext": false,
+    "allowNavigation": [
+      "https://roadalert-backend-xze4.onrender.com/*",
+      "https://*.onrender.com/*",
+      "https://accounts.google.com/*",
+      "https://*.googleapis.com/*",
+      "https://*.cloudinary.com/*"
+    ]
   },
   "plugins": {
     "Camera": {
@@ -14,7 +22,8 @@
     },
     "Geolocation": {
       "permissions": [
-        "location"
+        "location",
+        "coarseLocation"
       ]
     },
     "Network": {
@@ -22,11 +31,26 @@
         "internet",
         "network-state"
       ]
+    },
+    "LocalNotifications": {
+      "smallIcon": "ic_stat_icon_config_sample",
+      "iconColor": "#488AFF"
+    },
+    "SplashScreen": {
+      "launchShowDuration": 2000,
+      "backgroundColor": "#ffffff",
+      "showSpinner": true,
+      "spinnerColor": "#007bff"
     }
   },
   "android": {
-    "allowMixedContent": true,
+    "allowMixedContent": false,
     "captureInput": true,
-    "webContentsDebuggingEnabled": true
+    "webContentsDebuggingEnabled": false,
+    "backgroundColor": "#ffffff"
+  },
+  "ios": {
+    "contentInset": "automatic",
+    "backgroundColor": "#ffffff"
   }
 }

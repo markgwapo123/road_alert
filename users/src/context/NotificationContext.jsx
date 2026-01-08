@@ -1,5 +1,11 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import * as notificationService from '../services/notificationService';
+import { 
+  cacheNotifications, 
+  getCachedNotifications, 
+  markNotificationReadLocally,
+  addToSyncQueue 
+} from '../services/offlineStorage';
 
 const NotificationContext = createContext(null);
 
@@ -27,7 +33,7 @@ export const NotificationProvider = ({ children, token }) => {
   const pollIntervalRef = useRef(null);
 
   /**
-   * Fetch notifications from API
+   * Fetch notifications from API (with offline fallback)
    */
   const fetchNotifications = useCallback(async (options = {}) => {
     if (!token) {
@@ -40,19 +46,46 @@ export const NotificationProvider = ({ children, token }) => {
       setLoading(true);
       setError(null);
       
+      // Check if online
+      if (!navigator.onLine) {
+        // Load from cache when offline
+        console.log('📴 Offline - loading cached notifications');
+        const cachedNotifs = await getCachedNotifications();
+        setNotifications(cachedNotifs);
+        setUnreadCount(cachedNotifs.filter(n => !n.isRead).length);
+        return;
+      }
+      
       const response = await notificationService.fetchNotifications(options);
       
       if (response.success) {
-        setNotifications(response.notifications || []);
+        const notifs = response.notifications || [];
+        setNotifications(notifs);
         setUnreadCount(response.unreadCount || 0);
         if (response.counts) {
           setCounts(response.counts);
+        }
+        
+        // Cache notifications for offline use
+        if (notifs.length > 0) {
+          await cacheNotifications(notifs);
         }
       }
     } catch (err) {
       console.error('Error fetching notifications:', err);
       setError('Failed to load notifications');
-      // Don't clear notifications on error, keep showing cached ones
+      
+      // On error, try to load from cache
+      try {
+        const cachedNotifs = await getCachedNotifications();
+        if (cachedNotifs.length > 0) {
+          console.log('📦 Loading cached notifications after error');
+          setNotifications(cachedNotifs);
+          setUnreadCount(cachedNotifs.filter(n => !n.isRead).length);
+        }
+      } catch (cacheErr) {
+        console.error('Cache error:', cacheErr);
+      }
     } finally {
       setLoading(false);
     }
@@ -75,26 +108,37 @@ export const NotificationProvider = ({ children, token }) => {
   }, [token]);
 
   /**
-   * Mark a notification as read
+   * Mark a notification as read (with offline support)
    */
   const markAsRead = useCallback(async (notificationId) => {
     if (!token || !notificationId) return;
 
     try {
-      const response = await notificationService.markAsRead(notificationId);
+      // Update local state immediately
+      setNotifications(prev => 
+        prev.map(n => 
+          n._id === notificationId 
+            ? { ...n, isRead: true, readAt: new Date().toISOString() }
+            : n
+        )
+      );
+      setUnreadCount(prev => Math.max(0, prev - 1));
       
-      if (response.success) {
-        // Update local state
-        setNotifications(prev => 
-          prev.map(n => 
-            n._id === notificationId 
-              ? { ...n, isRead: true, readAt: new Date().toISOString() }
-              : n
-          )
-        );
-        setUnreadCount(prev => Math.max(0, prev - 1));
+      // Mark as read locally
+      await markNotificationReadLocally(notificationId);
+      
+      // If offline, queue for sync
+      if (!navigator.onLine) {
+        await addToSyncQueue({
+          operation: 'mark_notification_read',
+          data: { notificationId },
+          priority: 0
+        });
+        return { success: true, offline: true };
       }
       
+      // Online - sync immediately
+      const response = await notificationService.markAsRead(notificationId);
       return response;
     } catch (err) {
       console.error('Error marking notification as read:', err);

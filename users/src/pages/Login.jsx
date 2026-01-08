@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import config from '../config/index.js';
+import { authApi, checkBackendHealth } from '../services/api.js';
 import ErrorModal from '../components/ErrorModal';
 
 const Login = ({ onLogin, switchToRegister }) => {
@@ -49,18 +49,16 @@ const Login = ({ onLogin, switchToRegister }) => {
                   }
 
                   setLoading(true);
-                  const loginResponse = await axios.post(`${config.API_BASE_URL}/auth/google-login`, {
-                    idToken: response.credential
-                  });
+                  const loginResponse = await authApi.googleLogin(response.credential);
 
-                  if (loginResponse.data.token) {
-                    localStorage.setItem('token', loginResponse.data.token);
-                    localStorage.setItem('user', JSON.stringify(loginResponse.data.user));
-                    onLogin(loginResponse.data.user);
+                  if (loginResponse.token) {
+                    localStorage.setItem('token', loginResponse.token);
+                    localStorage.setItem('user', JSON.stringify(loginResponse.user));
+                    onLogin(loginResponse.user);
                   }
                 } catch (err) {
                   console.error('❌ Google auto-button login error:', err);
-                  showError('Google login failed. Please try again or use email/password login.');
+                  showError(err.message || 'Google login failed. Please try again or use email/password login.');
                 } finally {
                   setLoading(false);
                 }
@@ -107,21 +105,16 @@ const Login = ({ onLogin, switchToRegister }) => {
     }
 
     try {
-      const res = await axios.post(`${config.API_BASE_URL}/auth/forgot-password`, {
-        email: loginId.trim()
-      }, {
-        timeout: 30000 // 30 seconds for sleeping Render backend
-      });
-      
+      await authApi.forgotPassword(loginId.trim());
       setResetMessage('Password reset instructions have been sent to your email.');
       setForgotPasswordMode(false);
     } catch (err) {
-      if (err.code === 'ECONNREFUSED' || (err.message && err.message.includes('Network Error'))) {
-        showError('Cannot connect to server. Please ensure the backend is running.');
+      if (err.code === 'ERR_NETWORK' || err.message?.includes('Cannot connect')) {
+        showError('Cannot connect to server. Please check your internet connection.');
       } else if (err.response?.status === 404) {
         showError('Email not found. Please check your email address or register first.');
       } else {
-        showError(err.response?.data?.error || 'Failed to send reset email. Please try again.');
+        showError(err.response?.data?.error || err.message || 'Failed to send reset email. Please try again.');
       }
     }
     setLoading(false);
@@ -138,22 +131,17 @@ const Login = ({ onLogin, switchToRegister }) => {
       return;
     }
     try {
-      const res = await axios.post(`${config.API_BASE_URL}/auth/login`, {
-        email: loginId.trim(),
-        password
-      }, {
-        timeout: 30000 // 30 seconds for sleeping Render backend
-      });
-      onLogin(res.data.token);
+      const res = await authApi.login(loginId.trim(), password);
+      onLogin(res.token);
     } catch (err) {
-      if (err.code === 'ECONNREFUSED' || (err.message && err.message.includes('Network Error'))) {
+      if (err.code === 'ERR_NETWORK' || err.message?.includes('Cannot connect')) {
         showError('Cannot connect to server. Please check your internet connection.');
       } else if (err.response?.status === 401) {
         showError('Invalid Gmail or password. Please check your credentials and try again.');
       } else if (err.response?.status === 404) {
         showError('User not found. Please register first.');
       } else {
-        showError(err.response?.data?.error || 'Login failed. Please try again.');
+        showError(err.response?.data?.error || err.message || 'Login failed. Please try again.');
       }
     }
     setLoading(false);
@@ -203,21 +191,19 @@ const Login = ({ onLogin, switchToRegister }) => {
               throw new Error('No credential received from Google');
             }
 
-            // Send the Google ID token to your backend
+            // Send the Google ID token to your backend using API service
             console.log('📤 Sending Google token to backend...');
-            const loginResponse = await axios.post(`${config.API_BASE_URL}/auth/google-login`, {
-              idToken: response.credential
-            });
+            const loginResponse = await authApi.googleLogin(response.credential);
 
-            console.log('✅ Backend response:', loginResponse.data);
-            if (loginResponse.data.token) {
-              localStorage.setItem('token', loginResponse.data.token);
-              localStorage.setItem('user', JSON.stringify(loginResponse.data.user));
-              onLogin(loginResponse.data.user);
+            console.log('✅ Backend response:', loginResponse);
+            if (loginResponse.token) {
+              localStorage.setItem('token', loginResponse.token);
+              localStorage.setItem('user', JSON.stringify(loginResponse.user));
+              onLogin(loginResponse.user);
             }
           } catch (err) {
             console.error('❌ Google login error:', err);
-            showError('Google login failed. Please try again or use email/password.');
+            showError(err.message || 'Google login failed. Please try again or use email/password.');
           }
           setLoading(false);
         }

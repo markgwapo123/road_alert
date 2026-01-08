@@ -1,11 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import config from '../config/index.js';
+import { useConnectivity } from '../context/ConnectivityContext.jsx';
+import { getPendingReports, SYNC_STATUS } from '../services/offlineStorage.js';
 
 const MyReports = ({ token }) => {
   const [reports, setReports] = useState([]);
+  const [pendingReports, setPendingReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  
+  // Get connectivity context
+  const connectivity = useConnectivity();
+  const { isOnline, pendingCount, triggerSync, isSyncing } = connectivity || {};
 
   console.log('MyReports component rendered with token:', token ? 'present' : 'missing');
 
@@ -13,17 +20,39 @@ const MyReports = ({ token }) => {
     console.log('MyReports useEffect - token:', token ? 'present' : 'missing');
     if (token) {
       fetchMyReports();
+      fetchPendingReports();
     } else {
       console.error('No authentication token provided to MyReports');
       setError('Authentication token is missing');
       setLoading(false);
     }
   }, [token]);
+  
+  // Refresh pending reports when pendingCount changes
+  useEffect(() => {
+    fetchPendingReports();
+  }, [pendingCount]);
+
+  const fetchPendingReports = async () => {
+    try {
+      const pending = await getPendingReports();
+      setPendingReports(pending);
+    } catch (err) {
+      console.error('Error fetching pending reports:', err);
+    }
+  };
 
   const fetchMyReports = async () => {
     try {
       setLoading(true);
       setError(null);
+      
+      // If offline, show message but don't error
+      if (!navigator.onLine) {
+        console.log('📴 Offline - showing cached reports');
+        setLoading(false);
+        return;
+      }
       
       console.log('Fetching reports with token:', token ? 'Token present' : 'No token');
       console.log('Making request to:', `${config.API_BASE_URL}/reports/my-reports`);
@@ -55,6 +84,9 @@ const MyReports = ({ token }) => {
       
       if (err.response?.status === 401) {
         setError('Authentication failed. Please log in again.');
+      } else if (!navigator.onLine) {
+        // Don't show error when offline
+        setError(null);
       } else {
         setError(err.response?.data?.message || err.response?.data?.error || 'Failed to load your reports');
       }
@@ -136,20 +168,101 @@ const MyReports = ({ token }) => {
 
   // Ensure reports is always an array
   const validReports = Array.isArray(reports) ? reports : [];
+  
+  // Get pending offline reports status info
+  const getSyncStatusLabel = (status) => {
+    switch (status) {
+      case SYNC_STATUS.PENDING: return 'Waiting to sync';
+      case SYNC_STATUS.SYNCING: return 'Syncing...';
+      case SYNC_STATUS.FAILED: return 'Sync failed';
+      default: return status;
+    }
+  };
 
   return (
     <div className="my-reports">
       <div className="my-reports-header">
         <h2>My Reports</h2>
-        <p>Total Reports: {validReports.length}</p>
+        <p>Total Reports: {validReports.length + pendingReports.length}</p>
+        {!isOnline && (
+          <span className="offline-badge" style={{ background: '#fff3cd', color: '#856404', padding: '4px 8px', borderRadius: '4px', fontSize: '12px', marginLeft: '8px' }}>
+            📴 Offline
+          </span>
+        )}
       </div>
       
-      {validReports.length === 0 ? (
+      {/* Pending Offline Reports Section */}
+      {pendingReports.length > 0 && (
+        <div className="pending-reports-section" style={{ marginBottom: '20px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+            <h3 style={{ margin: 0, color: '#856404' }}>
+              📤 Pending Upload ({pendingReports.length})
+            </h3>
+            {isOnline && !isSyncing && (
+              <button 
+                onClick={triggerSync}
+                style={{ 
+                  background: '#007bff', 
+                  color: 'white', 
+                  border: 'none', 
+                  padding: '6px 12px', 
+                  borderRadius: '4px',
+                  cursor: 'pointer'
+                }}
+              >
+                Sync Now
+              </button>
+            )}
+            {isSyncing && (
+              <span style={{ color: '#007bff' }}>🔄 Syncing...</span>
+            )}
+          </div>
+          
+          {pendingReports.map((report) => (
+            <div 
+              key={report.localId} 
+              className="report-card my-report-card pending-offline"
+              style={{ 
+                border: '2px dashed #ffc107', 
+                background: '#fffbeb',
+                opacity: report.syncStatus === SYNC_STATUS.SYNCING ? 0.7 : 1
+              }}
+            >
+              <div className="report-header">
+                <span 
+                  className="status-badge"
+                  style={{ 
+                    backgroundColor: report.syncStatus === SYNC_STATUS.FAILED ? '#dc3545' : '#ffc107',
+                    color: report.syncStatus === SYNC_STATUS.FAILED ? 'white' : '#000'
+                  }}
+                >
+                  {report.syncStatus === SYNC_STATUS.FAILED ? '⚠️' : '📤'} {getSyncStatusLabel(report.syncStatus)}
+                </span>
+                <span className="report-date">{formatDate(report.createdAt)}</span>
+              </div>
+              
+              <div className="report-content">
+                <h3>{report.type || 'Unknown Type'}</h3>
+                <p className="description">{report.description || 'No description'}</p>
+                <p className="location">📍 {report.location?.address || `${report.province}, ${report.city}, ${report.barangay}`}</p>
+                
+                {report.syncError && (
+                  <p style={{ color: '#dc3545', fontSize: '12px', marginTop: '8px' }}>
+                    ⚠️ Error: {report.syncError}
+                  </p>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      
+      {validReports.length === 0 && pendingReports.length === 0 ? (
         <div className="no-reports">
           <p>You haven't submitted any reports yet.</p>
           <p>Start reporting road issues to help keep our roads safe!</p>
         </div>
-      ) : (
+      ) : validReports.length > 0 ? (
         <div className="reports-list">
           {validReports.map((report, index) => {
             if (!report || !report._id) {
@@ -235,7 +348,7 @@ const MyReports = ({ token }) => {
             );
           })}
         </div>
-      )}
+      ) : null}
     </div>
   );
 };

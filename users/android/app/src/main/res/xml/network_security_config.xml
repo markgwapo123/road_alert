@@ -1,25 +1,43 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
-    <!-- Trust all certificates in debug mode -->
-    <base-config cleartextTrafficPermitted="true">
+    <!-- Default: HTTPS only for security -->
+    <base-config cleartextTrafficPermitted="false">
         <trust-anchors>
             <certificates src="system" />
-            <certificates src="user" />
         </trust-anchors>
     </base-config>
     
-    <!-- Production domain -->
+    <!-- Production backend domain (Render.com) -->
     <domain-config cleartextTrafficPermitted="false">
         <domain includeSubdomains="true">roadalert-backend-xze4.onrender.com</domain>
+        <domain includeSubdomains="true">onrender.com</domain>
         <trust-anchors>
             <certificates src="system" />
         </trust-anchors>
     </domain-config>
     
-    <!-- Allow localhost for development -->
+    <!-- Google services for authentication -->
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">googleapis.com</domain>
+        <domain includeSubdomains="true">accounts.google.com</domain>
+        <domain includeSubdomains="true">google.com</domain>
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </domain-config>
+    
+    <!-- Cloudinary for images -->
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">cloudinary.com</domain>
+        <domain includeSubdomains="true">res.cloudinary.com</domain>
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </domain-config>
+    
+    <!-- Development only: localhost access (debug builds) -->
     <domain-config cleartextTrafficPermitted="true">
-        <domain includeSubdomains="true">localhost</domain>
-        <domain includeSubdomains="true">10.0.2.2</domain>
-        <domain includeSubdomains="true">192.168.1.1</domain>
+        <domain includeSubdomains="false">localhost</domain>
+        <domain includeSubdomains="false">10.0.2.2</domain>
     </domain-config>
 </network-security-config>
