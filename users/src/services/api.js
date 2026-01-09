@@ -2,18 +2,91 @@
  * Centralized API Service for BantayDalan
  * Handles all HTTP requests with proper timeout, retry, and error handling
  * Optimized for APK/mobile environments with cold-start backend support
+ * Uses Capacitor HTTP plugin to bypass CORS on mobile
  */
 import axios from 'axios';
+import { Capacitor } from '@capacitor/core';
+import { CapacitorHttp } from '@capacitor/core';
 import config from '../config/index.js';
 
 // Backend cold start timeout (Render free tier can take 30-60 seconds)
 const COLD_START_TIMEOUT = 60000; // 60 seconds
 const NORMAL_TIMEOUT = 15000; // 15 seconds for normal requests
 
+// Check if running on native platform (Android/iOS)
+const isNativePlatform = Capacitor.isNativePlatform();
+console.log(`📱 Platform: ${Capacitor.getPlatform()}, isNative: ${isNativePlatform}`);
+
 /**
- * Create axios instance with default configuration
+ * Native HTTP request using Capacitor (bypasses CORS)
  */
-const api = axios.create({
+const nativeHttp = {
+  async request(options) {
+    const { method = 'GET', url, data, headers = {}, timeout = NORMAL_TIMEOUT } = options;
+    
+    // Build full URL
+    const fullUrl = url.startsWith('http') ? url : `${config.API_BASE_URL}${url}`;
+    
+    console.log(`📱 Native HTTP: ${method} ${fullUrl}`);
+    
+    try {
+      const response = await CapacitorHttp.request({
+        url: fullUrl,
+        method: method.toUpperCase(),
+        headers: {
+          'Content-Type': 'application/json',
+          ...headers,
+        },
+        data: data,
+        connectTimeout: timeout,
+        readTimeout: timeout,
+      });
+      
+      console.log(`✅ Native Response: ${fullUrl} - ${response.status}`);
+      
+      // Transform to axios-like response
+      return {
+        data: response.data,
+        status: response.status,
+        headers: response.headers,
+        config: options,
+      };
+    } catch (error) {
+      console.error(`❌ Native HTTP Error: ${fullUrl}`, error);
+      throw {
+        message: error.message || 'Network Error',
+        code: 'ERR_NETWORK',
+        config: options,
+        response: error.response,
+      };
+    }
+  },
+  
+  get(url, config = {}) {
+    return this.request({ ...config, method: 'GET', url });
+  },
+  
+  post(url, data, config = {}) {
+    return this.request({ ...config, method: 'POST', url, data });
+  },
+  
+  put(url, data, config = {}) {
+    return this.request({ ...config, method: 'PUT', url, data });
+  },
+  
+  delete(url, config = {}) {
+    return this.request({ ...config, method: 'DELETE', url });
+  },
+  
+  patch(url, data, config = {}) {
+    return this.request({ ...config, method: 'PATCH', url, data });
+  },
+};
+
+/**
+ * Create axios instance with default configuration (for web)
+ */
+const axiosInstance = axios.create({
   baseURL: config.API_BASE_URL,
   timeout: NORMAL_TIMEOUT,
   headers: {
@@ -24,7 +97,7 @@ const api = axios.create({
 /**
  * Request interceptor - adds auth token and logging
  */
-api.interceptors.request.use(
+axiosInstance.interceptors.request.use(
   (requestConfig) => {
     // Add auth token if available
     const token = localStorage.getItem('token');
@@ -46,7 +119,7 @@ api.interceptors.request.use(
 /**
  * Response interceptor - handles errors and logging
  */
-api.interceptors.response.use(
+axiosInstance.interceptors.response.use(
   (response) => {
     console.log(`✅ API Response: ${response.config.url} - ${response.status}`);
     return response;
@@ -60,8 +133,8 @@ api.interceptors.response.use(
       status: error.response?.status,
       message: error.message,
       code: error.code,
-      isCapacitor: typeof window !== 'undefined' && window.Capacitor !== undefined,
-      platform: typeof window !== 'undefined' && window.Capacitor?.getPlatform?.() || 'web',
+      isCapacitor: isNativePlatform,
+      platform: Capacitor.getPlatform(),
     };
     
     console.error('❌ API Error (Mobile Debug):', JSON.stringify(errorInfo, null, 2));
@@ -94,6 +167,7 @@ api.interceptors.response.use(
 /**
  * Backend health check with retry support
  * Essential for APK apps to verify connectivity before auth requests
+ * Uses native HTTP on mobile to bypass CORS
  * 
  * @param {number} maxRetries - Maximum number of retry attempts (default: 2)
  * @param {number} retryDelay - Delay between retries in ms (default: 2000)
@@ -107,10 +181,25 @@ export const checkBackendHealth = async (maxRetries = 2, retryDelay = 2000) => {
     try {
       console.log(`🏥 Health check attempt ${attempt}/${maxRetries + 1}...`);
       
-      const response = await axios.get(`${config.BACKEND_URL}/api/health`, {
-        timeout: attempt === 1 ? COLD_START_TIMEOUT : NORMAL_TIMEOUT, // First attempt allows for cold start
-        validateStatus: (status) => status < 500, // Accept any non-server-error response
-      });
+      let response;
+      const healthUrl = `${config.BACKEND_URL}/api/health`;
+      const timeout = attempt === 1 ? COLD_START_TIMEOUT : NORMAL_TIMEOUT;
+      
+      if (isNativePlatform) {
+        // Use Capacitor native HTTP (bypasses CORS)
+        console.log(`📱 Using native HTTP for health check: ${healthUrl}`);
+        response = await CapacitorHttp.get({
+          url: healthUrl,
+          connectTimeout: timeout,
+          readTimeout: timeout,
+        });
+      } else {
+        // Use axios for web
+        response = await axios.get(healthUrl, {
+          timeout: timeout,
+          validateStatus: (status) => status < 500,
+        });
+      }
       
       const latency = Date.now() - startTime;
       
@@ -257,7 +346,7 @@ export const authApi = {
       throw new Error(health.message);
     }
     
-    const response = await axios.post(`${config.API_BASE_URL}/auth/register`,
+    const response = await api.post('/auth/register',
       userData,
       { timeout: COLD_START_TIMEOUT }
     );
@@ -273,7 +362,7 @@ export const authApi = {
       throw new Error(health.message);
     }
     
-    const response = await axios.post(`${config.API_BASE_URL}/auth/forgot-password`,
+    const response = await api.post('/auth/forgot-password',
       { email },
       { timeout: COLD_START_TIMEOUT }
     );
@@ -281,5 +370,23 @@ export const authApi = {
   },
 };
 
-// Export default axios instance for advanced usage
+// Export the appropriate HTTP client (native for mobile, axios for web)
+// This is the main API instance that should be used throughout the app
+const api = isNativePlatform ? nativeHttp : axiosInstance;
+
+// Add auth token to native HTTP requests
+if (isNativePlatform) {
+  const originalRequest = nativeHttp.request.bind(nativeHttp);
+  nativeHttp.request = async (options) => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      options.headers = {
+        ...options.headers,
+        Authorization: `Bearer ${token}`,
+      };
+    }
+    return originalRequest(options);
+  };
+}
+
 export default api;

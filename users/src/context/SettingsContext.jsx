@@ -1,7 +1,31 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { Capacitor } from '@capacitor/core';
+import { CapacitorHttp } from '@capacitor/core';
 import config from '../config/index.js';
 
 const SettingsContext = createContext(null);
+
+// Check if running on native platform
+const isNativePlatform = Capacitor.isNativePlatform();
+
+// Helper function to make HTTP requests (native on mobile, fetch on web)
+const httpGet = async (url) => {
+  if (isNativePlatform) {
+    console.log(`📱 Native HTTP GET: ${url}`);
+    const response = await CapacitorHttp.get({
+      url,
+      connectTimeout: 15000,
+      readTimeout: 15000,
+    });
+    return {
+      ok: response.status >= 200 && response.status < 300,
+      status: response.status,
+      json: async () => response.data,
+    };
+  } else {
+    return fetch(url);
+  }
+};
 
 // Default settings (fallback values)
 const DEFAULT_SETTINGS = {
@@ -62,7 +86,7 @@ export const SettingsProvider = ({ children }) => {
   // Fetch settings from backend
   const fetchSettings = useCallback(async () => {
     try {
-      const response = await fetch(`${config.API_BASE_URL}/settings/public`);
+      const response = await httpGet(`${config.API_BASE_URL}/settings/public`);
       
       if (!response.ok) {
         throw new Error(`Failed to fetch settings: ${response.status}`);

@@ -1,20 +1,11 @@
 /**
  * Notification Service - Handles all notification-related API calls
+ * Uses native HTTP on mobile to bypass CORS
  */
 import config from '../config/index.js';
+import { httpGet, httpPost, httpPut, httpDelete } from '../utils/http.js';
 
 const API_BASE = config.API_BASE_URL;
-
-/**
- * Get authorization headers
- */
-const getAuthHeaders = () => {
-  const token = localStorage.getItem('token');
-  return {
-    'Authorization': `Bearer ${token}`,
-    'Content-Type': 'application/json'
-  };
-};
 
 /**
  * Fetch all notifications for the current user
@@ -33,10 +24,7 @@ export const fetchNotifications = async ({ page = 1, limit = 20, unreadOnly = fa
       type
     });
 
-    const response = await fetch(`${API_BASE}/notifications?${params}`, {
-      method: 'GET',
-      headers: getAuthHeaders()
-    });
+    const response = await httpGet(`${API_BASE}/notifications?${params}`);
 
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
@@ -54,10 +42,7 @@ export const fetchNotifications = async ({ page = 1, limit = 20, unreadOnly = fa
  */
 export const getUnreadCount = async () => {
   try {
-    const response = await fetch(`${API_BASE}/notifications/unread-count`, {
-      method: 'GET',
-      headers: getAuthHeaders()
-    });
+    const response = await httpGet(`${API_BASE}/notifications/unread-count`);
 
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
@@ -76,10 +61,7 @@ export const getUnreadCount = async () => {
  */
 export const markAsRead = async (notificationId) => {
   try {
-    const response = await fetch(`${API_BASE}/notifications/${notificationId}/read`, {
-      method: 'PUT',
-      headers: getAuthHeaders()
-    });
+    const response = await httpPut(`${API_BASE}/notifications/${notificationId}/read`);
 
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
@@ -97,10 +79,7 @@ export const markAsRead = async (notificationId) => {
  */
 export const markAllAsRead = async () => {
   try {
-    const response = await fetch(`${API_BASE}/notifications/read-all`, {
-      method: 'PUT',
-      headers: getAuthHeaders()
-    });
+    const response = await httpPut(`${API_BASE}/notifications/read-all`);
 
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
@@ -119,10 +98,7 @@ export const markAllAsRead = async () => {
  */
 export const deleteNotification = async (notificationId) => {
   try {
-    const response = await fetch(`${API_BASE}/notifications/${notificationId}`, {
-      method: 'DELETE',
-      headers: getAuthHeaders()
-    });
+    const response = await httpDelete(`${API_BASE}/notifications/${notificationId}`);
 
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
@@ -141,10 +117,7 @@ export const deleteNotification = async (notificationId) => {
  */
 export const fetchAnnouncements = async (limit = 10) => {
   try {
-    const response = await fetch(`${API_BASE}/notifications/announcements?limit=${limit}`, {
-      method: 'GET',
-      headers: getAuthHeaders()
-    });
+    const response = await httpGet(`${API_BASE}/notifications/announcements?limit=${limit}`);
 
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);

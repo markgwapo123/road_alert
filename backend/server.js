@@ -17,6 +17,21 @@ process.on('uncaughtException', (error) => {
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// IMPORTANT: Handle CORS preflight for ALL routes BEFORE any other middleware
+// This ensures mobile apps (Capacitor) can make requests
+app.options('*', (req, res) => {
+  const origin = req.headers.origin;
+  console.log(`🔄 CORS Preflight request from: ${origin || 'no-origin (mobile app)'}`);
+  
+  // Set CORS headers for preflight
+  res.header('Access-Control-Allow-Origin', origin || '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin, Cache-Control');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.header('Access-Control-Max-Age', '86400'); // 24 hours
+  res.sendStatus(204);
+});
+
 // Security middleware with proper CSP for images and CORS
 app.use(helmet({
   contentSecurityPolicy: {
@@ -69,6 +84,7 @@ const corsOptions = {
                       origin.startsWith('capacitor://') ||
                       origin.startsWith('ionic://') ||
                       origin.startsWith('http://localhost') ||
+                      origin.startsWith('https://localhost') ||
                       origin === 'null';
     
     if (isAllowed) {
@@ -81,9 +97,24 @@ const corsOptions = {
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin', 'Cache-Control']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin', 'Cache-Control'],
+  exposedHeaders: ['Content-Length', 'X-Request-Id'],
+  maxAge: 86400 // 24 hours
 };
 app.use(cors(corsOptions));
+
+// Additional middleware to ensure CORS headers are always set for Capacitor
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  
+  // For Capacitor apps using https://localhost
+  if (origin === 'https://localhost' || origin === 'capacitor://localhost' || !origin) {
+    res.header('Access-Control-Allow-Origin', origin || '*');
+    res.header('Access-Control-Allow-Credentials', 'true');
+  }
+  
+  next();
+});
 
 // Rate limiting - temporarily disabled for testing
 // const limiter = rateLimit({
