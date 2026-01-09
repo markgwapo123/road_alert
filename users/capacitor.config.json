@@ -44,10 +44,12 @@
     }
   },
   "android": {
-    "allowMixedContent": false,
+    "allowMixedContent": true,
     "captureInput": true,
-    "webContentsDebuggingEnabled": false,
-    "backgroundColor": "#ffffff"
+    "webContentsDebuggingEnabled": true,
+    "backgroundColor": "#ffffff",
+    "initialFocus": true,
+    "useLegacyBridge": false
   },
   "ios": {
     "contentInset": "automatic",

@@ -35,7 +35,9 @@ app.use(helmet({
 const corsOptions = {
   origin: function (origin, callback) {
     // Allow requests with no origin (mobile apps, curl, Postman, etc.)
+    // This is CRITICAL for Android/iOS apps using Capacitor
     if (!origin) {
+      console.log('📱 Request with no origin (likely mobile app) - ALLOWED');
       return callback(null, true);
     }
     
@@ -49,9 +51,12 @@ const corsOptions = {
       'http://localhost:8100',
       'http://localhost',
       'https://localhost',
-      // Capacitor origins
+      // Capacitor/Cordova origins for mobile apps
       'capacitor://localhost',
       'ionic://localhost',
+      'http://localhost:8080',
+      // Android WebView origins
+      'file://',
       // Production URLs
       'https://road-alert-git-main-markstephens-projects.vercel.app',
       'https://road-alert-users.vercel.app'
@@ -61,18 +66,22 @@ const corsOptions = {
     const isAllowed = allowedOrigins.includes(origin) || 
                       origin.endsWith('.vercel.app') ||
                       origin.startsWith('file://') ||
+                      origin.startsWith('capacitor://') ||
+                      origin.startsWith('ionic://') ||
+                      origin.startsWith('http://localhost') ||
                       origin === 'null';
     
     if (isAllowed) {
+      console.log(`✅ CORS allowed origin: ${origin}`);
       callback(null, true);
     } else {
-      console.log(`⚠️ CORS blocked origin: ${origin}`);
+      console.log(`⚠️ CORS origin (allowing for MVP): ${origin}`);
       callback(null, true); // Allow anyway for MVP - log for debugging
     }
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin', 'Cache-Control']
 };
 app.use(cors(corsOptions));
 

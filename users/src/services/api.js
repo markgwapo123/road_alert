@@ -52,21 +52,31 @@ api.interceptors.response.use(
     return response;
   },
   (error) => {
-    // Enhanced error logging for debugging
+    // Enhanced error logging for debugging mobile connectivity
     const errorInfo = {
       url: error.config?.url,
+      baseURL: error.config?.baseURL,
       method: error.config?.method,
       status: error.response?.status,
       message: error.message,
       code: error.code,
+      isCapacitor: typeof window !== 'undefined' && window.Capacitor !== undefined,
+      platform: typeof window !== 'undefined' && window.Capacitor?.getPlatform?.() || 'web',
     };
     
-    console.error('❌ API Error:', errorInfo);
+    console.error('❌ API Error (Mobile Debug):', JSON.stringify(errorInfo, null, 2));
     
     // Transform error for better handling
     if (error.code === 'ECONNABORTED') {
-      error.userMessage = 'Request timed out. The server may be starting up, please try again.';
-    } else if (error.code === 'ERR_NETWORK' || error.message === 'Network Error') {
+      error.userMessage = 'Request timed out. The server may be starting up, please try again in 30 seconds.';
+    } else if (error.code === 'ERR_NETWORK' || error.message === 'Network Error' || error.message?.includes('Network')) {
+      // More detailed network error for mobile debugging
+      console.error('🔴 Network Error Details:', {
+        targetURL: `${config.BACKEND_URL}/api/health`,
+        errorCode: error.code,
+        errorMessage: error.message,
+        suggestion: 'Check: 1) Internet connection, 2) Backend is running, 3) Android network permissions'
+      });
       error.userMessage = 'Cannot connect to server. Please check your internet connection.';
     } else if (error.response?.status === 401) {
       error.userMessage = 'Session expired. Please login again.';
