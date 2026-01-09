@@ -10,8 +10,11 @@ import { CapacitorHttp } from '@capacitor/core';
 import config from '../config/index.js';
 
 // Backend cold start timeout (Render free tier can take 30-60 seconds)
-const COLD_START_TIMEOUT = 60000; // 60 seconds
-const NORMAL_TIMEOUT = 15000; // 15 seconds for normal requests
+// Mobile devices need longer timeouts due to variable network conditions
+const COLD_START_TIMEOUT = 120000; // 120 seconds for cold starts
+const AUTH_TIMEOUT = 90000; // 90 seconds for auth operations
+const NORMAL_TIMEOUT = 30000; // 30 seconds for normal requests
+const HEALTH_CHECK_TIMEOUT = 60000; // 60 seconds for health checks
 
 // Check if running on native platform (Android/iOS)
 const isNativePlatform = Capacitor.isNativePlatform();
@@ -19,6 +22,7 @@ console.log(`📱 Platform: ${Capacitor.getPlatform()}, isNative: ${isNativePlat
 
 /**
  * Native HTTP request using Capacitor (bypasses CORS)
+ * Enhanced with better timeout handling for mobile networks
  */
 const nativeHttp = {
   async request(options) {
@@ -27,7 +31,11 @@ const nativeHttp = {
     // Build full URL
     const fullUrl = url.startsWith('http') ? url : `${config.API_BASE_URL}${url}`;
     
-    console.log(`📱 Native HTTP: ${method} ${fullUrl}`);
+    // Use longer timeouts for auth endpoints
+    const isAuthEndpoint = fullUrl.includes('/auth/');
+    const effectiveTimeout = isAuthEndpoint ? Math.max(timeout, AUTH_TIMEOUT) : timeout;
+    
+    console.log(`📱 Native HTTP: ${method} ${fullUrl} (timeout: ${effectiveTimeout}ms)`);
     
     try {
       const response = await CapacitorHttp.request({
@@ -35,11 +43,14 @@ const nativeHttp = {
         method: method.toUpperCase(),
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json',
           ...headers,
         },
         data: data,
-        connectTimeout: timeout,
-        readTimeout: timeout,
+        connectTimeout: effectiveTimeout,
+        readTimeout: effectiveTimeout,
+        // Android-specific: disable response buffering for faster response
+        responseType: 'json',
       });
       
       console.log(`✅ Native Response: ${fullUrl} - ${response.status}`);
@@ -53,11 +64,19 @@ const nativeHttp = {
       };
     } catch (error) {
       console.error(`❌ Native HTTP Error: ${fullUrl}`, error);
+      
+      // Enhanced error handling for timeout
+      const isTimeout = error.message?.toLowerCase().includes('timeout') || 
+                       error.message?.toLowerCase().includes('timed out');
+      
       throw {
-        message: error.message || 'Network Error',
-        code: 'ERR_NETWORK',
+        message: isTimeout 
+          ? 'Server is taking too long to respond. Please try again.' 
+          : (error.message || 'Network Error'),
+        code: isTimeout ? 'ERR_TIMEOUT' : 'ERR_NETWORK',
         config: options,
         response: error.response,
+        isTimeout,
       };
     }
   },
@@ -183,13 +202,17 @@ export const checkBackendHealth = async (maxRetries = 2, retryDelay = 2000) => {
       
       let response;
       const healthUrl = `${config.BACKEND_URL}/api/health`;
-      const timeout = attempt === 1 ? COLD_START_TIMEOUT : NORMAL_TIMEOUT;
+      // Use longer timeout for health checks, especially first attempt (cold start)
+      const timeout = attempt === 1 ? HEALTH_CHECK_TIMEOUT : NORMAL_TIMEOUT;
       
       if (isNativePlatform) {
         // Use Capacitor native HTTP (bypasses CORS)
-        console.log(`📱 Using native HTTP for health check: ${healthUrl}`);
+        console.log(`📱 Using native HTTP for health check: ${healthUrl} (timeout: ${timeout}ms)`);
         response = await CapacitorHttp.get({
           url: healthUrl,
+          headers: {
+            'Accept': 'application/json',
+          },
           connectTimeout: timeout,
           readTimeout: timeout,
         });
@@ -212,22 +235,26 @@ export const checkBackendHealth = async (maxRetries = 2, retryDelay = 2000) => {
       }
     } catch (error) {
       lastError = error;
-      console.warn(`⚠️ Health check attempt ${attempt} failed:`, error.message);
+      const isTimeout = error.message?.toLowerCase().includes('timeout');
+      console.warn(`⚠️ Health check attempt ${attempt} failed:`, error.message, isTimeout ? '(timeout)' : '');
       
       if (attempt <= maxRetries) {
-        console.log(`⏳ Retrying in ${retryDelay}ms...`);
-        await new Promise(resolve => setTimeout(resolve, retryDelay));
+        // Longer delay for cold start scenarios
+        const delay = isTimeout ? retryDelay * 2 : retryDelay;
+        console.log(`⏳ Retrying in ${delay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
       }
     }
   }
   
   // All retries exhausted
-  const errorMessage = lastError?.code === 'ECONNABORTED' 
-    ? 'Server is starting up. Please wait and try again.'
+  const isTimeout = lastError?.message?.toLowerCase().includes('timeout');
+  const errorMessage = isTimeout 
+    ? 'Server is starting up. Please wait a moment and try again.'
     : 'Cannot connect to server. Please check your internet connection.';
     
   console.error('❌ Backend health check failed after all retries');
-  return { ok: false, message: errorMessage };
+  return { ok: false, message: errorMessage, isTimeout };
 };
 
 /**
@@ -300,34 +327,76 @@ export const apiHelpers = {
 };
 
 /**
+ * Wake up the backend server (for Render cold starts)
+ * Sends a lightweight request to wake the server before heavy operations
+ */
+export const wakeUpBackend = async () => {
+  console.log('🔔 Waking up backend server...');
+  const startTime = Date.now();
+  
+  try {
+    const healthUrl = `${config.BACKEND_URL}/api/health`;
+    
+    if (isNativePlatform) {
+      await CapacitorHttp.get({
+        url: healthUrl,
+        headers: { 'Accept': 'application/json' },
+        connectTimeout: HEALTH_CHECK_TIMEOUT,
+        readTimeout: HEALTH_CHECK_TIMEOUT,
+      });
+    } else {
+      await axios.get(healthUrl, { timeout: HEALTH_CHECK_TIMEOUT });
+    }
+    
+    const elapsed = Date.now() - startTime;
+    console.log(`✅ Backend awake (${elapsed}ms)`);
+    return { ok: true, elapsed };
+  } catch (error) {
+    const elapsed = Date.now() - startTime;
+    console.warn(`⚠️ Wake-up call failed after ${elapsed}ms:`, error.message);
+    return { ok: false, elapsed, error: error.message };
+  }
+};
+
+/**
  * Auth-specific API calls with cold-start protection
  * Uses native HTTP on mobile to bypass CORS
  */
 export const authApi = {
   /**
    * Login with email/password
-   * Uses health check + extended timeout for cold starts
+   * Uses wake-up + health check + extended timeout for cold starts
    */
   login: async (email, password) => {
-    // Health check first
-    const health = await checkBackendHealth(2, 2000);
+    console.log('🔐 Starting login process...');
+    
+    // Wake up backend first (handles Render cold starts)
+    const wakeUp = await wakeUpBackend();
+    if (!wakeUp.ok) {
+      console.log('⏳ Backend may be cold, proceeding with extended timeout...');
+    }
+    
+    // Health check to confirm backend is ready
+    const health = await checkBackendHealth(3, 3000); // More retries with longer delay
     if (!health.ok) {
       throw new Error(health.message);
     }
+    
+    console.log(`✅ Backend ready, attempting login... (latency: ${health.latency}ms)`);
     
     // Use native HTTP on mobile to bypass CORS
     if (isNativePlatform) {
       console.log('📱 Using native HTTP for login');
       const response = await nativeHttp.post('/auth/login', 
         { email, password },
-        { timeout: COLD_START_TIMEOUT }
+        { timeout: AUTH_TIMEOUT }
       );
       return response.data;
     }
     
     const response = await axios.post(`${config.API_BASE_URL}/auth/login`, 
       { email, password },
-      { timeout: COLD_START_TIMEOUT }
+      { timeout: AUTH_TIMEOUT }
     );
     return response.data;
   },
@@ -336,7 +405,12 @@ export const authApi = {
    * Google login with token
    */
   googleLogin: async (idToken) => {
-    const health = await checkBackendHealth(2, 2000);
+    console.log('🔐 Starting Google login process...');
+    
+    // Wake up backend first
+    await wakeUpBackend();
+    
+    const health = await checkBackendHealth(3, 3000);
     if (!health.ok) {
       throw new Error(health.message);
     }
@@ -346,14 +420,14 @@ export const authApi = {
       console.log('📱 Using native HTTP for Google login');
       const response = await nativeHttp.post('/auth/google-login',
         { idToken },
-        { timeout: COLD_START_TIMEOUT }
+        { timeout: AUTH_TIMEOUT }
       );
       return response.data;
     }
     
     const response = await axios.post(`${config.API_BASE_URL}/auth/google-login`,
       { idToken },
-      { timeout: COLD_START_TIMEOUT }
+      { timeout: AUTH_TIMEOUT }
     );
     return response.data;
   },
@@ -362,7 +436,12 @@ export const authApi = {
    * Register new user
    */
   register: async (userData) => {
-    const health = await checkBackendHealth(2, 2000);
+    console.log('🔐 Starting registration process...');
+    
+    // Wake up backend first
+    await wakeUpBackend();
+    
+    const health = await checkBackendHealth(3, 3000);
     if (!health.ok) {
       throw new Error(health.message);
     }
@@ -372,14 +451,14 @@ export const authApi = {
       console.log('📱 Using native HTTP for register');
       const response = await nativeHttp.post('/auth/register',
         userData,
-        { timeout: COLD_START_TIMEOUT }
+        { timeout: AUTH_TIMEOUT }
       );
       return response.data;
     }
     
     const response = await api.post('/auth/register',
       userData,
-      { timeout: COLD_START_TIMEOUT }
+      { timeout: AUTH_TIMEOUT }
     );
     return response.data;
   },
@@ -388,7 +467,10 @@ export const authApi = {
    * Forgot password
    */
   forgotPassword: async (email) => {
-    const health = await checkBackendHealth(1, 2000);
+    // Wake up backend first
+    await wakeUpBackend();
+    
+    const health = await checkBackendHealth(2, 3000);
     if (!health.ok) {
       throw new Error(health.message);
     }
@@ -398,14 +480,14 @@ export const authApi = {
       console.log('📱 Using native HTTP for forgot password');
       const response = await nativeHttp.post('/auth/forgot-password',
         { email },
-        { timeout: COLD_START_TIMEOUT }
+        { timeout: AUTH_TIMEOUT }
       );
       return response.data;
     }
     
     const response = await api.post('/auth/forgot-password',
       { email },
-      { timeout: COLD_START_TIMEOUT }
+      { timeout: AUTH_TIMEOUT }
     );
     return response.data;
   },
