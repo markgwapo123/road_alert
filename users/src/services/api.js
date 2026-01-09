@@ -301,6 +301,7 @@ export const apiHelpers = {
 
 /**
  * Auth-specific API calls with cold-start protection
+ * Uses native HTTP on mobile to bypass CORS
  */
 export const authApi = {
   /**
@@ -312,6 +313,16 @@ export const authApi = {
     const health = await checkBackendHealth(2, 2000);
     if (!health.ok) {
       throw new Error(health.message);
+    }
+    
+    // Use native HTTP on mobile to bypass CORS
+    if (isNativePlatform) {
+      console.log('📱 Using native HTTP for login');
+      const response = await nativeHttp.post('/auth/login', 
+        { email, password },
+        { timeout: COLD_START_TIMEOUT }
+      );
+      return response.data;
     }
     
     const response = await axios.post(`${config.API_BASE_URL}/auth/login`, 
@@ -330,6 +341,16 @@ export const authApi = {
       throw new Error(health.message);
     }
     
+    // Use native HTTP on mobile to bypass CORS
+    if (isNativePlatform) {
+      console.log('📱 Using native HTTP for Google login');
+      const response = await nativeHttp.post('/auth/google-login',
+        { idToken },
+        { timeout: COLD_START_TIMEOUT }
+      );
+      return response.data;
+    }
+    
     const response = await axios.post(`${config.API_BASE_URL}/auth/google-login`,
       { idToken },
       { timeout: COLD_START_TIMEOUT }
@@ -346,6 +367,16 @@ export const authApi = {
       throw new Error(health.message);
     }
     
+    // Use native HTTP on mobile to bypass CORS
+    if (isNativePlatform) {
+      console.log('📱 Using native HTTP for register');
+      const response = await nativeHttp.post('/auth/register',
+        userData,
+        { timeout: COLD_START_TIMEOUT }
+      );
+      return response.data;
+    }
+    
     const response = await api.post('/auth/register',
       userData,
       { timeout: COLD_START_TIMEOUT }
@@ -360,6 +391,16 @@ export const authApi = {
     const health = await checkBackendHealth(1, 2000);
     if (!health.ok) {
       throw new Error(health.message);
+    }
+    
+    // Use native HTTP on mobile to bypass CORS
+    if (isNativePlatform) {
+      console.log('📱 Using native HTTP for forgot password');
+      const response = await nativeHttp.post('/auth/forgot-password',
+        { email },
+        { timeout: COLD_START_TIMEOUT }
+      );
+      return response.data;
     }
     
     const response = await api.post('/auth/forgot-password',
