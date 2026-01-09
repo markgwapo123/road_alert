@@ -1,14 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
 import config from '../config/index.js';
 import { useConnectivity } from '../context/ConnectivityContext.jsx';
 import { getPendingReports, SYNC_STATUS } from '../services/offlineStorage.js';
+import apiCache, { CACHE_TTL } from '../services/apiCache.js';
+import LazyImage, { getReportImageUrl } from './LazyImage.jsx';
 
 const MyReports = ({ token }) => {
   const [reports, setReports] = useState([]);
   const [pendingReports, setPendingReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const fetchedRef = useRef(false);
   
   // Get connectivity context
   const connectivity = useConnectivity();
@@ -18,10 +21,11 @@ const MyReports = ({ token }) => {
 
   useEffect(() => {
     console.log('MyReports useEffect - token:', token ? 'present' : 'missing');
-    if (token) {
+    if (token && !fetchedRef.current) {
+      fetchedRef.current = true;
       fetchMyReports();
       fetchPendingReports();
-    } else {
+    } else if (!token) {
       console.error('No authentication token provided to MyReports');
       setError('Authentication token is missing');
       setLoading(false);
@@ -42,7 +46,7 @@ const MyReports = ({ token }) => {
     }
   };
 
-  const fetchMyReports = async () => {
+  const fetchMyReports = useCallback(async (forceRefresh = false) => {
     try {
       setLoading(true);
       setError(null);
@@ -55,21 +59,24 @@ const MyReports = ({ token }) => {
       }
       
       console.log('Fetching reports with token:', token ? 'Token present' : 'No token');
-      console.log('Making request to:', `${config.API_BASE_URL}/reports/my-reports`);
       
-      const res = await axios.get(`${config.API_BASE_URL}/reports/my-reports`, {
+      // Use lightweight endpoint with caching
+      const fetchFn = () => axios.get(`${config.API_BASE_URL}/reports/my-reports/lightweight`, {
         headers: { 
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
-      });
+      }).then(r => r.data);
       
-      console.log('Reports response status:', res.status);
-      console.log('Reports response data:', res.data);
+      const data = forceRefresh 
+        ? await fetchFn()
+        : await apiCache.getOrFetch('my_reports', fetchFn, CACHE_TTL.MY_REPORTS);
       
-      if (res.data && res.data.success && res.data.reports) {
-        console.log('Setting reports:', res.data.reports);
-        const validReports = Array.isArray(res.data.reports) ? res.data.reports : [];
+      console.log('Reports response data:', data);
+      
+      if (data && data.success && data.reports) {
+        console.log('Setting reports:', data.reports);
+        const validReports = Array.isArray(data.reports) ? data.reports : [];
         setReports(validReports);
       } else {
         console.log('Response not successful or no reports field, setting empty reports');
@@ -93,7 +100,7 @@ const MyReports = ({ token }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [token]);
 
 
 

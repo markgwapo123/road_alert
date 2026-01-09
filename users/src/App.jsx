@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
 import config from './config/index.js';
+import apiCache, { CACHE_TTL } from './services/apiCache.js';
 import { SettingsProvider, useSettings } from './context/SettingsContext.jsx';
 import { ConnectivityProvider } from './context/ConnectivityContext.jsx';
 import Login from './pages/Login';
@@ -114,40 +115,51 @@ function AppContent() {
     };
   }, [showReport]);
 
-  const fetchNotifications = async () => {
+  const fetchNotifications = useCallback(async (forceRefresh = false) => {
     try {
       if (!token) {
         return;
       }
       
-      const res = await axios.get(`${config.API_BASE_URL}/notifications`, {
+      const fetchFn = () => axios.get(`${config.API_BASE_URL}/notifications`, {
         headers: { 'Authorization': `Bearer ${token}` }
-      });
-      setNotifications(res.data.notifications || []);
-      setUnreadCount(res.data.unreadCount || 0);
+      }).then(r => r.data);
+      
+      // Force refresh or use cache
+      const data = forceRefresh 
+        ? await fetchFn()
+        : await apiCache.getOrFetch('notifications', fetchFn, CACHE_TTL.NOTIFICATIONS);
+      
+      setNotifications(data.notifications || []);
+      setUnreadCount(data.unreadCount || 0);
     } catch (err) {
       console.log('Notifications unavailable:', err.response?.status || err.message);
       setNotifications([]);
       setUnreadCount(0);
     }
-  };
+  }, [token]);
 
-  const fetchUser = async () => {
+  const fetchUser = useCallback(async (forceRefresh = false) => {
     try {
       if (!token) {
         setUser(null);
         return;
       }
       
-      const res = await axios.get(`${config.API_BASE_URL}/users/me`, {
+      const fetchFn = () => axios.get(`${config.API_BASE_URL}/users/me`, {
         headers: { 'Authorization': `Bearer ${token}` }
-      });
-      setUser(res.data.data);
+      }).then(r => r.data);
+      
+      const data = forceRefresh 
+        ? await fetchFn()
+        : await apiCache.getOrFetch('user_profile', fetchFn, CACHE_TTL.PROFILE);
+      
+      setUser(data.data);
     } catch (err) {
       console.log('User data unavailable:', err.response?.status || err.message);
       setUser(null);
     }
-  };
+  }, [token]);
 
   const markNotificationAsRead = async (notificationId) => {
     try {
@@ -159,7 +171,9 @@ function AppContent() {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       
-      fetchNotifications();
+      // Invalidate cache and refresh
+      apiCache.invalidate('notifications');
+      fetchNotifications(true);
     } catch (err) {
       console.log('Error marking notification as read:', err.response?.status || err.message);
     }
@@ -171,7 +185,9 @@ function AppContent() {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       
-      fetchNotifications();
+      // Invalidate cache and refresh
+      apiCache.invalidate('notifications');
+      fetchNotifications(true);
     } catch (err) {
       console.error('Error marking all notifications as read:', err);
     }

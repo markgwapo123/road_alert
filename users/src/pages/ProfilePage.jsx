@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import axios from 'axios';
 import config from '../config/index.js';
 import ChangePassword from './ChangePassword.jsx';
+import apiCache, { CACHE_TTL } from '../services/apiCache.js';
 
 const ProfilePage = ({ onBack, onLogout, onUserUpdate }) => {
   // User data states
@@ -37,8 +38,14 @@ const ProfilePage = ({ onBack, onLogout, onUserUpdate }) => {
   const [previewImage, setPreviewImage] = useState(null);
   const [uploadingImage, setUploadingImage] = useState(false);
 
-  // Fetch user profile and stats
+  // Prevent double fetch
+  const fetchedRef = useRef(false);
+
+  // Fetch user profile and stats with caching
   useEffect(() => {
+    if (fetchedRef.current) return;
+    fetchedRef.current = true;
+    
     const fetchData = async () => {
       setLoading(true);
       setError('');
@@ -46,14 +53,22 @@ const ProfilePage = ({ onBack, onLogout, onUserUpdate }) => {
         const token = localStorage.getItem('token');
         const headers = { 'Authorization': `Bearer ${token}` };
         
-        // Fetch profile and stats in parallel
-        const [profileRes, statsRes] = await Promise.all([
-          axios.get(`${config.API_BASE_URL}/users/me`, { headers }),
-          axios.get(`${config.API_BASE_URL}/users/me/stats`, { headers }).catch(() => ({ data: { success: false } }))
+        // Fetch profile and stats in parallel with caching
+        const [profileData, statsData] = await Promise.all([
+          apiCache.getOrFetch(
+            'user_profile',
+            () => axios.get(`${config.API_BASE_URL}/users/me`, { headers }).then(r => r.data),
+            CACHE_TTL.PROFILE
+          ),
+          apiCache.getOrFetch(
+            'user_stats',
+            () => axios.get(`${config.API_BASE_URL}/users/me/stats`, { headers }).then(r => r.data).catch(() => ({ success: false })),
+            CACHE_TTL.MY_REPORTS
+          )
         ]);
         
-        if (profileRes.data.success) {
-          const userData = profileRes.data.data;
+        if (profileData.success) {
+          const userData = profileData.data;
           setUser(userData);
           setFormData({
             fullName: userData.profile?.fullName || userData.username || '',
@@ -75,8 +90,8 @@ const ProfilePage = ({ onBack, onLogout, onUserUpdate }) => {
           }
         }
         
-        if (statsRes.data?.success) {
-          setStats(statsRes.data.data);
+        if (statsData?.success) {
+          setStats(statsData.data);
         }
       } catch (err) {
         setError('Failed to load profile');

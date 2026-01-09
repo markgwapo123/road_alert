@@ -1,10 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback, useRef, memo } from 'react';
 import axios from 'axios';
 import config from '../config/index.js';
 import ReportDetailModal from './ReportDetailModal.jsx';
 import NewsPostModal from './NewsPostModal.jsx';
 import ReportsMap from './ReportsMap.jsx';
 import ReportsOverviewMap from './ReportsOverviewMap.jsx';
+import apiCache, { CACHE_TTL } from '../services/apiCache.js';
+import LazyImage, { getReportImageUrl } from './LazyImage.jsx';
 
 // Color configurations based on professional road & safety alert standards
 const ALERT_COLORS = {
@@ -43,6 +45,7 @@ const NewsFeed = ({ user }) => {
   const [filteredNews, setFilteredNews] = useState([]);
   const [filteredResolvedReports, setFilteredResolvedReports] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
   const [selectedReport, setSelectedReport] = useState(null);
   const [selectedReportUser, setSelectedReportUser] = useState(null);
@@ -51,88 +54,92 @@ const NewsFeed = ({ user }) => {
   const [isNewsModalOpen, setIsNewsModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('reports'); // 'reports', 'resolved', or 'news'
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const fetchedRef = useRef(false); // Prevent double fetch
 
-  useEffect(() => {
-    // Debug: Log configuration details
-    console.log('🔧 NewsFeed Debug Information:');
-    console.log('- API_BASE_URL:', config.API_BASE_URL);
-    console.log('- BACKEND_URL:', config.BACKEND_URL);
-    console.log('- Environment:', config.ENVIRONMENT);
-    console.log('- Is Mobile:', config.IS_MOBILE);
-    console.log('- Is Web:', config.IS_WEB);
-    console.log('- User Agent:', navigator.userAgent);
-    
-    // Test backend connectivity
-    const testBackendConnection = async () => {
-      try {
-        const response = await fetch(`${config.BACKEND_URL}/api/health`);
-        console.log('🌐 Backend health check:', response.status, response.ok ? '✅' : '❌');
-        
-        // Test uploads directory
-        const uploadsResponse = await fetch(`${config.BACKEND_URL}/api/debug/uploads`);
-        const uploadsData = await uploadsResponse.json();
-        console.log('📁 Uploads directory debug:', uploadsData);
-        
-        if (uploadsData.success && uploadsData.files?.length > 0) {
-          console.log('📷 Sample files in uploads:', uploadsData.files.slice(0, 3));
-        }
-      } catch (error) {
-        console.error('🌐 Backend connection failed:', error.message);
-      }
-    };
-    testBackendConnection();
-    
-    const fetchData = async () => {
-      try {
-        // Fetch both reports and news posts
-        const [reportsResponse, newsResponse] = await Promise.all([
-          axios.get(`${config.API_BASE_URL}/reports`, {
-            params: {
-              status: 'verified,resolved', // Fetch both verified and resolved reports
-              limit: 20,
-              sortBy: 'createdAt',
-              sortOrder: 'desc'
-            }
-          }),
-          axios.get(`${config.API_BASE_URL}/news/public/posts`, {
-            params: {
-              limit: 20
-            }
-          })
-        ]);
-        
-        const reportsData = reportsResponse.data.data || [];
-        const newsData = newsResponse.data.posts || [];
-        
-        // Separate active (verified) and resolved reports
-        const activeReports = reportsData.filter(r => r.status === 'verified');
-        const resolvedReportsData = reportsData.filter(r => r.status === 'resolved');
-        
-        console.log('📊 Reports loaded:', {
-          total: reportsData.length,
-          active: activeReports.length,
-          resolved: resolvedReportsData.length
+  // Fetch data with caching
+  const fetchData = useCallback(async (forceRefresh = false) => {
+    // Prevent duplicate fetches
+    if (fetchedRef.current && !forceRefresh) return;
+    fetchedRef.current = true;
+
+    try {
+      // Use lightweight endpoint for faster loading (no base64 images)
+      const fetchReports = async () => {
+        const response = await axios.get(`${config.API_BASE_URL}/reports/lightweight`, {
+          params: {
+            status: 'verified,resolved',
+            limit: 20,
+            page: 1,
+            sortBy: 'createdAt',
+            sortOrder: 'desc'
+          }
         });
-        
-        setReports(activeReports);
-        setResolvedReports(resolvedReportsData);
-        setNewsPosts(newsData);
-        setFilteredReports(activeReports);
-        setFilteredResolvedReports(resolvedReportsData);
-        setFilteredNews(newsData);
-      } catch (err) {
-        setError('Failed to load content');
-        console.error('Error fetching data:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
+        return response.data;
+      };
 
-    fetchData();
+      const fetchNews = async () => {
+        const response = await axios.get(`${config.API_BASE_URL}/news/public/posts`, {
+          params: { limit: 20 }
+        });
+        return response.data;
+      };
+
+      // Use cache for reports and news
+      const [reportsData, newsData] = await Promise.all([
+        apiCache.getOrFetch('reports_feed', fetchReports, {
+          ttl: CACHE_TTL.REPORTS,
+          forceRefresh,
+        }),
+        apiCache.getOrFetch('news_feed', fetchNews, {
+          ttl: CACHE_TTL.NEWS,
+          forceRefresh,
+        }),
+      ]);
+        
+      const allReports = reportsData.data || [];
+      const allNews = newsData.posts || [];
+      
+      // Separate active (verified) and resolved reports
+      const activeReports = allReports.filter(r => r.status === 'verified');
+      const resolvedReportsData = allReports.filter(r => r.status === 'resolved');
+      
+      console.log('📊 Reports loaded:', {
+        total: allReports.length,
+        active: activeReports.length,
+        resolved: resolvedReportsData.length,
+        cached: !forceRefresh
+      });
+      
+      setReports(activeReports);
+      setResolvedReports(resolvedReportsData);
+      setNewsPosts(allNews);
+      setFilteredReports(activeReports);
+      setFilteredResolvedReports(resolvedReportsData);
+      setFilteredNews(allNews);
+      setHasMore(reportsData.pagination?.hasNextPage || false);
+    } catch (err) {
+      setError('Failed to load content');
+      console.error('Error fetching data:', err);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  // Filter content based on search query
-  const filterContent = (query) => {
+  // Initial data fetch
+  useEffect(() => {
+    fetchData();
+    
+    // Cleanup on unmount
+    return () => {
+      fetchedRef.current = false;
+    };
+  }, [fetchData]);
+
+  // Filter content based on search query - memoized to prevent re-renders
+  const filterContent = useCallback((query) => {
     if (!query.trim()) {
       setFilteredReports(reports);
       setFilteredResolvedReports(resolvedReports);
@@ -188,7 +195,7 @@ const NewsFeed = ({ user }) => {
     setFilteredReports(filteredReportsData);
     setFilteredResolvedReports(filteredResolvedData);
     setFilteredNews(filteredNewsData);
-  };
+  }, [reports, resolvedReports, newsPosts]);
 
   // Handle search input changes
   const handleSearchChange = (e) => {
@@ -196,6 +203,17 @@ const NewsFeed = ({ user }) => {
     setSearchQuery(query);
     filterContent(query);
   };
+
+  // Handle manual refresh
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    // Clear cache for fresh data
+    apiCache.invalidate('reports_feed');
+    apiCache.invalidate('resolved_reports');
+    apiCache.invalidate('news_posts');
+    await fetchData(true);
+    setRefreshing(false);
+  }, [fetchData]);
 
   // Update filtered content when data changes
   useEffect(() => {
@@ -460,7 +478,7 @@ const NewsFeed = ({ user }) => {
         </button>
       </div>
       
-      {/* Search Bar */}
+      {/* Search Bar with Refresh */}
       <div className="search-container">
         <div className="search-input-wrapper">
           <span className="search-icon">🔍</span>
@@ -485,6 +503,24 @@ const NewsFeed = ({ user }) => {
               ✕
             </button>
           )}
+          {/* Refresh Button */}
+          <button
+            className="refresh-button"
+            onClick={handleRefresh}
+            disabled={refreshing || loading}
+            style={{
+              background: 'none',
+              border: 'none',
+              padding: '8px',
+              cursor: refreshing ? 'not-allowed' : 'pointer',
+              fontSize: '18px',
+              opacity: refreshing ? 0.5 : 1,
+              animation: refreshing ? 'spin 1s linear infinite' : 'none'
+            }}
+            title="Refresh data"
+          >
+            🔄
+          </button>
         </div>
         
         {/* Quick Search Suggestions */}
@@ -656,31 +692,15 @@ const NewsFeed = ({ user }) => {
                     </div>
                   </div>
 
-                  {/* Image Preview */}
+                  {/* Image Preview - Lazy loaded */}
                   {report.images && report.images.length > 0 && (
                     <div style={{
                       borderTop: '1px solid #e9ecef',
                       padding: '16px',
                       background: '#f8f9fa'
                     }}>
-                      <img
-                        src={(() => {
-                          const imageData = report.images[0];
-                          if (imageData?.data) {
-                            return `data:${imageData.mimetype};base64,${imageData.data}`;
-                          }
-                          const filename = imageData?.filename || imageData;
-                          if (typeof filename === 'string') {
-                            if (filename.startsWith('http://') || filename.startsWith('https://')) {
-                              return filename;
-                            }
-                            if (filename.startsWith('data:')) {
-                              return filename;
-                            }
-                            return `${config.BACKEND_URL}/uploads/${filename}`;
-                          }
-                          return '';
-                        })()}
+                      <LazyImage
+                        src={getReportImageUrl(report._id, 0, report.images[0])}
                         alt="Report preview"
                         style={{
                           width: '100%',
@@ -688,9 +708,20 @@ const NewsFeed = ({ user }) => {
                           objectFit: 'cover',
                           borderRadius: '8px'
                         }}
-                        onError={(e) => {
-                          e.target.style.display = 'none';
-                        }}
+                        placeholder={
+                          <div style={{ 
+                            width: '100%', 
+                            height: '160px', 
+                            background: '#e9ecef', 
+                            borderRadius: '8px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: '#999'
+                          }}>
+                            Loading...
+                          </div>
+                        }
                       />
                     </div>
                   )}
@@ -856,95 +887,18 @@ const NewsFeed = ({ user }) => {
                     
                     {/* Mobile-optimized Media Section */}
                     <div className="report-media">
-                      {/* Report Image */}
+                      {/* Report Image - Lazy loaded for performance */}
                       <div className="report-image-container">
                         {report.images && report.images.length > 0 ? (
-                          <img 
-                            src={(() => {
-                              const imageData = report.images[0];
-                              console.log('🖼️ Image Data Debug:', {
-                                hasData: !!imageData?.data,
-                                hasFilename: !!imageData?.filename,
-                                dataType: typeof imageData,
-                                dataKeys: imageData ? Object.keys(imageData) : [],
-                                mimeType: imageData?.mimetype,
-                                dataLength: imageData?.data?.length
-                              });
-                              // If it's a Base64 data URL, use it directly
-                              if (imageData?.data) {
-                                const base64Url = `data:${imageData.mimetype};base64,${imageData.data}`;
-                                console.log('✅ Using Base64 data URL, length:', base64Url.length);
-                                return base64Url;
-                              }
-                              // Legacy: If filename is a full URL (Cloudinary), use it directly
-                              const filename = imageData?.filename || imageData;
-                              // Make sure filename is a string before calling startsWith
-                              if (typeof filename === 'string') {
-                                if (filename.startsWith('http://') || filename.startsWith('https://')) {
-                                  return filename;
-                                }
-                                if (filename.startsWith('data:')) {
-                                  return filename;
-                                }
-                                // Otherwise, construct local path
-                                return `${config.BACKEND_URL}/uploads/${filename}`;
-                              }
-                              // Fallback for non-string values
-                              return '';
-                            })()}
+                          <LazyImage
+                            src={getReportImageUrl(report._id, 0, report.images[0])}
                             alt="Report"
                             className="report-image"
-                            onLoad={(e) => {
-                              console.log('✅ Image loaded successfully:', e.target.src);
-                            }}
-                            onError={(e) => {
-                              console.error('❌ Image failed to load:', e.target.src);
-                              console.error('Backend URL:', config.BACKEND_URL);
-                              const imageData = report.images[0];
-                              const filename = imageData?.filename || (typeof imageData === 'string' ? imageData : null);
-                              console.error('Image filename:', filename);
-                              
-                              // Only try alternative URLs if we have a valid filename string
-                              if (!filename || typeof filename !== 'string') {
-                                console.error('❌ No valid filename, hiding image');
-                                e.target.style.display = 'none';
-                                return;
-                              }
-                              
-                              // Try alternative URLs
-                              const originalSrc = e.target.src;
-                              
-                              // Try different URL formats
-                              const alternativeUrls = [
-                                `${config.BACKEND_URL}/uploads/${filename}`,
-                                `${config.API_BASE_URL}/../uploads/${filename}`,
-                                `https://roadalert-backend-xze4.onrender.com/uploads/${filename}`,
-                                `http://192.168.1.150:3001/uploads/${filename}`
-                              ];
-                              
-                              // Try the next URL in sequence
-                              const currentIndex = alternativeUrls.indexOf(originalSrc);
-                              const nextIndex = currentIndex + 1;
-                              
-                              if (nextIndex < alternativeUrls.length) {
-                                console.log('🔄 Trying alternative URL:', alternativeUrls[nextIndex]);
-                                e.target.src = alternativeUrls[nextIndex];
-                                return;
-                              }
-                              
-                              // If all URLs failed, show placeholder
-                              console.error('🚫 All image URLs failed, showing placeholder');
-                              e.target.style.display = 'none';
-                              e.target.parentElement.innerHTML = `
-                                <div class="report-image-placeholder">
-                                  <span class="placeholder-icon">📷</span>
-                                  <span class="placeholder-text">Image not available</span>
-                                  <div style="font-size: 10px; color: #999; margin-top: 4px;">
-                                    Debug: ${filename}
-                                  </div>
-                                </div>
-                              `;
-                            }}
+                            placeholder={
+                              <div className="report-image-placeholder" style={{ background: '#f0f0f0', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+                                <span style={{ color: '#999' }}>Loading...</span>
+                              </div>
+                            }
                           />
                         ) : (
                           <div className="report-image-placeholder">

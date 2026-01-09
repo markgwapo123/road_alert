@@ -45,6 +45,212 @@ const reportValidation = [
   body('barangay').notEmpty().withMessage('Barangay is required')
 ];
 
+/**
+ * Transform report for lightweight response (no base64 images)
+ * Returns image metadata with hasImage flag instead of full base64 data
+ */
+const transformReportLightweight = (report) => {
+  const transformed = report.toObject ? report.toObject() : { ...report };
+  
+  // Transform images - remove base64 data, keep metadata
+  if (transformed.images && transformed.images.length > 0) {
+    transformed.images = transformed.images.map((img, index) => ({
+      hasImage: true,
+      index,
+      mimetype: img.mimetype,
+      originalName: img.originalName,
+      size: img.size,
+      // Provide endpoint to fetch full image
+      imageUrl: `/api/reports/${transformed._id}/image/${index}`,
+    }));
+    transformed.hasImages = true;
+    transformed.imageCount = transformed.images.length;
+  } else {
+    transformed.hasImages = false;
+    transformed.imageCount = 0;
+    transformed.images = [];
+  }
+  
+  // Transform evidencePhoto similarly
+  if (transformed.evidencePhoto && transformed.evidencePhoto.data) {
+    transformed.evidencePhoto = {
+      hasImage: true,
+      mimetype: transformed.evidencePhoto.mimetype,
+      imageUrl: `/api/reports/${transformed._id}/evidence-photo`,
+    };
+  }
+  
+  return transformed;
+};
+
+// @route   GET /api/reports/lightweight
+// @desc    Get reports without base64 images (for fast list loading)
+// @access  Public
+router.get('/lightweight', async (req, res) => {
+  try {
+    const { 
+      page = 1, 
+      limit = 20, 
+      status,
+      type,
+      sortBy = 'createdAt',
+      sortOrder = 'desc'
+    } = req.query;
+
+    // Build filter
+    const filter = {};
+    if (status) {
+      if (status.includes(',')) {
+        filter.status = { $in: status.split(',') };
+      } else {
+        filter.status = status;
+      }
+    }
+    if (type) filter.type = type;
+
+    // Build sort
+    const sort = {};
+    sort[sortBy] = sortOrder === 'desc' ? -1 : 1;
+
+    // Fetch reports WITHOUT image data (projection)
+    const reports = await Report.find(filter)
+      .select('-images.data -evidencePhoto.data') // Exclude base64 data
+      .sort(sort)
+      .limit(parseInt(limit))
+      .skip((parseInt(page) - 1) * parseInt(limit))
+      .lean() // Use lean() for better performance
+      .exec();
+
+    // Transform reports for lightweight response
+    const lightweightReports = reports.map(report => {
+      // Add image flags
+      report.hasImages = report.images && report.images.length > 0;
+      report.imageCount = report.images ? report.images.length : 0;
+      
+      // Replace images array with metadata only
+      if (report.images) {
+        report.images = report.images.map((img, index) => ({
+          hasImage: true,
+          index,
+          mimetype: img.mimetype,
+          originalName: img.originalName,
+          size: img.size,
+          imageUrl: `/api/reports/${report._id}/image/${index}`,
+        }));
+      }
+      
+      // Replace evidencePhoto with metadata
+      if (report.evidencePhoto) {
+        report.evidencePhoto = {
+          hasImage: true,
+          mimetype: report.evidencePhoto.mimetype,
+          imageUrl: `/api/reports/${report._id}/evidence-photo`,
+        };
+      }
+      
+      return report;
+    });
+
+    // Get total count
+    const totalReports = await Report.countDocuments(filter);
+
+    res.json({
+      success: true,
+      data: lightweightReports,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages: Math.ceil(totalReports / limit),
+        totalReports,
+        hasNextPage: page < Math.ceil(totalReports / limit),
+        hasPrevPage: page > 1
+      }
+    });
+
+  } catch (error) {
+    console.error('Get lightweight reports error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Server error while fetching reports'
+    });
+  }
+});
+
+// @route   GET /api/reports/:id/image/:index
+// @desc    Get specific image from a report (lazy loading)
+// @access  Public
+router.get('/:id/image/:index', async (req, res) => {
+  try {
+    const { id, index } = req.params;
+    const imageIndex = parseInt(index);
+    
+    const report = await Report.findById(id).select('images');
+    
+    if (!report || !report.images || !report.images[imageIndex]) {
+      return res.status(404).json({ success: false, error: 'Image not found' });
+    }
+    
+    const image = report.images[imageIndex];
+    
+    // Return base64 as data URL or as binary
+    if (req.query.format === 'base64') {
+      return res.json({
+        success: true,
+        data: {
+          data: image.data,
+          mimetype: image.mimetype,
+          originalName: image.originalName,
+        }
+      });
+    }
+    
+    // Return as binary image
+    const buffer = Buffer.from(image.data, 'base64');
+    res.set('Content-Type', image.mimetype);
+    res.set('Content-Length', buffer.length);
+    res.set('Cache-Control', 'public, max-age=86400'); // Cache for 24 hours
+    res.send(buffer);
+    
+  } catch (error) {
+    console.error('Get report image error:', error);
+    res.status(500).json({ success: false, error: 'Server error' });
+  }
+});
+
+// @route   GET /api/reports/:id/evidence-photo
+// @desc    Get evidence photo from a report
+// @access  Public
+router.get('/:id/evidence-photo', async (req, res) => {
+  try {
+    const report = await Report.findById(req.params.id).select('evidencePhoto');
+    
+    if (!report || !report.evidencePhoto || !report.evidencePhoto.data) {
+      return res.status(404).json({ success: false, error: 'Evidence photo not found' });
+    }
+    
+    const photo = report.evidencePhoto;
+    
+    if (req.query.format === 'base64') {
+      return res.json({
+        success: true,
+        data: {
+          data: photo.data,
+          mimetype: photo.mimetype,
+        }
+      });
+    }
+    
+    const buffer = Buffer.from(photo.data, 'base64');
+    res.set('Content-Type', photo.mimetype);
+    res.set('Content-Length', buffer.length);
+    res.set('Cache-Control', 'public, max-age=86400');
+    res.send(buffer);
+    
+  } catch (error) {
+    console.error('Get evidence photo error:', error);
+    res.status(500).json({ success: false, error: 'Server error' });
+  }
+});
+
 // @route   GET /api/reports
 // @desc    Get all reports with filtering and pagination
 // @access  Public (for admin dashboard)
@@ -112,6 +318,83 @@ router.get('/', async (req, res) => {
   } catch (error) {
     console.error('Get reports error:', error);
     res.status(500).json({
+      error: 'Server error while fetching reports'
+    });
+  }
+});
+
+// @route   GET /api/reports/my-reports/lightweight
+// @desc    Get current user's reports without heavy image data (for mobile performance)
+// @access  Private
+router.get('/my-reports/lightweight', require('../middleware/userAuth'), async (req, res) => {
+  try {
+    const { 
+      page = 1, 
+      limit = 10, 
+      status, 
+      type, 
+      severity,
+      sortBy = 'createdAt',
+      sortOrder = 'desc'
+    } = req.query;
+
+    // Build filter object for user's reports
+    const filter = { 'reportedBy.id': req.user.id };
+    if (status) filter.status = status;
+    if (type) filter.type = type;
+    if (severity) filter.severity = severity;
+
+    // Build sort object
+    const sort = {};
+    sort[sortBy] = sortOrder === 'desc' ? -1 : 1;
+
+    // Execute query with pagination - exclude heavy image data
+    const reports = await Report.find(filter)
+      .select('-images.data -evidencePhoto.data')
+      .sort(sort)
+      .limit(limit * 1)
+      .skip((page - 1) * limit)
+      .lean()
+      .exec();
+
+    // Get total count for pagination
+    const totalReports = await Report.countDocuments(filter);
+
+    // Mark that images exist but data is not included
+    const lightweightReports = reports.map(report => ({
+      ...report,
+      images: report.images?.map((img, idx) => ({
+        _id: img._id,
+        filename: img.filename,
+        mimetype: img.mimetype,
+        hasData: true,
+        imageUrl: `/api/reports/${report._id}/image/${idx}`
+      })) || [],
+      evidencePhoto: report.evidencePhoto ? {
+        _id: report.evidencePhoto._id,
+        filename: report.evidencePhoto.filename,
+        mimetype: report.evidencePhoto.mimetype,
+        hasData: true,
+        imageUrl: `/api/reports/${report._id}/evidence-photo`
+      } : null
+    }));
+
+    res.json({
+      success: true,
+      reports: lightweightReports,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages: Math.ceil(totalReports / limit),
+        totalReports,
+        hasNextPage: page < Math.ceil(totalReports / limit),
+        hasPrevPage: page > 1
+      }
+    });
+
+  } catch (error) {
+    console.error('Get user reports lightweight error:', error);
+    res.status(500).json({
+      success: false,
       error: 'Server error while fetching reports'
     });
   }
