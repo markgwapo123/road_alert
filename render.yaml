@@ -7,8 +7,16 @@ services:
     plan: free
     branch: main
     rootDir: .
+    # Health check for faster startup detection
+    healthCheckPath: /api/health
     envVars:
       - key: NODE_ENV
         value: production
       - key: PORT
         value: 10000
+      # Enable keep-alive service
+      - key: RENDER_EXTERNAL_URL
+        fromService:
+          type: web
+          name: roadalert-backend
+          property: host

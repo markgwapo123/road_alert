@@ -1,0 +1,30 @@
+# Keep Backend Alive - Prevents Render.com Cold Starts
+# Pings the health endpoint every 5 minutes to keep the server awake
+
+name: Keep Backend Alive
+
+on:
+  schedule:
+    # Run every 5 minutes
+    - cron: '*/5 * * * *'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Health Endpoint
+        run: |
+          echo "🔔 Pinging backend health endpoint..."
+          response=$(curl -s -o /dev/null -w "%{http_code}" https://roadalert-backend-xze4.onrender.com/api/health --max-time 60)
+          
+          if [ "$response" = "200" ]; then
+            echo "✅ Backend is healthy (HTTP $response)"
+          else
+            echo "⚠️ Backend returned HTTP $response"
+          fi
+          
+      - name: Ping Detailed Health (Optional)
+        run: |
+          echo "📊 Getting detailed health info..."
+          curl -s https://roadalert-backend-xze4.onrender.com/api/health || echo "Could not fetch detailed health"

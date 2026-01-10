@@ -1,50 +1,133 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import axios from 'axios';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import config from '../config/index.js';
 import ReportDetailModal from './ReportDetailModal.jsx';
+import { DashboardSkeleton, ReportListSkeleton } from './SkeletonLoaders.jsx';
+import './SkeletonLoaders.css';
+import { getReportsCached, cachedRequest, invalidateCache } from '../services/EnhancedApiService.js';
+import { localCache, CACHE_TTL } from '../services/LocalCacheService.js';
 
 const Dashboard = ({ token }) => {
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isStale, setIsStale] = useState(false);
   const [selectedReport, setSelectedReport] = useState(null);
   const [selectedReportUser, setSelectedReportUser] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [loadError, setLoadError] = useState(null);
+  const [showTimeout, setShowTimeout] = useState(false);
   const [stats, setStats] = useState({
     totalReports: 0,
     verifiedReports: 0,
     pendingReports: 0,
     myReports: 0
   });
+  
+  const timeoutRef = useRef(null);
 
-  const fetchDashboardData = useCallback(async () => {
+  const fetchDashboardData = useCallback(async (forceRefresh = false) => {
+    // Clear any existing timeout
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+    
+    setLoadError(null);
+    setShowTimeout(false);
+    
+    // Show timeout message after 5 seconds
+    timeoutRef.current = setTimeout(() => {
+      setShowTimeout(true);
+    }, 5000);
+    
     try {
-      // Fetch recent reports
-      const reportsResponse = await axios.get(`${config.API_BASE_URL}/reports`, {
-        params: {
-          status: 'verified',
-          limit: 8,
-          sortBy: 'createdAt',
-          sortOrder: 'desc'
+      // Try to get cached data first for instant display
+      if (!forceRefresh) {
+        const cachedReports = localCache.get('dashboard_reports', true);
+        const cachedStats = localCache.get('dashboard_stats', true);
+        
+        if (cachedReports) {
+          setReports(cachedReports.data);
+          setIsStale(cachedReports.isStale);
+          setLoading(false);
         }
+        
+        if (cachedStats) {
+          setStats(cachedStats.data);
+        }
+      }
+      
+      // Fetch reports with caching and retry
+      const reportsResult = await getReportsCached({
+        status: 'verified',
+        limit: 8,
+        sortBy: 'createdAt',
+        sortOrder: 'desc'
+      }, {
+        allowStale: true,
+        maxRetries: 3,
       });
-      setReports(reportsResponse.data.data || []);
+      
+      setReports(reportsResult.data?.data || []);
+      setIsStale(reportsResult.isStale || false);
+      
+      // Cache the dashboard reports
+      if (reportsResult.data?.data) {
+        localCache.set('dashboard_reports', reportsResult.data.data, CACHE_TTL.REPORTS);
+      }
 
-      // Fetch dashboard stats
-      const statsResponse = await axios.get(`${config.API_BASE_URL}/reports/stats`, {
-        headers: { 'Authorization': `Bearer ${token}` }
+      // Fetch dashboard stats with caching
+      const statsResult = await cachedRequest({
+        method: 'GET',
+        endpoint: '/reports/stats',
+        cacheKey: 'dashboard_stats',
+        cacheTTL: CACHE_TTL.MEDIUM,
+        allowStale: true,
       });
-      setStats(statsResponse.data.stats || stats);
+      
+      if (statsResult.data?.stats) {
+        setStats(statsResult.data.stats);
+        localCache.set('dashboard_stats', statsResult.data.stats, CACHE_TTL.MEDIUM);
+      }
 
     } catch (error) {
       console.error('Failed to load dashboard data:', error);
+      setLoadError(error.message || 'Failed to load data');
+      
+      // Try to show cached data on error
+      const cachedReports = localCache.get('dashboard_reports', true);
+      if (cachedReports) {
+        setReports(cachedReports.data);
+        setIsStale(true);
+      }
     } finally {
       setLoading(false);
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+      setShowTimeout(false);
     }
-  }, [token, stats]);
+  }, []);
 
   useEffect(() => {
     fetchDashboardData();
+    
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
   }, [fetchDashboardData]);
+
+  const handleRetry = () => {
+    setLoading(true);
+    fetchDashboardData(true);
+  };
+
+  const handleRefresh = () => {
+    invalidateCache('dashboard_');
+    setLoading(true);
+    setIsStale(false);
+    fetchDashboardData(true);
+  };
 
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -72,20 +155,59 @@ const Dashboard = ({ token }) => {
     setSelectedReportUser(null);
   };
 
-  if (loading) {
+  // Show skeleton loader while loading (no cached data available)
+  if (loading && reports.length === 0) {
     return (
-      <div className="dashboard-loading">
-        Loading dashboard...
+      <div className="dashboard-container">
+        <DashboardSkeleton />
+        {showTimeout && (
+          <div className="loading-timeout-message">
+            <p>⏳ Server is waking up, please wait...</p>
+            <button onClick={handleRetry} className="timeout-retry-btn">
+              Retry Now
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  }
+  
+  // Show error state
+  if (loadError && reports.length === 0) {
+    return (
+      <div className="dashboard-container">
+        <div className="dashboard-error">
+          <div className="error-icon">⚠️</div>
+          <p className="error-message">{loadError}</p>
+          <button onClick={handleRetry} className="retry-btn">
+            Try Again
+          </button>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="dashboard-container">
+      {/* Stale data indicator */}
+      {isStale && (
+        <div className="stale-banner">
+          <span>📡 Showing cached data</span>
+          <button onClick={handleRefresh} className="refresh-btn">
+            🔄 Refresh
+          </button>
+        </div>
+      )}
+      
       {/* Dashboard Header */}
       <div className="dashboard-header">
-        <h1 className="dashboard-title">Dashboard</h1>
-        <p className="dashboard-subtitle">Welcome to your BantayDalan dashboard</p>
+        <div className="dashboard-header-content">
+          <h1 className="dashboard-title">Dashboard</h1>
+          <p className="dashboard-subtitle">Welcome to your BantayDalan dashboard</p>
+        </div>
+        <button onClick={handleRefresh} className="header-refresh-btn" title="Refresh data">
+          🔄
+        </button>
       </div>
 
       {/* Stats Cards */}

@@ -8,6 +8,7 @@ const User = require('../models/User');
 const SystemSettings = require('../models/SystemSettings');
 const { auth, canManageReports, canDeleteReports, createAuditLog } = require('../middleware/roleAuth');
 const NotificationService = require('../services/NotificationService');
+const { cache, TTL } = require('../services/CacheService');
 const { 
   checkDailyReportLimit, 
   validateReportRequirements,
@@ -85,7 +86,7 @@ const transformReportLightweight = (report) => {
 
 // @route   GET /api/reports/lightweight
 // @desc    Get reports without base64 images (for fast list loading)
-// @access  Public
+// @access  Public (with caching)
 router.get('/lightweight', async (req, res) => {
   try {
     const { 
@@ -96,6 +97,16 @@ router.get('/lightweight', async (req, res) => {
       sortBy = 'createdAt',
       sortOrder = 'desc'
     } = req.query;
+
+    // Generate cache key based on query params
+    const cacheKey = `reports_lightweight_${status || 'all'}_${type || 'all'}_${page}_${limit}_${sortBy}_${sortOrder}`;
+    
+    // Check cache first
+    const cached = cache.get(cacheKey);
+    if (cached) {
+      res.set('X-Cache', 'HIT');
+      return res.json(cached);
+    }
 
     // Build filter
     const filter = {};
@@ -112,14 +123,17 @@ router.get('/lightweight', async (req, res) => {
     const sort = {};
     sort[sortBy] = sortOrder === 'desc' ? -1 : 1;
 
-    // Fetch reports WITHOUT image data (projection)
-    const reports = await Report.find(filter)
-      .select('-images.data -evidencePhoto.data') // Exclude base64 data
-      .sort(sort)
-      .limit(parseInt(limit))
-      .skip((parseInt(page) - 1) * parseInt(limit))
-      .lean() // Use lean() for better performance
-      .exec();
+    // Fetch reports WITHOUT image data (projection) - optimized query
+    const [reports, totalReports] = await Promise.all([
+      Report.find(filter)
+        .select('-images.data -evidencePhoto.data') // Exclude base64 data
+        .sort(sort)
+        .limit(parseInt(limit))
+        .skip((parseInt(page) - 1) * parseInt(limit))
+        .lean() // Use lean() for better performance
+        .exec(),
+      Report.countDocuments(filter)
+    ]);
 
     // Transform reports for lightweight response
     const lightweightReports = reports.map(report => {
@@ -151,10 +165,7 @@ router.get('/lightweight', async (req, res) => {
       return report;
     });
 
-    // Get total count
-    const totalReports = await Report.countDocuments(filter);
-
-    res.json({
+    const response = {
       success: true,
       data: lightweightReports,
       pagination: {
@@ -164,7 +175,12 @@ router.get('/lightweight', async (req, res) => {
         hasNextPage: page < Math.ceil(totalReports / limit),
         hasPrevPage: page > 1
       }
-    });
+    };
+
+    // Cache for 30 seconds (short TTL for frequently updated data)
+    cache.set(cacheKey, response, TTL.SHORT);
+    res.set('X-Cache', 'MISS');
+    res.json(response);
 
   } catch (error) {
     console.error('Get lightweight reports error:', error);

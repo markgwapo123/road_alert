@@ -1,9 +1,14 @@
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
+const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 const path = require('path');
 require('dotenv').config();
+
+// Performance services
+const { cache, TTL } = require('./services/CacheService');
+const keepAliveService = require('./services/KeepAliveService');
 
 // Add global error handlers
 process.on('unhandledRejection', (reason, promise) => {
@@ -98,10 +103,46 @@ const corsOptions = {
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin', 'Cache-Control'],
-  exposedHeaders: ['Content-Length', 'X-Request-Id'],
+  exposedHeaders: ['Content-Length', 'X-Request-Id', 'X-Cache', 'X-Response-Time'],
   maxAge: 86400 // 24 hours
 };
 app.use(cors(corsOptions));
+
+// ============================================================================
+// PERFORMANCE OPTIMIZATIONS
+// ============================================================================
+
+// 1. HTTP Compression (gzip/brotli) - reduces payload by 60-80%
+app.use(compression({
+  level: 6,  // Balanced compression (1-9, higher = more compression but slower)
+  threshold: 1024,  // Only compress responses > 1KB
+  filter: (req, res) => {
+    // Don't compress if client doesn't accept it
+    if (req.headers['x-no-compression']) {
+      return false;
+    }
+    // Use default filter (compresses text/html, application/json, etc.)
+    return compression.filter(req, res);
+  }
+}));
+
+// 2. Response time tracking
+app.use((req, res, next) => {
+  const startTime = Date.now();
+  
+  // Add response time header on finish
+  res.on('finish', () => {
+    const duration = Date.now() - startTime;
+    res.set('X-Response-Time', `${duration}ms`);
+    
+    // Log slow requests (> 2 seconds)
+    if (duration > 2000) {
+      console.log(`⚠️ Slow request: ${req.method} ${req.url} - ${duration}ms`);
+    }
+  });
+  
+  next();
+});
 
 // Additional middleware to ensure CORS headers are always set for Capacitor
 app.use((req, res, next) => {
@@ -246,13 +287,74 @@ app.use('/api/notifications', require('./routes/notifications'));
 app.use('/api/news', require('./routes/news'));
 app.use('/api/settings', require('./routes/settings'));
 
-// Health check endpoint
+// ============================================================================
+// HEALTH & PERFORMANCE ENDPOINTS
+// ============================================================================
+
+// Lightweight health check - minimal processing for keep-alive pings
 app.get('/api/health', (req, res) => {
+  // Return minimal response for fast health checks
+  res.set('Cache-Control', 'no-cache');
   res.json({
     status: 'OK',
     timestamp: new Date().toISOString(),
-    uptime: process.uptime()
+    uptime: Math.round(process.uptime()),
+    memory: Math.round(process.memoryUsage().heapUsed / 1024 / 1024) + 'MB'
   });
+});
+
+// Extended health check with more details
+app.get('/api/health/detailed', async (req, res) => {
+  const startTime = Date.now();
+  
+  try {
+    const mongoose = require('mongoose');
+    const dbState = mongoose.connection.readyState;
+    const dbStates = { 0: 'disconnected', 1: 'connected', 2: 'connecting', 3: 'disconnecting' };
+    
+    res.json({
+      status: 'OK',
+      timestamp: new Date().toISOString(),
+      uptime: Math.round(process.uptime()),
+      responseTime: Date.now() - startTime + 'ms',
+      memory: {
+        used: Math.round(process.memoryUsage().heapUsed / 1024 / 1024) + 'MB',
+        total: Math.round(process.memoryUsage().heapTotal / 1024 / 1024) + 'MB',
+      },
+      database: {
+        status: dbStates[dbState] || 'unknown',
+        connected: dbState === 1,
+      },
+      cache: cache.getStats(),
+      keepAlive: keepAliveService.getStats(),
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: 'ERROR',
+      error: error.message,
+    });
+  }
+});
+
+// Cache management endpoint
+app.get('/api/cache/stats', (req, res) => {
+  res.json({
+    success: true,
+    stats: cache.getStats(),
+  });
+});
+
+// Clear cache (admin only - add auth if needed)
+app.post('/api/cache/clear', (req, res) => {
+  const { pattern } = req.body;
+  
+  if (pattern) {
+    const deleted = cache.deletePattern(pattern);
+    res.json({ success: true, message: `Cleared ${deleted} cache entries matching: ${pattern}` });
+  } else {
+    cache.clear();
+    res.json({ success: true, message: 'All cache cleared' });
+  }
 });
 
 // System status endpoint
@@ -381,4 +483,14 @@ app.listen(PORT, () => {
   console.log(`🚀 BantayDalan Backend Server running on port ${PORT}`);
   console.log(`📍 Environment: ${process.env.NODE_ENV}`);
   console.log(`🗄️  Database: ${process.env.MONGODB_URI}`);
+  
+  // Start keep-alive service to prevent Render cold starts
+  // Only in production to avoid unnecessary pings in development
+  if (process.env.NODE_ENV === 'production' || process.env.RENDER_EXTERNAL_URL) {
+    const externalUrl = process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`;
+    keepAliveService.start(externalUrl);
+    console.log(`💓 Keep-alive service started`);
+  }
+  
+  console.log(`📊 Cache service active (max: ${cache.maxSize} entries)`);
 });
