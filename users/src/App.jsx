@@ -4,6 +4,7 @@ import config from './config/index.js';
 import apiCache, { CACHE_TTL } from './services/apiCache.js';
 import { SettingsProvider, useSettings } from './context/SettingsContext.jsx';
 import { ConnectivityProvider } from './context/ConnectivityContext.jsx';
+import { fetchNotificationsResilient, withTimeout } from './services/ResilientApi.js';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import ProfilePage from './pages/ProfilePage';
@@ -115,49 +116,53 @@ function AppContent() {
     };
   }, [showReport]);
 
+  // Fetch notifications with resilient API (never hangs)
   const fetchNotifications = useCallback(async (forceRefresh = false) => {
+    if (!token) {
+      setNotifications([]);
+      setUnreadCount(0);
+      return;
+    }
+    
     try {
-      if (!token) {
-        return;
-      }
-      
-      const fetchFn = () => axios.get(`${config.API_BASE_URL}/notifications`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      }).then(r => r.data);
-      
-      // Force refresh or use cache
-      const data = forceRefresh 
-        ? await fetchFn()
-        : await apiCache.getOrFetch('notifications', fetchFn, CACHE_TTL.NOTIFICATIONS);
-      
+      // Use resilient fetch with built-in timeout and fallback
+      const data = await fetchNotificationsResilient(token);
       setNotifications(data.notifications || []);
       setUnreadCount(data.unreadCount || 0);
     } catch (err) {
-      console.log('Notifications unavailable:', err.response?.status || err.message);
-      setNotifications([]);
-      setUnreadCount(0);
+      console.log('Notifications unavailable:', err.message);
+      // Don't overwrite existing data on error
     }
   }, [token]);
 
+  // Fetch user with resilient timeout (8 second max)
   const fetchUser = useCallback(async (forceRefresh = false) => {
-    try {
-      if (!token) {
-        setUser(null);
-        return;
-      }
-      
-      const fetchFn = () => axios.get(`${config.API_BASE_URL}/users/me`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      }).then(r => r.data);
-      
-      const data = forceRefresh 
-        ? await fetchFn()
-        : await apiCache.getOrFetch('user_profile', fetchFn, CACHE_TTL.PROFILE);
-      
-      setUser(data.data);
-    } catch (err) {
-      console.log('User data unavailable:', err.response?.status || err.message);
+    if (!token) {
       setUser(null);
+      return;
+    }
+    
+    try {
+      const fetchFn = () => axios.get(`${config.API_BASE_URL}/users/me`, {
+        headers: { 'Authorization': `Bearer ${token}` },
+        timeout: 8000 // 8 second timeout
+      }).then(r => r.data?.data);
+      
+      // Use withTimeout to ensure we NEVER hang
+      const userData = await withTimeout(
+        forceRefresh 
+          ? fetchFn()
+          : apiCache.getOrFetch('user_profile', fetchFn, CACHE_TTL.PROFILE),
+        8000, // 8 second max
+        null // fallback to null
+      );
+      
+      if (userData) {
+        setUser(userData);
+      }
+    } catch (err) {
+      console.log('User data unavailable:', err.message);
+      // Don't clear user on error if we had data
     }
   }, [token]);
 

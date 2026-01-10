@@ -7,6 +7,7 @@ import ReportsMap from './ReportsMap.jsx';
 import ReportsOverviewMap from './ReportsOverviewMap.jsx';
 import apiCache, { CACHE_TTL } from '../services/apiCache.js';
 import LazyImage, { getReportImageUrl } from './LazyImage.jsx';
+import { fetchDashboardResilient } from '../services/ResilientApi.js';
 
 // Color configurations based on professional road & safety alert standards
 const ALERT_COLORS = {
@@ -59,48 +60,18 @@ const NewsFeed = ({ user }) => {
   const [loadingMore, setLoadingMore] = useState(false);
   const fetchedRef = useRef(false); // Prevent double fetch
 
-  // Fetch data with caching
+  // Fetch data with RESILIENT API - never fails completely
   const fetchData = useCallback(async (forceRefresh = false) => {
     // Prevent duplicate fetches
     if (fetchedRef.current && !forceRefresh) return;
     fetchedRef.current = true;
 
     try {
-      // Use lightweight endpoint for faster loading (no base64 images)
-      const fetchReports = async () => {
-        const response = await axios.get(`${config.API_BASE_URL}/reports/lightweight`, {
-          params: {
-            status: 'verified,resolved',
-            limit: 20,
-            page: 1,
-            sortBy: 'createdAt',
-            sortOrder: 'desc'
-          }
-        });
-        return response.data;
-      };
-
-      const fetchNews = async () => {
-        const response = await axios.get(`${config.API_BASE_URL}/news/public/posts`, {
-          params: { limit: 20 }
-        });
-        return response.data;
-      };
-
-      // Use cache for reports and news
-      const [reportsData, newsData] = await Promise.all([
-        apiCache.getOrFetch('reports_feed', fetchReports, {
-          ttl: CACHE_TTL.REPORTS,
-          forceRefresh,
-        }),
-        apiCache.getOrFetch('news_feed', fetchNews, {
-          ttl: CACHE_TTL.NEWS,
-          forceRefresh,
-        }),
-      ]);
-        
-      const allReports = reportsData.data || [];
-      const allNews = newsData.posts || [];
+      // Use resilient fetch - NEVER throws, always returns data
+      const result = await fetchDashboardResilient();
+      
+      const allReports = result.reports?.data || [];
+      const allNews = result.news?.posts || [];
       
       // Separate active (verified) and resolved reports
       const activeReports = allReports.filter(r => r.status === 'verified');
@@ -110,7 +81,8 @@ const NewsFeed = ({ user }) => {
         total: allReports.length,
         active: activeReports.length,
         resolved: resolvedReportsData.length,
-        cached: !forceRefresh
+        reportsSuccess: result.reportsSuccess,
+        newsSuccess: result.newsSuccess
       });
       
       setReports(activeReports);
@@ -119,10 +91,20 @@ const NewsFeed = ({ user }) => {
       setFilteredReports(activeReports);
       setFilteredResolvedReports(resolvedReportsData);
       setFilteredNews(allNews);
-      setHasMore(reportsData.pagination?.hasNextPage || false);
+      setHasMore(result.reports?.pagination?.hasNextPage || false);
+      
+      // Clear error since we have data
+      setError('');
     } catch (err) {
-      setError('Failed to load content');
+      // This should rarely happen with resilient API
       console.error('Error fetching data:', err);
+      // Don't block UI - show empty state instead
+      setReports([]);
+      setResolvedReports([]);
+      setNewsPosts([]);
+      setFilteredReports([]);
+      setFilteredResolvedReports([]);
+      setFilteredNews([]);
     } finally {
       setLoading(false);
     }

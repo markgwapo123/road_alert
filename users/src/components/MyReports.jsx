@@ -5,6 +5,7 @@ import { useConnectivity } from '../context/ConnectivityContext.jsx';
 import { getPendingReports, SYNC_STATUS } from '../services/offlineStorage.js';
 import apiCache, { CACHE_TTL } from '../services/apiCache.js';
 import LazyImage, { getReportImageUrl } from './LazyImage.jsx';
+import { withTimeout } from '../services/ResilientApi.js';
 
 const MyReports = ({ token }) => {
   const [reports, setReports] = useState([]);
@@ -60,17 +61,23 @@ const MyReports = ({ token }) => {
       
       console.log('Fetching reports with token:', token ? 'Token present' : 'No token');
       
-      // Use lightweight endpoint with caching
+      // Use lightweight endpoint with caching AND timeout
       const fetchFn = () => axios.get(`${config.API_BASE_URL}/reports/my-reports/lightweight`, {
         headers: { 
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
-        }
+        },
+        timeout: 10000 // 10 second timeout
       }).then(r => r.data);
       
-      const data = forceRefresh 
-        ? await fetchFn()
-        : await apiCache.getOrFetch('my_reports', fetchFn, CACHE_TTL.MY_REPORTS);
+      // Wrap with timeout to ensure we NEVER hang
+      const data = await withTimeout(
+        forceRefresh 
+          ? fetchFn()
+          : apiCache.getOrFetch('my_reports', fetchFn, CACHE_TTL.MY_REPORTS),
+        10000, // 10 second max
+        { success: false, reports: [] } // fallback
+      );
       
       console.log('Reports response data:', data);
       

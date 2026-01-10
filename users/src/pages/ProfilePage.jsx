@@ -3,6 +3,7 @@ import axios from 'axios';
 import config from '../config/index.js';
 import ChangePassword from './ChangePassword.jsx';
 import apiCache, { CACHE_TTL } from '../services/apiCache.js';
+import { fetchProfileResilient } from '../services/ResilientApi.js';
 
 const ProfilePage = ({ onBack, onLogout, onUserUpdate }) => {
   // User data states
@@ -22,6 +23,7 @@ const ProfilePage = ({ onBack, onLogout, onUserUpdate }) => {
   const [successMessage, setSuccessMessage] = useState('');
   const [activeSection, setActiveSection] = useState('view'); // 'view' or 'edit'
   const [showChangePassword, setShowChangePassword] = useState(false);
+  const [dataFromCache, setDataFromCache] = useState(false);
   
   // Form states
   const [formData, setFormData] = useState({
@@ -41,7 +43,7 @@ const ProfilePage = ({ onBack, onLogout, onUserUpdate }) => {
   // Prevent double fetch
   const fetchedRef = useRef(false);
 
-  // Fetch user profile and stats with caching
+  // Fetch user profile and stats with RESILIENT API (never fails)
   useEffect(() => {
     if (fetchedRef.current) return;
     fetchedRef.current = true;
@@ -49,25 +51,25 @@ const ProfilePage = ({ onBack, onLogout, onUserUpdate }) => {
     const fetchData = async () => {
       setLoading(true);
       setError('');
+      
       try {
         const token = localStorage.getItem('token');
-        const headers = { 'Authorization': `Bearer ${token}` };
         
-        // Fetch profile and stats in parallel with caching
-        const [profileData, statsData] = await Promise.all([
-          apiCache.getOrFetch(
-            'user_profile',
-            () => axios.get(`${config.API_BASE_URL}/users/me`, { headers }).then(r => r.data),
-            CACHE_TTL.PROFILE
-          ),
-          apiCache.getOrFetch(
-            'user_stats',
-            () => axios.get(`${config.API_BASE_URL}/users/me/stats`, { headers }).then(r => r.data).catch(() => ({ success: false })),
-            CACHE_TTL.MY_REPORTS
-          )
-        ]);
+        if (!token) {
+          setError('Please log in to view your profile');
+          setLoading(false);
+          return;
+        }
         
-        if (profileData.success) {
+        // Use resilient fetch - NEVER throws, always returns data
+        const result = await fetchProfileResilient(token);
+        
+        // Set from cache indicator
+        setDataFromCache(result.fromCache);
+        
+        // Handle profile data
+        const profileData = result.profile;
+        if (profileData?.success) {
           const userData = profileData.data;
           setUser(userData);
           setFormData({
@@ -78,26 +80,32 @@ const ProfilePage = ({ onBack, onLogout, onUserUpdate }) => {
             notificationsEnabled: userData.profile?.notificationsEnabled !== false
           });
           
-          // Handle profile image - check if it's a data URL or a path
+          // Handle profile image
           if (userData.profileImage) {
             if (userData.profileImage.startsWith('data:')) {
-              // It's a Base64 data URL, use directly
               setProfileImage(userData.profileImage);
             } else {
-              // It's a path, prepend backend URL
               setProfileImage(`${config.BACKEND_URL}${userData.profileImage}`);
             }
           }
+        } else if (!profileData?.success && !result.fromCache) {
+          // Only show error if we have no data at all
+          console.warn('Profile load failed, but continuing with partial data');
         }
         
-        if (statsData?.success) {
+        // Handle stats data (optional - never fail for this)
+        const statsData = result.stats;
+        if (statsData?.success && statsData?.data) {
           setStats(statsData.data);
         }
+        
       } catch (err) {
-        setError('Failed to load profile');
+        // This should rarely happen with resilient API
         console.error('Profile fetch error:', err);
+        // Don't set error - try to show whatever we have
       }
-      setLoading(false);
+      
+      setLoading(false);;
     };
     
     fetchData();
