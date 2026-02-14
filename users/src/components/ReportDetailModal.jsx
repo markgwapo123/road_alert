@@ -1,7 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import config from '../config/index.js';
 
 const ReportDetailModal = ({ report, isOpen, onClose, reportUser }) => {
+  const [imageModalOpen, setImageModalOpen] = useState(false);
+  const [selectedImage, setSelectedImage] = useState(null);
+  
   if (!isOpen || !report) return null;
 
   // Debug: Log reportUser data to see what's available
@@ -64,6 +67,33 @@ const ReportDetailModal = ({ report, isOpen, onClose, reportUser }) => {
     }).catch(err => {
       console.error('Failed to copy: ', err);
     });
+  };
+
+  const handleImageClick = (e) => {
+    e.stopPropagation();
+    
+    if (report.images && report.images.length > 0) {
+      const imageData = report.images[0];
+      let imageUrl;
+      
+      if (imageData?.data) {
+        imageUrl = `data:${imageData.mimetype};base64,${imageData.data}`;
+      } else {
+        const filename = imageData?.filename || imageData;
+        if (typeof filename === 'string') {
+          if (filename.startsWith('http://') || filename.startsWith('https://')) {
+            imageUrl = filename;
+          } else if (filename.startsWith('data:')) {
+            imageUrl = filename;
+          } else {
+            imageUrl = `${config.BACKEND_URL}/uploads/${filename}`;
+          }
+        }
+      }
+      
+      setSelectedImage(imageUrl);
+      setImageModalOpen(true);
+    }
   };
 
   return (
@@ -411,9 +441,7 @@ const ReportDetailModal = ({ report, isOpen, onClose, reportUser }) => {
                     cursor: 'pointer',
                     transition: 'transform 0.2s'
                   }}
-                  onClick={(e) => {
-                    window.open(e.target.src, '_blank');
-                  }}
+                  onClick={handleImageClick}
                   onMouseOver={(e) => e.target.style.transform = 'scale(1.02)'}
                   onMouseOut={(e) => e.target.style.transform = 'scale(1)'}
                   onError={(e) => {
@@ -617,6 +645,88 @@ const ReportDetailModal = ({ report, isOpen, onClose, reportUser }) => {
 
         </div>
       </div>
+
+      {/* Image Lightbox Modal */}
+      {imageModalOpen && selectedImage && (
+        <div 
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.90)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 2000,
+            padding: '20px'
+          }}
+          onClick={() => setImageModalOpen(false)}
+        >
+          <div style={{ position: 'relative', maxWidth: '90vw', maxHeight: '90vh' }}>
+            {/* Close button */}
+            <button
+              onClick={() => setImageModalOpen(false)}
+              style={{
+                position: 'absolute',
+                top: '16px',
+                right: '16px',
+                zIndex: 10,
+                background: 'rgba(255, 255, 255, 0.2)',
+                color: 'white',
+                border: 'none',
+                borderRadius: '50%',
+                width: '40px',
+                height: '40px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '24px',
+                transition: 'background 0.2s'
+              }}
+              onMouseOver={(e) => e.target.style.background = 'rgba(255, 255, 255, 0.3)'}
+              onMouseOut={(e) => e.target.style.background = 'rgba(255, 255, 255, 0.2)'}
+            >
+              ×
+            </button>
+            
+            {/* Image */}
+            <img
+              src={selectedImage}
+              alt="Report evidence - enlarged view"
+              style={{
+                maxWidth: '100%',
+                maxHeight: '90vh',
+                objectFit: 'contain',
+                borderRadius: '8px'
+              }}
+              onClick={(e) => e.stopPropagation()}
+              onError={(e) => {
+                console.error('Lightbox image failed to load');
+                e.target.style.display = 'none';
+              }}
+            />
+            
+            {/* Instructions */}
+            <div style={{
+              position: 'absolute',
+              bottom: '16px',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              background: 'rgba(0, 0, 0, 0.6)',
+              color: 'white',
+              padding: '8px 16px',
+              borderRadius: '8px',
+              fontSize: '14px',
+              whiteSpace: 'nowrap'
+            }}>
+              Click anywhere outside the image to close
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

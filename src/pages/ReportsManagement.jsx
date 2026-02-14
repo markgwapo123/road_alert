@@ -25,6 +25,8 @@ const ReportsManagement = () => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [reportToDelete, setReportToDelete] = useState(null)
   const [deleteLoading, setDeleteLoading] = useState(false)
+  const [imageModalOpen, setImageModalOpen] = useState(false)
+  const [selectedImage, setSelectedImage] = useState(null)
   
   // Set initial filter from URL parameter
   useEffect(() => {
@@ -221,6 +223,33 @@ const ReportsManagement = () => {
     } catch (error) {
       console.error('❌ Failed to update report:', error)
       alert('Failed to update report: ' + (error.response?.data?.error || error.message))
+    }
+  }
+
+  const handleImageClick = (report) => {
+    if (report.images && report.images.length > 0) {
+      const imageData = report.images[0];
+      
+      // Build the image URL
+      let imageUrl;
+      if (imageData?.data) {
+        imageUrl = `data:${imageData.mimetype};base64,${imageData.data}`;
+      } else {
+        const filename = imageData?.filename || imageData;
+        if (typeof filename === 'string') {
+          if (filename.startsWith('data:')) {
+            imageUrl = filename;
+          } else if (filename.startsWith('http://') || filename.startsWith('https://')) {
+            imageUrl = filename;
+          } else {
+            const cleanFilename = filename.replace(/^.*\/uploads\//, '');
+            imageUrl = `${config.BACKEND_URL}/uploads/${cleanFilename}`;
+          }
+        }
+      }
+      
+      setSelectedImage(imageUrl);
+      setImageModalOpen(true);
     }
   }
 
@@ -471,37 +500,7 @@ const ReportsManagement = () => {
                         })()}
                         alt="Report evidence"
                         className="max-w-full max-h-full object-contain cursor-pointer hover:opacity-90 transition-opacity"
-                        onClick={() => {
-                          const imageData = report.images[0];
-                          
-                          // If it's a Base64 data URL in the new format
-                          if (imageData?.data) {
-                            const dataUrl = `data:${imageData.mimetype};base64,${imageData.data}`;
-                            window.open(dataUrl, '_blank');
-                            return;
-                          }
-                          
-                          const filename = imageData?.filename || imageData;
-                          
-                          // Make sure filename is a string before calling startsWith
-                          if (typeof filename === 'string') {
-                            // If it's already a data URL, use it
-                            if (filename.startsWith('data:')) {
-                              window.open(filename, '_blank');
-                              return;
-                            }
-                            
-                            // If filename is already a full URL (Cloudinary), use it directly
-                            if (filename.startsWith('http://') || filename.startsWith('https://')) {
-                              window.open(filename, '_blank');
-                              return;
-                            }
-                            
-                            // Otherwise, construct local path
-                            const cleanFilename = filename.replace(/^.*\/uploads\//, '');
-                            window.open(`${config.BACKEND_URL}/uploads/${cleanFilename}`, '_blank');
-                          }
-                        }}
+                        onClick={() => handleImageClick(report)}
                         onError={(e) => {
                           e.target.src = `data:image/svg+xml;utf8,${encodeURIComponent(`
                             <svg xmlns='http://www.w3.org/2000/svg' width='128' height='128'>
@@ -728,6 +727,44 @@ const ReportsManagement = () => {
                   </>
                 )}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Image Lightbox Modal */}
+      {imageModalOpen && selectedImage && (
+        <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50 p-4" onClick={() => setImageModalOpen(false)}>
+          <div className="relative max-w-7xl max-h-full flex items-center justify-center">
+            {/* Close button */}
+            <button
+              onClick={() => setImageModalOpen(false)}
+              className="absolute top-4 right-4 z-10 bg-white bg-opacity-20 hover:bg-opacity-30 text-white p-2 rounded-full transition-all"
+            >
+              <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+            
+            {/* Image */}
+            <img
+              src={selectedImage}
+              alt="Report evidence - enlarged view"
+              className="max-w-full max-h-full object-contain cursor-pointer"
+              onClick={(e) => e.stopPropagation()}
+              onError={(e) => {
+                e.target.src = `data:image/svg+xml;utf8,${encodeURIComponent(`
+                  <svg xmlns='http://www.w3.org/2000/svg' width='400' height='300'>
+                    <rect width='400' height='300' fill='%23f3f4f6'/>
+                    <text x='200' y='150' text-anchor='middle' dy='0.3em' fill='%236b7280' font-size='16'>Image unavailable</text>
+                  </svg>
+                `)}`;
+              }}
+            />
+            
+            {/* Instructions */}
+            <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black bg-opacity-60 text-white px-4 py-2 rounded-lg text-sm">
+              Click anywhere outside the image to close
             </div>
           </div>
         </div>

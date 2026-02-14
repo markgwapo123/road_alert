@@ -49,8 +49,7 @@ const systemSettingsSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Index for fast lookups
-systemSettingsSchema.index({ key: 1 });
+// Index for fast lookups (key field already has index due to unique: true)
 systemSettingsSchema.index({ category: 1 });
 
 // Static method to get a setting by key

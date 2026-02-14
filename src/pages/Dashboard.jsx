@@ -506,7 +506,8 @@ const Dashboard = () => {
                           alt="Report evidence"
                           className="w-full h-auto object-contain max-h-64 cursor-pointer hover:opacity-90 transition-opacity"
                           onClick={(e) => {
-                            window.open(e.target.src, '_blank');
+                            setSelectedImage(e.target.src);
+                            setIsImageModalOpen(true);
                           }}
                           onLoad={(e) => {
                             console.log('✅ Image loaded successfully:', e.target.src);
