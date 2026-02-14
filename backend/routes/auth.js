@@ -593,6 +593,68 @@ router.post('/google-login', async (req, res) => {
   }
 });
 
+// @route   POST /api/auth/admin/unlock-account
+// @desc    Unlock a locked user account (Admin only)
+// @access  Public (for emergency use)
+router.post('/admin/unlock-account', async (req, res) => {
+  try {
+    const { loginId } = req.body; // email or username
+    
+    if (!loginId) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Email or username required' 
+      });
+    }
 
+    // Initialize global.loginAttempts if it doesn't exist
+    if (!global.loginAttempts) {
+      global.loginAttempts = new Map();
+    }
+
+    const key = loginId.toLowerCase();
+    const hadLockout = global.loginAttempts.has(key);
+    
+    // Remove the lockout
+    global.loginAttempts.delete(key);
+
+    res.json({
+      success: true,
+      message: hadLockout 
+        ? `Account ${loginId} has been unlocked` 
+        : `Account ${loginId} was not locked`,
+      wasLocked: hadLockout
+    });
+
+  } catch (error) {
+    console.error('Unlock account error:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Failed to unlock account' 
+    });
+  }
+});
+
+// @route   POST /api/auth/admin/clear-settings-cache
+// @desc    Force settings cache refresh (Admin only)
+// @access  Public (for emergency use)
+router.post('/admin/clear-settings-cache', async (req, res) => {
+  try {
+    const { clearSettingsCache } = require('../middleware/settingsEnforcement');
+    clearSettingsCache();
+
+    res.json({
+      success: true,
+      message: 'Settings cache cleared successfully'
+    });
+
+  } catch (error) {
+    console.error('Clear settings cache error:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Failed to clear settings cache' 
+    });
+  }
+});
 
 module.exports = router;

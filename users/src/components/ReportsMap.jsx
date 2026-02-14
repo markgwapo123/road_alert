@@ -1,14 +1,53 @@
 import { useEffect, useRef, useState } from 'react';
 import './ReportsMap.css';
+import config from '../config/index.js';
+
+// Map tile layers for different styles
+const MAP_TILES = {
+  streets: {
+    url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+    attribution: '© OpenStreetMap contributors'
+  },
+  satellite: {
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    attribution: '© Esri'
+  },
+  dark: {
+    url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+    attribution: '© CartoDB'
+  }
+};
 
 const ReportsMap = ({ reports }) => {
   const mapContainerRef = useRef(null);
   const mapRef = useRef(null);
+  const tileLayerRef = useRef(null);
   const [markers, setMarkers] = useState([]);
+  const [mapStyle, setMapStyle] = useState('streets');
 
   // Center of Negros Occidental (approximate)
   const defaultCenter = { lat: 10.67, lng: 122.95 };
   const defaultZoom = 10;
+
+  // Fetch map style from settings
+  useEffect(() => {
+    const fetchMapStyle = async () => {
+      try {
+        const response = await fetch(`${config.API_BASE_URL}/settings/public`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.settings) {
+            const style = data.settings.map_style || 'streets';
+            console.log('🗺️ Map style loaded:', style);
+            setMapStyle(style);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch map style:', error);
+      }
+    };
+    fetchMapStyle();
+  }, []);
 
   useEffect(() => {
     // Load Leaflet CSS and JS
@@ -50,13 +89,35 @@ const ReportsMap = ({ reports }) => {
       defaultZoom
     );
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    // Use map style from settings
+    const tileConfig = MAP_TILES[mapStyle] || MAP_TILES.streets;
+    const tileLayer = L.tileLayer(tileConfig.url, {
+      attribution: tileConfig.attribution,
       maxZoom: 19,
     }).addTo(newMap);
 
+    tileLayerRef.current = tileLayer;
     mapRef.current = newMap;
   };
+
+  // Update tile layer when map style changes
+  useEffect(() => {
+    if (!mapRef.current || !tileLayerRef.current || !window.L) return;
+
+    const L = window.L;
+    const tileConfig = MAP_TILES[mapStyle] || MAP_TILES.streets;
+
+    // Remove old tile layer
+    tileLayerRef.current.remove();
+
+    // Add new tile layer
+    const newTileLayer = L.tileLayer(tileConfig.url, {
+      attribution: tileConfig.attribution,
+      maxZoom: 19,
+    }).addTo(mapRef.current);
+
+    tileLayerRef.current = newTileLayer;
+  }, [mapStyle]);
 
   useEffect(() => {
     if (!mapRef.current || !window.L) return;

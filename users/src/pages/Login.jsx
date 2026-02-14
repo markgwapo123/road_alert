@@ -2,8 +2,12 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import config from '../config/index.js';
 import ErrorModal from '../components/ErrorModal';
+import { useSettings } from '../context/SettingsContext';
 
 const Login = ({ onLogin, switchToRegister }) => {
+  const { getSetting } = useSettings();
+  const siteName = getSetting('site_name', 'BantayDalan');
+  
   const [loginId, setLoginId] = useState(''); // can be email or username
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -14,6 +18,20 @@ const Login = ({ onLogin, switchToRegister }) => {
   const [forgotPasswordMode, setForgotPasswordMode] = useState(false);
   const [resetMessage, setResetMessage] = useState('');
   const [formKey, setFormKey] = useState(Date.now()); // Force form refresh
+  
+  // Split site name into brand parts (e.g., "BantayDalan" -> "Bantay" + "Dalan")
+  const splitBrandName = (name) => {
+    // Try to find capital letters to split (camelCase)
+    const matches = name.match(/[A-Z][a-z]+/g);
+    if (matches && matches.length >= 2) {
+      return { first: matches[0], second: matches.slice(1).join('') };
+    }
+    // If no camelCase, split in middle or use full name
+    const mid = Math.ceil(name.length / 2);
+    return { first: name.slice(0, mid), second: name.slice(mid) || '' };
+  };
+  
+  const { first: brandFirst, second: brandSecond } = splitBrandName(siteName);
 
   // Clear form when component mounts or switches
   useEffect(() => {
@@ -269,9 +287,9 @@ const Login = ({ onLogin, switchToRegister }) => {
         </div>
 
         <div className="auth-logo">
-          <img src="/roadalerlogo.png" alt="BantayDalan Logo" className="auth-logo-icon" />
+          <img src="/roadalerlogo.png" alt={`${siteName} Logo`} className="auth-logo-icon" />
           <h1 className="auth-logo-text">
-            <span className="brand-name">Bantay</span><span className="brand-suffix">Dalan</span>
+            <span className="brand-name">{brandFirst}</span>{brandSecond && <span className="brand-suffix">{brandSecond}</span>}
           </h1>
         </div>
         

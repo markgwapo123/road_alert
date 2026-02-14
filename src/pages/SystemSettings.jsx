@@ -40,15 +40,20 @@ const SystemSettings = () => {
     { id: 'maintenance', name: 'Maintenance', icon: WrenchScrewdriverIcon, description: 'System maintenance mode and scheduled downtime' },
     { id: 'general', name: 'General', icon: Cog6ToothIcon, description: 'Site name, tagline, and general configuration' },
     { id: 'map', name: 'Map Settings', icon: MapPinIcon, description: 'Default map center, zoom level, and clustering' },
-    { id: 'notifications', name: 'Notifications', icon: BellIcon, description: 'Push and email notification settings' },
     { id: 'reports', name: 'Reports', icon: DocumentTextIcon, description: 'Report submission and expiration settings' },
-    { id: 'users', name: 'Users', icon: UsersIcon, description: 'User registration and limits' },
     { id: 'security', name: 'Security', icon: ShieldCheckIcon, description: 'Session timeout and login security' }
   ]
 
   useEffect(() => {
     fetchSettings()
     fetchMaintenanceStatus()
+    
+    // Check maintenance status every 3 seconds for auto-expiration
+    const maintenanceCheckInterval = setInterval(() => {
+      fetchMaintenanceStatus()
+    }, 3000) // Check every 3 seconds
+    
+    return () => clearInterval(maintenanceCheckInterval)
   }, [])
 
   const fetchSettings = async () => {
@@ -167,7 +172,10 @@ const SystemSettings = () => {
     // Convert value based on data type
     let convertedValue = value
     if (dataType === 'number') {
-      convertedValue = parseFloat(value) || 0
+      // Handle empty input as 0, otherwise parse the number
+      // Use explicit check to allow 0 as a valid value
+      const numValue = parseFloat(value)
+      convertedValue = isNaN(numValue) ? 0 : numValue
     } else if (dataType === 'boolean') {
       convertedValue = value === true || value === 'true'
     }
@@ -272,12 +280,20 @@ const SystemSettings = () => {
         )
       case 'number':
         return (
-          <input
-            type="number"
-            value={currentValue}
-            onChange={(e) => handleSettingChange(setting.key, e.target.value, 'number')}
-            className={`block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500 sm:text-sm text-black bg-white ${hasChanged ? 'border-yellow-400 ring-2 ring-yellow-200' : 'border-gray-300'}`}
-          />
+          <div>
+            <input
+              type="number"
+              min="0"
+              value={currentValue}
+              onChange={(e) => handleSettingChange(setting.key, e.target.value, 'number')}
+              className={`block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500 sm:text-sm text-black bg-white ${hasChanged ? 'border-yellow-400 ring-2 ring-yellow-200' : 'border-gray-300'}`}
+            />
+            {setting.key === 'lockout_duration_minutes' && currentValue === 0 && (
+              <p className="text-xs text-gray-500 mt-1">
+                0 = No lockout (immediate access after failed attempts)
+              </p>
+            )}
+          </div>
         )
       default:
         return (

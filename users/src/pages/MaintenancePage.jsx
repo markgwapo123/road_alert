@@ -1,6 +1,47 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import config from '../config/index.js';
 
 const MaintenancePage = ({ message, scheduledEnd }) => {
+  const [secondsUntilCheck, setSecondsUntilCheck] = useState(3);
+
+  // Auto-check maintenance status periodically
+  useEffect(() => {
+    const checkMaintenanceStatus = async () => {
+      try {
+        const response = await fetch(`${config.API_BASE_URL}/settings/public`);
+        if (response.ok) {
+          const data = await response.json();
+          if (!data.settings.maintenance_mode) {
+            // Maintenance mode has been disabled, reload the page
+            console.log('✅ Maintenance mode disabled, reloading...');
+            window.location.reload();
+          }
+        }
+      } catch (error) {
+        console.error('Failed to check maintenance status:', error);
+      }
+    };
+
+    // Check immediately on mount
+    checkMaintenanceStatus();
+
+    // Then check every 3 seconds
+    const checkInterval = setInterval(() => {
+      checkMaintenanceStatus();
+      setSecondsUntilCheck(3);
+    }, 3000); // Check every 3 seconds
+
+    // Countdown timer
+    const countdownInterval = setInterval(() => {
+      setSecondsUntilCheck(prev => (prev > 0 ? prev - 1 : 3));
+    }, 1000);
+
+    return () => {
+      clearInterval(checkInterval);
+      clearInterval(countdownInterval);
+    };
+  }, []);
+
   const formatDate = (dateString) => {
     if (!dateString) return null;
     try {
@@ -45,6 +86,9 @@ const MaintenancePage = ({ message, scheduledEnd }) => {
         >
           🔄 Check Again
         </button>
+        <p className="auto-check-info">
+          Auto-checking in {secondsUntilCheck} seconds...
+        </p>
       </div>
 
       <style>{`
@@ -156,6 +200,13 @@ const MaintenancePage = ({ message, scheduledEnd }) => {
 
         .maintenance-refresh-btn:active {
           transform: translateY(0);
+        }
+
+        .auto-check-info {
+          margin-top: 15px;
+          font-size: 13px;
+          color: #666;
+          font-style: italic;
         }
 
         @media (max-width: 480px) {

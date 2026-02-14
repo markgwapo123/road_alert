@@ -156,6 +156,25 @@ const ReportsOverviewMap = ({ searchQuery = '' }) => {
     };
   }, []);
 
+  // Update tile layer when map style changes
+  useEffect(() => {
+    if (!mapInstanceRef.current || !tileLayerRef.current) return;
+
+    const { style } = mapConfig;
+    const tileConfig = MAP_TILES[style] || MAP_TILES.streets;
+
+    // Remove old tile layer
+    tileLayerRef.current.remove();
+
+    // Add new tile layer
+    tileLayerRef.current = L.tileLayer(tileConfig.url, {
+      attribution: tileConfig.attribution,
+      maxZoom: 19
+    }).addTo(mapInstanceRef.current);
+
+    console.log('🗺️ Map style updated to:', style);
+  }, [mapConfig.style]);
+
   useEffect(() => {
     // Update markers when reports change
     if (mapInstanceRef.current && markersLayerRef.current && reports) {

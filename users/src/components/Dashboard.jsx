@@ -2,8 +2,12 @@ import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import config from '../config/index.js';
 import ReportDetailModal from './ReportDetailModal.jsx';
+import { useSettings } from '../context/SettingsContext';
 
 const Dashboard = ({ token }) => {
+  const { getSetting } = useSettings();
+  const siteName = getSetting('site_name', 'BantayDalan');
+  
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedReport, setSelectedReport] = useState(null);
@@ -85,7 +89,7 @@ const Dashboard = ({ token }) => {
       {/* Dashboard Header */}
       <div className="dashboard-header">
         <h1 className="dashboard-title">Dashboard</h1>
-        <p className="dashboard-subtitle">Welcome to your BantayDalan dashboard</p>
+        <p className="dashboard-subtitle">Welcome to your {siteName} dashboard</p>
       </div>
 
       {/* Stats Cards */}

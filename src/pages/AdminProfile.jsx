@@ -26,7 +26,7 @@ const AdminProfile = () => {  const [profile, setProfile] = useState({
   const fetchAdminProfile = async () => {
     try {
       const token = localStorage.getItem('adminToken')
-      const response = await axios.get('http://localhost:3001/api/auth/verify', {
+      const response = await axios.get('http://localhost:3010/api/auth/verify', {
         headers: { Authorization: `Bearer ${token}` }
       })
         if (response.data.success) {
@@ -57,7 +57,7 @@ const AdminProfile = () => {  const [profile, setProfile] = useState({
 
     try {
       const token = localStorage.getItem('adminToken')
-      const response = await axios.put('http://localhost:3001/api/auth/profile', {
+      const response = await axios.put('http://localhost:3010/api/auth/profile', {
         email: profile.email,
         profile: {
           firstName: profile.firstName,

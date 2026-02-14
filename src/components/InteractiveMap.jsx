@@ -12,6 +12,22 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 })
 
+// Map tile layers for different styles
+const MAP_TILES = {
+  streets: {
+    url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+    attribution: '© OpenStreetMap contributors'
+  },
+  satellite: {
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    attribution: '© Esri'
+  },
+  dark: {
+    url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+    attribution: '© CartoDB'
+  }
+}
+
 // Custom icons for different report types and severities
 const createCustomIcon = (type, severity, status) => {
   let color = '#3B82F6' // Default blue
@@ -64,6 +80,28 @@ const InteractiveMap = ({ reports = [], filters = {}, onReportClick, focusReport
   const [filteredReports, setFilteredReports] = useState([])
   const [activePopupId, setActivePopupId] = useState(null)
   const [mapBounds, setMapBounds] = useState(null)
+  const [mapStyle, setMapStyle] = useState('streets') // Map style from settings
+
+  // Fetch map style from settings
+  useEffect(() => {
+    const fetchMapStyle = async () => {
+      try {
+        const response = await fetch(`${config.API_BASE_URL}/settings/public`)
+        if (response.ok) {
+          const data = await response.json()
+          if (data.success && data.settings) {
+            const style = data.settings.map_style || 'streets'
+            console.log('🗺️ Map style loaded:', style)
+            setMapStyle(style)
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch map style:', error)
+        // Keep default 'streets' style on error
+      }
+    }
+    fetchMapStyle()
+  }, [])
 
   // Filter reports based on current filters
   useEffect(() => {
@@ -213,8 +251,9 @@ const InteractiveMap = ({ reports = [], filters = {}, onReportClick, focusReport
         />
         {/* Base map layer */}
         <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          key={mapStyle}
+          attribution={MAP_TILES[mapStyle]?.attribution || MAP_TILES.streets.attribution}
+          url={MAP_TILES[mapStyle]?.url || MAP_TILES.streets.url}
         />
 
         {/* Report markers */}

@@ -12,10 +12,27 @@ const router = express.Router();
 // @access  Public
 router.get('/maintenance/status', async (req, res) => {
   try {
-    const maintenanceMode = await SystemSettings.getSetting('maintenance_mode', false);
+    let maintenanceMode = await SystemSettings.getSetting('maintenance_mode', false);
     const maintenanceMessage = await SystemSettings.getSetting('maintenance_message', 'We are currently performing scheduled maintenance. Please check back soon.');
     const scheduledStart = await SystemSettings.getSetting('maintenance_scheduled_start', '');
     const scheduledEnd = await SystemSettings.getSetting('maintenance_scheduled_end', '');
+    
+    // Auto-disable maintenance mode if scheduled end time has passed
+    if (maintenanceMode && scheduledEnd) {
+      const endTime = new Date(scheduledEnd);
+      const currentTime = new Date();
+      
+      if (currentTime >= endTime) {
+        console.log('⏰ Maintenance scheduled end time has passed. Auto-disabling maintenance mode...');
+        await SystemSettings.setSetting('maintenance_mode', false, {
+          category: 'general',
+          description: 'Enable maintenance mode',
+          dataType: 'boolean',
+          isPublic: true
+        });
+        maintenanceMode = false;
+      }
+    }
     
     res.json({
       success: true,
@@ -158,6 +175,28 @@ router.get('/public', async (req, res) => {
     settings.forEach(s => {
       settingsObject[s.key] = s.value;
     });
+    
+    // Auto-disable maintenance mode if scheduled end time has passed
+    if (settingsObject.maintenance_mode === true && settingsObject.maintenance_scheduled_end) {
+      const endTime = new Date(settingsObject.maintenance_scheduled_end);
+      const currentTime = new Date();
+      
+      console.log('🕐 Current time:', currentTime.toISOString());
+      console.log('🕐 Scheduled end:', endTime.toISOString());
+      console.log('🕐 Maintenance mode:', settingsObject.maintenance_mode);
+      
+      if (currentTime >= endTime) {
+        console.log('⏰ Maintenance scheduled end time has passed. Auto-disabling maintenance mode...');
+        await SystemSettings.setSetting('maintenance_mode', false, {
+          category: 'general',
+          description: 'Enable maintenance mode',
+          dataType: 'boolean',
+          isPublic: true
+        });
+        settingsObject.maintenance_mode = false;
+        console.log('✅ Maintenance mode auto-disabled successfully');
+      }
+    }
     
     // Add computed/default values for any missing settings
     const defaults = {
