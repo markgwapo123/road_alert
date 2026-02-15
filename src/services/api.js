@@ -102,6 +102,10 @@ export const reportsAPI = {
   // Get reports statistics
   getReportsStats: () => api.get('/reports/stats'),
   
+  // Get admin acceptance activity logs
+  getAcceptanceLogs: (params = {}) => 
+    api.get('/reports/acceptance-logs', { params }),
+  
   // Get reports for map display
   getMapReports: (filters = {}) => 
     api.get('/reports/map', { params: filters }),

@@ -456,6 +456,94 @@ router.post('/', upload.array('images', 5), reportValidation, async (req, res) =
   }
 });
 
+// @route   GET /api/reports/acceptance-logs
+// @desc    Get admin acceptance activity logs (for Super Admin Dashboard)
+// @access  Private (Admin only)
+router.get('/acceptance-logs', auth, async (req, res) => {
+  try {
+    const { limit = 10, page = 1, adminId, startDate, endDate, action } = req.query;
+    
+    // Build query filter
+    const filter = {
+      verifiedBy: { $exists: true },
+      verifiedAt: { $exists: true }
+    };
+    
+    // Filter by specific admin
+    if (adminId) {
+      filter.verifiedBy = adminId;
+    }
+    
+    // Filter by date range
+    if (startDate || endDate) {
+      filter.verifiedAt = {};
+      if (startDate) {
+        filter.verifiedAt.$gte = new Date(startDate);
+      }
+      if (endDate) {
+        filter.verifiedAt.$lte = new Date(endDate);
+      }
+    }
+    
+    // Filter by action (verified/rejected)
+    if (action) {
+      filter.status = action; // 'verified' or 'rejected'
+    }
+    
+    // Fetch acceptance logs with pagination
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    
+    const acceptanceLogs = await Report.find(filter)
+      .select('type description province city barangay status verifiedBy verifiedAt adminNotes _id')
+      .populate('verifiedBy', 'username email profile role')
+      .sort({ verifiedAt: -1 })
+      .limit(parseInt(limit))
+      .skip(skip);
+    
+    // Get total count for pagination
+    const totalCount = await Report.countDocuments(filter);
+    
+    // Format the response
+    const formattedLogs = acceptanceLogs.map(report => ({
+      _id: report._id,
+      reportType: report.type,
+      location: `${report.barangay}, ${report.city}, ${report.province}`,
+      description: report.description,
+      action: report.status, // 'verified', 'rejected', or 'resolved'
+      admin: {
+        id: report.verifiedBy?._id,
+        username: report.verifiedBy?.username,
+        email: report.verifiedBy?.email,
+        name: report.verifiedBy?.profile?.firstName && report.verifiedBy?.profile?.lastName
+          ? `${report.verifiedBy.profile.firstName} ${report.verifiedBy.profile.lastName}`
+          : report.verifiedBy?.username,
+        role: report.verifiedBy?.role,
+        department: report.verifiedBy?.profile?.department
+      },
+      timestamp: report.verifiedAt,
+      adminNotes: report.adminNotes
+    }));
+    
+    res.json({
+      success: true,
+      data: formattedLogs,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages: Math.ceil(totalCount / parseInt(limit)),
+        totalCount,
+        limit: parseInt(limit)
+      }
+    });
+    
+  } catch (error) {
+    console.error('Get acceptance logs error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Server error while fetching acceptance logs'
+    });
+  }
+});
+
 // @route   GET /api/reports/:id
 // @desc    Get single report
 // @access  Public (for admin dashboard)
@@ -599,12 +687,20 @@ router.patch('/:id/status', auth, async (req, res) => {
       verifiedAt: new Date()
     };
 
+    // Save admin ID who verified/rejected the report
+    if ((status === 'verified' || status === 'rejected') && req.admin) {
+      updateData.verifiedBy = req.admin.id;
+    }
+
     if (adminNotes) {
       updateData.adminNotes = adminNotes;
     }
 
     if (status === 'resolved') {
       updateData.resolvedAt = new Date();
+      if (req.admin) {
+        updateData.resolvedBy = req.admin.id;
+      }
     }
 
     const report = await Report.findByIdAndUpdate(

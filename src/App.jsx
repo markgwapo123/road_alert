@@ -14,6 +14,7 @@ import Analytics from './pages/Analytics'
 import Users from './pages/Users'
 import SystemSettings from './pages/SystemSettings'
 import AuditLogs from './pages/AuditLogs'
+import AcceptanceActivity from './pages/AcceptanceActivity'
 import Navbar from './components/Navbar'
 import './App.css'
 
@@ -91,6 +92,11 @@ function App() {
               <Route path="/admin/audit-logs" element={
                 <PrivateRoute>
                   <AuditLogs />
+                </PrivateRoute>
+              } />
+              <Route path="/admin/acceptance-activity" element={
+                <PrivateRoute>
+                  <AcceptanceActivity />
                 </PrivateRoute>
               } />
               <Route path="/" element={<Navigate to="/dashboard" replace />} />

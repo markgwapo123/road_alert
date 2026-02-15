@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom'
-import { MapPinIcon, ChartBarIcon, DocumentTextIcon, UserIcon, ChevronDownIcon, CogIcon, KeyIcon, UserPlusIcon, ArrowRightOnRectangleIcon, UsersIcon, NewspaperIcon, ShieldCheckIcon, Bars3Icon, XMarkIcon, PresentationChartLineIcon, ClipboardDocumentListIcon, Cog6ToothIcon, WrenchScrewdriverIcon } from '@heroicons/react/24/outline'
+import { MapPinIcon, ChartBarIcon, DocumentTextIcon, UserIcon, ChevronDownIcon, CogIcon, KeyIcon, UserPlusIcon, ArrowRightOnRectangleIcon, UsersIcon, NewspaperIcon, ShieldCheckIcon, Bars3Icon, XMarkIcon, PresentationChartLineIcon, ClipboardDocumentListIcon, Cog6ToothIcon, WrenchScrewdriverIcon, ClipboardDocumentCheckIcon } from '@heroicons/react/24/outline'
 import { useState, useEffect } from 'react'
 import AdminLogoutConfirmModal from './AdminLogoutConfirmModal'
 import axios from 'axios'
@@ -247,6 +247,18 @@ const Navbar = () => {
                         <ClipboardDocumentListIcon className="h-4 w-4 mr-3" />
                         Audit Logs
                       </Link>
+                      <Link
+                        to="/admin/acceptance-activity"
+                        className={`flex items-center px-4 py-2 text-sm transition-colors ${
+                          location.pathname === '/admin/acceptance-activity'
+                            ? 'bg-red-50 text-red-700 border-r-2 border-red-500'
+                            : 'text-gray-700 hover:bg-gray-100'
+                        }`}
+                        onClick={() => setShowAdminDropdown(false)}
+                      >
+                        <ClipboardDocumentCheckIcon className="h-4 w-4 mr-3" />
+                        Admin Acceptance Activity
+                      </Link>
                     </>
                   )}
                   
@@ -363,6 +375,14 @@ const Navbar = () => {
                     >
                       <ClipboardDocumentListIcon className="h-5 w-5 mr-3" />
                       Audit Logs
+                    </Link>
+                    <Link
+                      to="/admin/acceptance-activity"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="flex items-center px-4 py-2 text-base font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+                    >
+                      <ClipboardDocumentCheckIcon className="h-5 w-5 mr-3" />
+                      Acceptance Activity
                     </Link>
                   </>
                 )}
