@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { XMarkIcon, PhotoIcon, CheckCircleIcon, CameraIcon } from '@heroicons/react/24/outline';
+import { XMarkIcon, CheckCircleIcon, CameraIcon } from '@heroicons/react/24/outline';
 
 const ResolveReportModal = ({ report, onClose, onResolve }) => {
   const [adminFeedback, setAdminFeedback] = useState('');
@@ -10,10 +10,8 @@ const ResolveReportModal = ({ report, onClose, onResolve }) => {
   const [error, setError] = useState('');
   const [showCamera, setShowCamera] = useState(false);
   const [stream, setStream] = useState(null);
-  const [cameraMode, setCameraMode] = useState(true); // true for camera, false for file upload
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
-  const fileInputRef = useRef(null);
 
   // Camera functions
   const startCamera = async () => {
@@ -49,8 +47,6 @@ const ResolveReportModal = ({ report, onClose, onResolve }) => {
       
       setError(errorMessage);
       setShowCamera(false);
-      // Automatically switch to file upload mode on camera error
-      setCameraMode(false);
     }
   };
 
@@ -91,45 +87,11 @@ const ResolveReportModal = ({ report, onClose, onResolve }) => {
     }, 'image/jpeg', 0.8);
   };
 
-  // File upload functions
-  const handlePhotoChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        setError('Photo must be less than 5MB');
-        return;
-      }
-      
-      if (!file.type.startsWith('image/')) {
-        setError('Only image files are allowed');
-        return;
-      }
-
-      setEvidencePhoto(file);
-      setError('');
-      
-      // Create preview
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setEvidencePreview(reader.result);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
+  // Remove photo
   const removePhoto = () => {
     setEvidencePhoto(null);
     setEvidencePreview(null);
-    stopCamera();
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
-  };
-
-  const toggleCameraMode = () => {
-    setCameraMode(!cameraMode);
     setError('');
-    stopCamera();
   };
 
   // Cleanup camera on unmount
@@ -246,42 +208,14 @@ const ResolveReportModal = ({ report, onClose, onResolve }) => {
             </p>
           </div>
 
-          {/* Evidence Photo Capture/Upload */}
+          {/* Evidence Photo Capture */}
           <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="block text-sm font-medium text-gray-900">
-                Evidence Photo <span className="text-gray-500">(Optional)</span>
-              </label>
-              
-              {/* Mode Toggle */}
-              <div className="flex items-center gap-2 text-sm">
-                <button
-                  type="button"
-                  onClick={toggleCameraMode}
-                  className={`px-3 py-1 rounded-full transition-colors ${
-                    cameraMode 
-                      ? 'bg-blue-100 text-blue-700' 
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
-                >
-                  📷 Camera
-                </button>
-                <button
-                  type="button"
-                  onClick={toggleCameraMode}
-                  className={`px-3 py-1 rounded-full transition-colors ${
-                    !cameraMode 
-                      ? 'bg-blue-100 text-blue-700' 
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
-                >
-                  📁 Upload
-                </button>
-              </div>
-            </div>
+            <label className="block text-sm font-medium text-gray-900 mb-2">
+              Evidence Photo <span className="text-gray-500">(Optional)</span>
+            </label>
             
-            {/* Camera Mode */}
-            {cameraMode && !evidencePreview && !showCamera && (
+            {/* Camera Capture */}
+            {!evidencePreview && !showCamera && (
               <div
                 onClick={startCamera}
                 className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:border-blue-500 transition-colors"
@@ -293,30 +227,6 @@ const ResolveReportModal = ({ report, onClose, onResolve }) => {
                 <p className="text-xs text-gray-500">
                   Uses device camera
                 </p>
-              </div>
-            )}
-
-            {/* File Upload Mode */}
-            {!cameraMode && !evidencePreview && (
-              <div
-                onClick={() => fileInputRef.current?.click()}
-                className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:border-blue-500 transition-colors"
-              >
-                <PhotoIcon className="mx-auto h-12 w-12 text-gray-400 mb-3" />
-                <p className="text-sm text-gray-600 mb-1">
-                  Click to upload photo showing the resolved issue
-                </p>
-                <p className="text-xs text-gray-500">
-                  PNG, JPG, GIF up to 5MB
-                </p>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  onChange={handlePhotoChange}
-                  disabled={isLoading}
-                  className="hidden"
-                />
               </div>
             )}
 
@@ -370,7 +280,7 @@ const ResolveReportModal = ({ report, onClose, onResolve }) => {
                   <XMarkIcon className="h-5 w-5" />
                 </button>
                 <div className="absolute bottom-2 left-2 bg-black bg-opacity-60 text-white px-2 py-1 rounded text-xs">
-                  {cameraMode ? 'Captured Photo' : 'Uploaded Photo'}
+                  Captured Photo
                 </div>
               </div>
             )}
@@ -389,7 +299,6 @@ const ResolveReportModal = ({ report, onClose, onResolve }) => {
                     <li><strong>Chrome:</strong> Click the camera icon in address bar → Allow</li>
                     <li><strong>Firefox:</strong> Click shield icon → Turn off blocking</li>
                     <li><strong>Safari:</strong> Safari menu → Settings → Websites → Camera</li>
-                    <li>Or try using the "📁 Upload" option instead</li>
                   </ul>
                 </div>
               )}

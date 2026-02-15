@@ -12,9 +12,8 @@ const AdminManagement = () => {
   const [newAdmin, setNewAdmin] = useState({
     username: '',
     password: '',
+    confirmPassword: '',
     email: '',
-    firstName: '',
-    lastName: '',
     department: '',
     phone: ''
   })
@@ -66,6 +65,14 @@ const AdminManagement = () => {
 
   const handleCreateAdmin = async (e) => {
     e.preventDefault()
+    setError('')
+    
+    // Validate passwords match
+    if (newAdmin.password !== newAdmin.confirmPassword) {
+      setError('Passwords do not match')
+      return
+    }
+    
     setLoading(true)
     
     try {
@@ -73,8 +80,6 @@ const AdminManagement = () => {
       const response = await axios.post(`${config.API_BASE_URL}/admin/create-admin-user`, {
         ...newAdmin,
         profile: {
-          firstName: newAdmin.firstName,
-          lastName: newAdmin.lastName,
           department: newAdmin.department,
           phone: newAdmin.phone
         }
@@ -87,9 +92,8 @@ const AdminManagement = () => {
       setNewAdmin({
         username: '',
         password: '',
+        confirmPassword: '',
         email: '',
-        firstName: '',
-        lastName: '',
         department: '',
         phone: ''
       })
@@ -363,6 +367,16 @@ const AdminManagement = () => {
                 />
               </div>
               <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Confirm Password *</label>
+                <input
+                  type="password"
+                  required
+                  value={newAdmin.confirmPassword}
+                  onChange={(e) => setNewAdmin({...newAdmin, confirmPassword: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
+                />
+              </div>
+              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
                 <input
                   type="email"
@@ -370,26 +384,6 @@ const AdminManagement = () => {
                   onChange={(e) => setNewAdmin({...newAdmin, email: e.target.value})}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
                 />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
-                  <input
-                    type="text"
-                    value={newAdmin.firstName}
-                    onChange={(e) => setNewAdmin({...newAdmin, firstName: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
-                  <input
-                    type="text"
-                    value={newAdmin.lastName}
-                    onChange={(e) => setNewAdmin({...newAdmin, lastName: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
-                  />
-                </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Department</label>

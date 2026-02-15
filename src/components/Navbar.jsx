@@ -251,19 +251,6 @@ const Navbar = () => {
                   )}
                   
                   <hr className="my-1" />
-                  <Link
-                    to="/admin/reports-pdf"
-                    className={`flex items-center px-4 py-2 text-sm transition-colors ${
-                      location.pathname === '/admin/reports-pdf'
-                        ? 'bg-red-50 text-red-700 border-r-2 border-red-500'
-                        : 'text-gray-700 hover:bg-gray-100'
-                    }`}
-                    onClick={() => setShowAdminDropdown(false)}
-                  >
-                    <DocumentTextIcon className="h-4 w-4 mr-3" />
-                    Report List (PDF)
-                  </Link>
-                  <hr className="my-1" />
                   <button
                     onClick={handleLogoutClick}
                     className="flex items-center w-full px-4 py-2 text-sm text-red-700 hover:bg-red-50 transition-colors"
