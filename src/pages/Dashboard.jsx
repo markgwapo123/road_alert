@@ -12,7 +12,7 @@ import {
   CheckBadgeIcon
 } from '@heroicons/react/24/outline'
 import { reportsAPI } from '../services/api'
-import SystemStatus from '../components/SystemStatus'
+// import SystemStatus from '../components/SystemStatus'
 import config from '../config/index.js'
 
 const Dashboard = () => {
@@ -326,8 +326,12 @@ const Dashboard = () => {
             Generate Report
           </button>
         </div>
-      </div>      {/* System Status */}
-      <SystemStatus />{/* Report Details Modal */}
+      </div>
+
+      {/* System Status */}
+      {/* <SystemStatus /> */}
+
+      {/* Report Details Modal */}
       {isModalOpen && selectedReport && (
         <div className="fixed inset-0 bg-black bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4">
           <div className="relative w-full max-w-4xl max-h-[85vh] overflow-y-auto shadow-2xl rounded-xl bg-white">

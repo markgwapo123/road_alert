@@ -315,9 +315,25 @@ const InteractiveMap = ({ reports = [], filters = {}, onReportClick, focusReport
                       <div className="text-xs text-gray-500 mb-1">Images ({report.images.length})</div>
                       <div className="flex flex-wrap gap-1 justify-center">
                         {report.images.slice(0, 2).map((image, index) => {
-                          const filename = image?.filename || image;
-                          const imageUrl = `${config.BACKEND_URL}/uploads/${filename}`;
-                          console.log('🖼️ Popup image:', { index, image, filename, imageUrl });
+                          // Handle different image formats
+                          let imageUrl;
+                          if (image?.data) {
+                            // Base64 data
+                            imageUrl = `data:${image.mimetype || 'image/jpeg'};base64,${image.data}`;
+                          } else if (image?.filename) {
+                            // Filename from uploads folder
+                            imageUrl = `${config.BACKEND_URL}/uploads/${image.filename}`;
+                          } else if (typeof image === 'string') {
+                            // String filename
+                            imageUrl = `${config.BACKEND_URL}/uploads/${image}`;
+                          } else {
+                            imageUrl = null;
+                          }
+                          
+                          console.log('🖼️ Popup image:', { index, image, imageUrl });
+                          
+                          if (!imageUrl) return null;
+                          
                           return (
                             <div key={index} className="relative">
                               <img
@@ -325,10 +341,10 @@ const InteractiveMap = ({ reports = [], filters = {}, onReportClick, focusReport
                                 alt={`Report image ${index + 1}`}
                                 className="h-20 w-20 object-cover rounded-lg border border-gray-200"
                                 onLoad={(e) => {
-                                  console.log('✅ Popup image loaded:', imageUrl);
+                                  console.log('✅ Popup image loaded:', imageUrl.substring(0, 50));
                                 }}
                                 onError={(e) => { 
-                                  console.error('❌ Popup image failed to load:', imageUrl);
+                                  console.error('❌ Popup image failed to load:', imageUrl.substring(0, 50));
                                   e.target.src = `data:image/svg+xml;utf8,${encodeURIComponent(`
                                     <svg xmlns='http://www.w3.org/2000/svg' width='80' height='80'>
                                       <rect width='80' height='80' fill='%23f3f4f6' stroke='%23d1d5db' stroke-width='1'/>
