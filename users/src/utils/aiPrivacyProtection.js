@@ -608,68 +608,46 @@ export const blurFaces = (canvas, faces) => {
       }
 
       // ═══════════════════════════════════════════════════════════════
-      // FULL HEAD ESTIMATION using face landmarks
-      // BlazeFace landmarks: [rightEye, leftEye, nose, mouth, rightEar, leftEar]
-      // Eye distance = reliable measure of head width at ANY distance
-      // Head width ≈ 2.8x eye distance
-      // Head height ≈ 3.5x eye distance
+      // SIMPLE & CONSISTENT: Get bounding box center, expand 2.5x
+      // BlazeFace box centers on face features — we just expand around it
       // ═══════════════════════════════════════════════════════════════
 
-      let blurX, blurY, blurW, blurH;
-
-      if (face.landmarks && face.landmarks.length >= 4) {
-        // USE LANDMARKS for precise head estimation
-        const rightEye = face.landmarks[0];
-        const leftEye = face.landmarks[1];
-        const nose = face.landmarks[2];
-        const mouth = face.landmarks[3];
-
-        // Eye-to-eye distance = most reliable head size indicator
-        const eyeDistance = Math.sqrt(
-          Math.pow(leftEye[0] - rightEye[0], 2) +
-          Math.pow(leftEye[1] - rightEye[1], 2)
-        );
-
-        // Face center = average of all landmarks
-        const centerX = (rightEye[0] + leftEye[0] + nose[0] + mouth[0]) / 4;
-        const centerY = (rightEye[1] + leftEye[1] + nose[1] + mouth[1]) / 4;
-
-        // Full head dimensions based on eye distance
-        // These ratios work for any distance (near or far)
-        blurW = eyeDistance * 3.0;   // Head width = 3x eye distance
-        blurH = eyeDistance * 3.8;   // Head height = 3.8x eye distance (taller than wide)
-
-        // Position: center the blur box on the face
-        blurX = centerX - blurW / 2;
-        blurY = centerY - blurH * 0.45; // centered on face
-
-        console.log(`   �️ Eye distance: ${eyeDistance.toFixed(0)}px → Head: ${blurW.toFixed(0)}x${blurH.toFixed(0)}px`);
+      // Get face bounding box (support both formats)
+      let x1, y1, x2, y2;
+      if (face.topLeft && face.bottomRight) {
+        [x1, y1] = face.topLeft;
+        [x2, y2] = face.bottomRight;
       } else {
-        // FALLBACK: No landmarks, use bounding box with large expansion
-        let x1, y1, x2, y2;
-        if (face.topLeft && face.bottomRight) {
-          [x1, y1] = face.topLeft;
-          [x2, y2] = face.bottomRight;
-        } else {
-          x1 = face.x;
-          y1 = face.y;
-          x2 = face.x + face.width;
-          y2 = face.y + face.height;
-        }
-
-        const faceWidth = x2 - x1;
-        const faceHeight = y2 - y1;
-        const centerX = (x1 + x2) / 2;
-        const centerY = (y1 + y2) / 2;
-
-        // BlazeFace box is ~40% of actual head, so expand by ~2.5x
-        blurW = faceWidth * 2.5;
-        blurH = faceHeight * 2.8;
-        blurX = centerX - blurW / 2;
-        blurY = centerY - blurH * 0.45;
-
-        console.log(`   📦 Fallback expansion: ${faceWidth.toFixed(0)}→${blurW.toFixed(0)} x ${faceHeight.toFixed(0)}→${blurH.toFixed(0)}`);
+        x1 = face.x;
+        y1 = face.y;
+        x2 = face.x + face.width;
+        y2 = face.y + face.height;
       }
+
+      const faceWidth = x2 - x1;
+      const faceHeight = y2 - y1;
+
+      // Exact center of the detected face box
+      const centerX = x1 + faceWidth / 2;
+      const centerY = y1 + faceHeight / 2;
+
+      // Expand to cover full head (2.5x wider, 3x taller)
+      const blurW = faceWidth * 2.5;
+      const blurH = faceHeight * 3.0;
+
+      // Center the blur box exactly on the face center
+      const blurX = centerX - blurW / 2;
+      const blurY = centerY - blurH / 2;
+
+      console.log(`   📍 Face box: (${x1.toFixed(0)},${y1.toFixed(0)}) to (${x2.toFixed(0)},${y2.toFixed(0)}) = ${faceWidth.toFixed(0)}x${faceHeight.toFixed(0)}`);
+      console.log(`   📍 Face center: (${centerX.toFixed(0)}, ${centerY.toFixed(0)})`);
+      console.log(`   📍 Blur region: (${blurX.toFixed(0)},${blurY.toFixed(0)}) size ${blurW.toFixed(0)}x${blurH.toFixed(0)}`);
+      console.log(`   📍 Canvas size: ${imgWidth}x${imgHeight}`);
+
+      // DEBUG: Draw detected face box in red
+      context.strokeStyle = 'red';
+      context.lineWidth = 2;
+      context.strokeRect(x1, y1, faceWidth, faceHeight);
 
       // Clamp to image bounds
       const finalX = Math.max(0, Math.floor(blurX));
