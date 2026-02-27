@@ -290,8 +290,9 @@ export const loadFaceDetectionModel = async () => {
 };
 
 /**
- * Apply Gaussian blur to a specific region of the canvas
- * Enhanced with stronger blur and edge blending
+ * Apply strong blur to a specific region of the canvas
+ * Uses Canvas 2D filter API (GPU-accelerated, like OpenCV GaussianBlur)
+ * with pixelation for guaranteed unreadability
  * @param {CanvasRenderingContext2D} context - Canvas context
  * @param {number} x - X coordinate of the region
  * @param {number} y - Y coordinate of the region
@@ -301,82 +302,69 @@ export const loadFaceDetectionModel = async () => {
  */
 const applyGaussianBlur = (context, x, y, width, height, blurRadius = 40) => {
   try {
-    // Ensure coordinates are within canvas bounds
     const canvas = context.canvas;
     x = Math.max(0, Math.floor(x));
     y = Math.max(0, Math.floor(y));
     width = Math.min(canvas.width - x, Math.ceil(width));
     height = Math.min(canvas.height - y, Math.ceil(height));
-
     if (width <= 0 || height <= 0) return;
 
-    // Get the image data for the region
-    const imageData = context.getImageData(x, y, width, height);
-    const pixels = imageData.data;
+    // ═══════════════════════════════════════════════════════════════
+    // TECHNIQUE: Pixelation + Native Canvas Blur (OpenCV equivalent)
+    // Step 1: Pixelate by downscale → upscale (guarantees unreadability)
+    // Step 2: Apply native CSS blur filter for smooth edges
+    // ═══════════════════════════════════════════════════════════════
 
-    // Apply a box blur approximation (faster than true Gaussian)
-    // More passes = stronger blur = better privacy
-    const passes = 5; // Increased from 3 to 5 for stronger blur
-    const radius = Math.min(blurRadius, Math.min(width, height) / 4);
+    // Create an offscreen canvas for the blur operation
+    const offCanvas = document.createElement('canvas');
+    offCanvas.width = width;
+    offCanvas.height = height;
+    const offCtx = offCanvas.getContext('2d');
 
-    for (let pass = 0; pass < passes; pass++) {
-      // Horizontal pass
-      for (let row = 0; row < height; row++) {
-        for (let col = 0; col < width; col++) {
-          const pixelIndex = (row * width + col) * 4;
+    // Copy the target region to offscreen canvas
+    offCtx.drawImage(canvas, x, y, width, height, 0, 0, width, height);
 
-          let r = 0, g = 0, b = 0, count = 0;
+    // STEP 1: PIXELATION (downscale then upscale — makes details unreadable)
+    const pixelSize = Math.max(8, Math.floor(Math.min(width, height) / 6));
+    const smallW = Math.max(1, Math.floor(width / pixelSize));
+    const smallH = Math.max(1, Math.floor(height / pixelSize));
 
-          // Average pixels in horizontal direction
-          for (let i = -radius; i <= radius; i++) {
-            const sampleCol = col + i;
-            if (sampleCol >= 0 && sampleCol < width) {
-              const sampleIndex = (row * width + sampleCol) * 4;
-              r += pixels[sampleIndex];
-              g += pixels[sampleIndex + 1];
-              b += pixels[sampleIndex + 2];
-              count++;
-            }
-          }
+    // Create tiny canvas for pixelation
+    const tinyCanvas = document.createElement('canvas');
+    tinyCanvas.width = smallW;
+    tinyCanvas.height = smallH;
+    const tinyCtx = tinyCanvas.getContext('2d');
 
-          if (count > 0) {
-            pixels[pixelIndex] = r / count;
-            pixels[pixelIndex + 1] = g / count;
-            pixels[pixelIndex + 2] = b / count;
-          }
-        }
-      }
+    // Disable smoothing for crisp pixel blocks
+    tinyCtx.imageSmoothingEnabled = false;
+    tinyCtx.drawImage(offCanvas, 0, 0, smallW, smallH);
 
-      // Vertical pass
-      for (let col = 0; col < width; col++) {
-        for (let row = 0; row < height; row++) {
-          const pixelIndex = (row * width + col) * 4;
+    // Draw back at full size (pixelated)
+    offCtx.imageSmoothingEnabled = false;
+    offCtx.clearRect(0, 0, width, height);
+    offCtx.drawImage(tinyCanvas, 0, 0, width, height);
 
-          let r = 0, g = 0, b = 0, count = 0;
+    // STEP 2: NATIVE BLUR (Canvas filter API — GPU accelerated like OpenCV)
+    if (typeof offCtx.filter !== 'undefined') {
+      const blurCanvas = document.createElement('canvas');
+      blurCanvas.width = width;
+      blurCanvas.height = height;
+      const blurCtx = blurCanvas.getContext('2d');
 
-          // Average pixels in vertical direction
-          for (let i = -radius; i <= radius; i++) {
-            const sampleRow = row + i;
-            if (sampleRow >= 0 && sampleRow < height) {
-              const sampleIndex = (sampleRow * width + col) * 4;
-              r += pixels[sampleIndex];
-              g += pixels[sampleIndex + 1];
-              b += pixels[sampleIndex + 2];
-              count++;
-            }
-          }
+      // Apply CSS blur filter (equivalent to OpenCV GaussianBlur)
+      blurCtx.filter = `blur(${Math.max(3, blurRadius / 4)}px)`;
+      blurCtx.drawImage(offCanvas, 0, 0);
 
-          if (count > 0) {
-            pixels[pixelIndex] = r / count;
-            pixels[pixelIndex + 1] = g / count;
-            pixels[pixelIndex + 2] = b / count;
-          }
-        }
-      }
+      // Draw the blurred result back onto the main canvas
+      context.clearRect(x, y, width, height);
+      context.drawImage(blurCanvas, 0, 0, width, height, x, y, width, height);
+    } else {
+      // Fallback: just use pixelation (still effective)
+      context.clearRect(x, y, width, height);
+      context.drawImage(offCanvas, 0, 0, width, height, x, y, width, height);
     }
 
-    // Put the blurred image data back
-    context.putImageData(imageData, x, y);
+    console.log(`✅ Blur applied: ${width}x${height} region (pixelate+blur, radius=${blurRadius})`);
   } catch (error) {
     console.error('Error applying blur:', error);
   }
@@ -585,8 +573,10 @@ export const detectPeople = async (canvas) => {
 };
 
 /**
- * Blur all detected faces in the image - DISTANCE-ADAPTIVE face blur
- * ENHANCED: Adaptive blur region size based on face size/distance
+ * Blur all detected faces in the image - FULL HEAD COVERAGE
+ * Uses BlazeFace landmarks (eyes, nose, mouth) to calculate TRUE head size
+ * The eye-to-eye distance gives accurate head width at ANY distance
+ * Auto-adjusts: near faces → big box, far faces → small box
  * @param {HTMLCanvasElement} canvas - Canvas containing the image
  * @param {Array} faces - Array of detected faces from multi-scale detection
  */
@@ -601,7 +591,7 @@ export const blurFaces = (canvas, faces) => {
   const imgHeight = canvas.height;
   let blurredCount = 0;
 
-  // Sort faces by confidence (highest first) for better overlap handling
+  // Sort faces by confidence (highest first)
   const sortedFaces = [...faces].sort((a, b) => {
     const confA = a.confidence || a.probability?.[0] || a.probability || 0;
     const confB = b.confidence || b.probability?.[0] || b.probability || 0;
@@ -610,92 +600,97 @@ export const blurFaces = (canvas, faces) => {
 
   sortedFaces.forEach((face, index) => {
     try {
-      // Get confidence (support both new and old format)
       const confidence = face.confidence || face.probability?.[0] || face.probability || 1;
 
-      // Check confidence threshold - skip low confidence detections
       if (confidence < FACE_CONFIDENCE_THRESHOLD) {
-        console.log(`⚠️ Face ${index + 1} skipped - confidence ${(confidence * 100).toFixed(0)}% below threshold ${(FACE_CONFIDENCE_THRESHOLD * 100)}%`);
+        console.log(`⚠️ Face ${index + 1} skipped - confidence ${(confidence * 100).toFixed(0)}% below threshold`);
         return;
       }
 
-      // Get face bounding box (support both formats)
-      let x1, y1, x2, y2;
-      if (face.topLeft && face.bottomRight) {
-        [x1, y1] = face.topLeft;
-        [x2, y2] = face.bottomRight;
-      } else {
-        x1 = face.x;
-        y1 = face.y;
-        x2 = face.x + face.width;
-        y2 = face.y + face.height;
-      }
-
-      // Calculate face dimensions
-      const faceWidth = x2 - x1;
-      const faceHeight = y2 - y1;
-
       // ═══════════════════════════════════════════════════════════════
-      // DISTANCE-ADAPTIVE BLUR SIZING
-      // Smaller faces (distant) get proportionally larger blur regions
-      // to ensure complete privacy protection
+      // FULL HEAD ESTIMATION using face landmarks
+      // BlazeFace landmarks: [rightEye, leftEye, nose, mouth, rightEar, leftEar]
+      // Eye distance = reliable measure of head width at ANY distance
+      // Head width ≈ 2.8x eye distance
+      // Head height ≈ 3.5x eye distance
       // ═══════════════════════════════════════════════════════════════
 
-      // Calculate face size relative to image (0 = tiny, 1 = fills image)
-      const relativeFaceSize = Math.sqrt((faceWidth * faceHeight) / (imgWidth * imgHeight));
+      let blurX, blurY, blurW, blurH;
 
-      // Adaptive expansion based on face size
-      // Distant/small faces: 15-20% expansion
-      // Close/large faces: 5-8% expansion
-      let expansionFactor;
-      let blurStrength;
+      if (face.landmarks && face.landmarks.length >= 4) {
+        // USE LANDMARKS for precise head estimation
+        const rightEye = face.landmarks[0];
+        const leftEye = face.landmarks[1];
+        const nose = face.landmarks[2];
+        const mouth = face.landmarks[3];
 
-      if (relativeFaceSize < 0.03) {
-        // Very distant/small face - needs larger blur region
-        expansionFactor = 1.20;
-        blurStrength = 25; // Lighter blur for small regions
-        console.log(`   📏 Distant face detected (${(relativeFaceSize * 100).toFixed(1)}% of image)`);
-      } else if (relativeFaceSize < 0.08) {
-        // Medium distance face
-        expansionFactor = 1.12;
-        blurStrength = 30;
-      } else if (relativeFaceSize < 0.15) {
-        // Close face
-        expansionFactor = 1.08;
-        blurStrength = 35;
+        // Eye-to-eye distance = most reliable head size indicator
+        const eyeDistance = Math.sqrt(
+          Math.pow(leftEye[0] - rightEye[0], 2) +
+          Math.pow(leftEye[1] - rightEye[1], 2)
+        );
+
+        // Face center = average of all landmarks
+        const centerX = (rightEye[0] + leftEye[0] + nose[0] + mouth[0]) / 4;
+        const centerY = (rightEye[1] + leftEye[1] + nose[1] + mouth[1]) / 4;
+
+        // Full head dimensions based on eye distance
+        // These ratios work for any distance (near or far)
+        blurW = eyeDistance * 3.0;   // Head width = 3x eye distance
+        blurH = eyeDistance * 3.8;   // Head height = 3.8x eye distance (taller than wide)
+
+        // Position: center the blur box on the face
+        blurX = centerX - blurW / 2;
+        blurY = centerY - blurH * 0.45; // centered on face
+
+        console.log(`   �️ Eye distance: ${eyeDistance.toFixed(0)}px → Head: ${blurW.toFixed(0)}x${blurH.toFixed(0)}px`);
       } else {
-        // Very close face - tight blur
-        expansionFactor = 1.05;
-        blurStrength = 40;
-      }
+        // FALLBACK: No landmarks, use bounding box with large expansion
+        let x1, y1, x2, y2;
+        if (face.topLeft && face.bottomRight) {
+          [x1, y1] = face.topLeft;
+          [x2, y2] = face.bottomRight;
+        } else {
+          x1 = face.x;
+          y1 = face.y;
+          x2 = face.x + face.width;
+          y2 = face.y + face.height;
+        }
 
-      // For lower confidence detections, use slightly tighter blur to reduce false positive impact
-      if (confidence < FACE_HIGH_CONFIDENCE && confidence >= FACE_CONFIDENCE_THRESHOLD) {
-        expansionFactor = Math.max(1.05, expansionFactor - 0.05);
-        console.log(`   ⚡ Moderate confidence (${(confidence * 100).toFixed(0)}%) - using tighter blur`);
-      }
+        const faceWidth = x2 - x1;
+        const faceHeight = y2 - y1;
+        const centerX = (x1 + x2) / 2;
+        const centerY = (y1 + y2) / 2;
 
-      // Calculate blur region
-      const blurWidth = faceWidth * expansionFactor;
-      const blurHeight = faceHeight * expansionFactor;
-      const blurX = x1 - (blurWidth - faceWidth) / 2;
-      const blurY = y1 - (blurHeight - faceHeight) / 2;
+        // BlazeFace box is ~40% of actual head, so expand by ~2.5x
+        blurW = faceWidth * 2.5;
+        blurH = faceHeight * 2.8;
+        blurX = centerX - blurW / 2;
+        blurY = centerY - blurH * 0.45;
+
+        console.log(`   📦 Fallback expansion: ${faceWidth.toFixed(0)}→${blurW.toFixed(0)} x ${faceHeight.toFixed(0)}→${blurH.toFixed(0)}`);
+      }
 
       // Clamp to image bounds
-      const finalX = Math.max(0, blurX);
-      const finalY = Math.max(0, blurY);
-      const finalW = Math.min(blurWidth, imgWidth - finalX);
-      const finalH = Math.min(blurHeight, imgHeight - finalY);
+      const finalX = Math.max(0, Math.floor(blurX));
+      const finalY = Math.max(0, Math.floor(blurY));
+      const finalW = Math.min(Math.ceil(blurW), imgWidth - finalX);
+      const finalH = Math.min(Math.ceil(blurH), imgHeight - finalY);
 
       if (finalW <= 0 || finalH <= 0) {
         console.log(`⚠️ Face ${index + 1} outside bounds - skipping`);
         return;
       }
 
-      const scaleInfo = face.scale ? ` [scale: ${face.scale}x]` : '';
-      console.log(`🔒 Blurring face ${index + 1} (${(confidence * 100).toFixed(0)}% conf)${scaleInfo}: ${Math.round(finalW)}x${Math.round(finalH)} at (${Math.round(finalX)}, ${Math.round(finalY)})`);
+      // Determine blur strength based on face size
+      const faceArea = finalW * finalH;
+      const imageArea = imgWidth * imgHeight;
+      const blurStrength = faceArea / imageArea > 0.05 ? 40 : 25;
 
-      // Apply blur to ONLY the face area - not body, not background
+      const scaleInfo = face.scale ? ` [scale: ${face.scale}x]` : '';
+      console.log(`🔒 Blurring FULL HEAD ${index + 1} (${(confidence * 100).toFixed(0)}% conf)${scaleInfo}: ${finalW}x${finalH} at (${finalX}, ${finalY})`);
+
+      // Apply OpenCV-style blur (pixelation + canvas filter)
       applyGaussianBlur(context, finalX, finalY, finalW, finalH, blurStrength);
       blurredCount++;
 
@@ -732,10 +727,10 @@ export const blurPeople = (canvas, people) => {
       // COCO-SSD returns bbox as [x, y, width, height]
       const [x, y, width, height] = person.bbox;
 
-      // FACE REGION ONLY - top 15% of person for tighter precision
-      // Human head is roughly 1/7 to 1/8 of body height
-      const headHeight = height * 0.15;
-      const headWidth = Math.min(width * 0.5, headHeight * 0.9); // Head is roughly as wide as tall
+      // FULL HEAD REGION - top 25% of person for complete face coverage
+      // Human head is roughly 1/7 to 1/8 of body height, but we go larger to ensure full blur
+      const headHeight = height * 0.25;
+      const headWidth = Math.min(width * 0.70, headHeight * 1.2); // Head slightly wider for full coverage
       const headX = x + (width - headWidth) / 2; // Center horizontally
       const headY = y; // Start from very top
 
