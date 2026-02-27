@@ -1,0 +1,559 @@
+// Privacy protection has been disabled by user request.
+// This module exposes the same function names used by the app but each function is a no-op.
+// Purpose: keep imports working while ensuring no image modifications occur.
+
+/**
+ * No-op: previously blurred face regions.
+ */
+export const blurDetectedFaces = async (canvas, context) => {
+  console.info('privacyProtection: blurDetectedFaces called but privacy protection is disabled.');
+  return;
+};
+
+/**
+ * No-op: previously hid license plates.
+ */
+export const hideLicensePlates = async (canvas, context) => {
+  console.info('privacyProtection: hideLicensePlates called but privacy protection is disabled.');
+  return;
+};
+
+/**
+ * No-op main entry point. Leaves the canvas unchanged.
+ */
+export const applyPrivacyProtection = async (canvas) => {
+  console.info('privacyProtection: applyPrivacyProtection called but privacy protection is disabled. Leaving image unchanged.');
+  return;
+};
+
+/**
+ * Detects eye pixels (dark pupils, eyelashes, eyebrows)
+ * @param {number} r - Red value
+ * @param {number} g - Green value
+ * @param {number} b - Blue value
+ * @param {number} brightness - Brightness value
+ * @returns {boolean} Whether pixel looks like an eye
+ */
+const isEyePixel = (r, g, b, brightness) => {
+  // Very dark pixels (pupils, eyelashes)
+  if (brightness < 50) return true;
+  
+  // Dark brown/black eyebrows
+  if (brightness < 80 && r < 100 && g < 80 && b < 70) return true;
+  
+  // Eye whites (but not too bright to avoid false positives)
+  if (brightness > 200 && brightness < 240 && 
+      Math.abs(r - g) < 20 && Math.abs(g - b) < 20) return true;
+  
+  return false;
+};
+
+/**
+ * Detects hair pixels (various hair colors)
+ * @param {number} r - Red value
+ * @param {number} g - Green value
+ * @param {number} b - Blue value
+ * @param {number} brightness - Brightness value
+ * @returns {boolean} Whether pixel looks like hair
+ */
+const isHairPixel = (r, g, b, brightness) => {
+  // Black hair
+  if (brightness < 60) return true;
+  
+  // Brown hair (various shades)
+  if (brightness < 120 && r > g && r > b && (r - g) < 40) return true;
+  
+  // Blonde hair
+  if (brightness > 120 && brightness < 200 && 
+      r > 180 && g > 150 && b < 150) return true;
+  
+  // Red hair
+  if (r > 150 && g < 120 && b < 100 && r > g + 30) return true;
+  
+  // Gray/white hair
+  if (brightness > 160 && Math.abs(r - g) < 30 && Math.abs(g - b) < 30) return true;
+  
+  return false;
+};
+
+/**
+ * Detects mouth/lip pixels (reddish, pinkish tones)
+ * @param {number} r - Red value
+ * @param {number} g - Green value
+ * @param {number} b - Blue value
+ * @returns {boolean} Whether pixel looks like mouth/lips
+ */
+const isMouthPixel = (r, g, b) => {
+  // Natural lip colors (pinkish, reddish)
+  if (r > g + 20 && r > b + 10 && r > 120 && g < 160) return true;
+  
+  // Darker lip colors
+  if (r > g && r > b && r > 80 && r < 150) return true;
+  
+  // Very dark mouth area (open mouth)
+  if (r < 80 && g < 80 && b < 80) return true;
+  
+  return false;
+};
+
+/**
+ * Detects nose pixels (skin tone with shadows/highlights)
+ * @param {number} r - Red value
+ * @param {number} g - Green value
+ * @param {number} b - Blue value
+ * @param {number} brightness - Brightness value
+ * @returns {boolean} Whether pixel looks like nose
+ */
+const isNosePixel = (r, g, b, brightness) => {
+  // Nose is typically skin tone with some variation in brightness
+  const isSkin = isSkinTone(r, g, b) || isAlternateSkinTone(r, g, b);
+  
+  if (!isSkin) return false;
+  
+  // Nose has highlights and shadows
+  if (brightness > 140 || brightness < 80) return true;
+  
+  // Nose bridge area (slightly more red/pink)
+  if (r > g + 10 && r > b + 5) return true;
+  
+  return false;
+};
+
+/**
+ * Creates a comprehensive face region based on detected features
+ * @param {Uint8ClampedArray} data - Image data
+ * @param {number} width - Image width
+ * @param {number} height - Image height
+ * @param {number} x - X coordinate of detected features
+ * @param {number} y - Y coordinate of detected features
+ * @param {Object} features - Detected facial features
+ * @returns {Object} Complete face region
+ */
+const createCompleteFaceRegion = (data, width, height, x, y, features, blockSize = 12) => {
+  // Make expansion conservative and proportional to analysis block size
+  const baseSize = Math.max(24, blockSize * 2); // base relative to detection block
+
+  // Conservative expansion: avoid aggressive growth that can cover most of the image
+  let expansionFactor = 1.3 + (features.confidence * 0.6); // between ~1.3 and ~1.9
+  expansionFactor = Math.min(expansionFactor, 2.0);
+
+  // Small extra padding for hair/eyes but limited
+  if (features.hasHair) expansionFactor += 0.15;
+  if (features.hasEyes) expansionFactor += 0.1;
+  expansionFactor = Math.min(expansionFactor, 2.2);
+
+  const faceWidth = baseSize * expansionFactor;
+  const faceHeight = faceWidth * 1.2; // slightly less tall ratio for safer crop
+
+  // Center the region around the detected block
+  const centerX = x + (blockSize / 2);
+  const centerY = y + (blockSize / 2);
+
+  let rx = Math.max(0, Math.floor(centerX - faceWidth / 2));
+  let ry = Math.max(0, Math.floor(centerY - faceHeight / 3)); // face extends below the detected features
+  let rwidth = Math.min(width - rx, Math.max(1, Math.ceil(faceWidth)));
+  let rheight = Math.min(height - ry, Math.max(1, Math.ceil(faceHeight)));
+
+  // Safety clamp: do not allow a single face region to exceed a percentage of the image
+  const maxRegionAreaPercent = 0.25; // at most 25% of the image area for one face
+  const imageArea = width * height;
+  if (rwidth * rheight > imageArea * maxRegionAreaPercent) {
+    // Shrink while preserving aspect ratio
+    const maxArea = Math.floor(imageArea * maxRegionAreaPercent);
+    const aspect = rwidth / rheight;
+    rheight = Math.floor(Math.sqrt(maxArea / aspect));
+    rwidth = Math.floor(rheight * aspect);
+
+    // Re-center after shrink
+    rx = Math.max(0, Math.floor(centerX - rwidth / 2));
+    ry = Math.max(0, Math.floor(centerY - rheight / 3));
+  }
+
+  const faceRegion = {
+    x: rx,
+    y: ry,
+    width: rwidth,
+    height: rheight,
+    confidence: features.confidence,
+    features: features
+  };
+
+  return faceRegion;
+};
+
+/**
+ * Detects license plates in the image
+ * @param {Uint8ClampedArray} data - Image pixel data
+ * @param {number} width - Image width
+ * @param {number} height - Image height
+ * @returns {Array} Array of detected plate regions
+ */
+const detectLicensePlates = (data, width, height) => {
+  const regions = [];
+  const blockSize = 20; // Larger blocks for license plate detection
+  
+  for (let y = 0; y < height - blockSize; y += blockSize) {
+    for (let x = 0; x < width - blockSize; x += blockSize) {
+      
+      const plateAnalysis = analyzePlateRegion(data, width, height, x, y, blockSize);
+      
+      if (plateAnalysis.isLicensePlate) {
+        const plateRegion = expandPlateRegion(data, width, height, x, y, blockSize, plateAnalysis.score);
+        
+        if (plateRegion.width > 40 && plateRegion.height > 15 && plateRegion.width / plateRegion.height > 2) {
+          regions.push(plateRegion);
+        }
+      }
+    }
+  }
+  
+  return removeDuplicateRegions(regions);
+};
+
+/**
+ * Analyzes a region for license plate characteristics
+ * @param {Uint8ClampedArray} data - Image data
+ * @param {number} width - Image width
+ * @param {number} height - Image height
+ * @param {number} x - X coordinate
+ * @param {number} y - Y coordinate
+ * @param {number} blockSize - Block size to analyze
+ * @returns {Object} License plate analysis
+ */
+const analyzePlateRegion = (data, width, height, x, y, blockSize) => {
+  let whitePixels = 0;
+  let darkPixels = 0;
+  let edgePixels = 0;
+  let totalPixels = 0;
+  
+  for (let by = 0; by < blockSize; by++) {
+    for (let bx = 0; bx < blockSize; bx++) {
+      const pixelIndex = ((y + by) * width + (x + bx)) * 4;
+      const r = data[pixelIndex];
+      const g = data[pixelIndex + 1];
+      const b = data[pixelIndex + 2];
+      const brightness = (r + g + b) / 3;
+      
+      if (isPlateColor(r, g, b)) {
+        whitePixels++;
+      }
+      
+      if (brightness < 100) {
+        darkPixels++;
+      }
+      
+      if (isEdgePixel(data, width, height, x + bx, y + by)) {
+        edgePixels++;
+      }
+      
+      totalPixels++;
+    }
+  }
+  
+  const whiteRatio = whitePixels / totalPixels;
+  const darkRatio = darkPixels / totalPixels;
+  const edgeRatio = edgePixels / totalPixels;
+  
+  const score = (whiteRatio * 0.4) + (darkRatio * 0.3) + (edgeRatio * 0.3);
+  
+  return {
+    isLicensePlate: score > 0.4 && whiteRatio > 0.3 && darkRatio > 0.1,
+    score: score,
+    whiteRatio: whiteRatio,
+    darkRatio: darkRatio,
+    edgeRatio: edgeRatio
+  };
+};
+
+/**
+ * Checks if a pixel color matches typical license plate colors
+ * @param {number} r - Red value
+ * @param {number} g - Green value
+ * @param {number} b - Blue value
+ * @returns {boolean} Whether pixel looks like a license plate color
+ */
+const isPlateColor = (r, g, b) => {
+  const brightness = (r + g + b) / 3;
+  
+  // White/light colored plates
+  if (brightness > 180 && Math.abs(r - g) < 30 && Math.abs(g - b) < 30) return true;
+  
+  // Yellow plates
+  if (r > 200 && g > 180 && b < 100) return true;
+  
+  // Blue plates (some regions)
+  if (b > 150 && r < 100 && g < 120) return true;
+  
+  return false;
+};
+
+/**
+ * Checks if a pixel is likely an edge (high contrast)
+ * @param {Uint8ClampedArray} data - Image data
+ * @param {number} width - Image width
+ * @param {number} height - Image height
+ * @param {number} x - X coordinate
+ * @param {number} y - Y coordinate
+ * @returns {boolean} Whether pixel is an edge
+ */
+const isEdgePixel = (data, width, height, x, y) => {
+  if (x <= 0 || y <= 0 || x >= width - 1 || y >= height - 1) return false;
+  
+  const currentIndex = (y * width + x) * 4;
+  const rightIndex = (y * width + x + 1) * 4;
+  const bottomIndex = ((y + 1) * width + x) * 4;
+  
+  const currentBrightness = (data[currentIndex] + data[currentIndex + 1] + data[currentIndex + 2]) / 3;
+  const rightBrightness = (data[rightIndex] + data[rightIndex + 1] + data[rightIndex + 2]) / 3;
+  const bottomBrightness = (data[bottomIndex] + data[bottomIndex + 1] + data[bottomIndex + 2]) / 3;
+  
+  const horizontalDiff = Math.abs(currentBrightness - rightBrightness);
+  const verticalDiff = Math.abs(currentBrightness - bottomBrightness);
+  
+  return horizontalDiff > 30 || verticalDiff > 30;
+};
+
+/**
+ * Expands a potential license plate region
+ * @param {Uint8ClampedArray} data - Image data
+ * @param {number} width - Image width
+ * @param {number} height - Image height
+ * @param {number} x - X coordinate
+ * @param {number} y - Y coordinate
+ * @param {number} blockSize - Initial block size
+ * @param {number} plateScore - Plate detection score
+ * @returns {Object} Expanded plate region
+ */
+const expandPlateRegion = (data, width, height, x, y, blockSize, plateScore) => {
+  // Conservative plate expansion to avoid covering large image areas
+  const expansionFactor = Math.min(1.8, 1.2 + plateScore);
+  const plateWidth = blockSize * expansionFactor * 3; // Plates are typically wider
+  const plateHeight = blockSize * expansionFactor;
+
+  const rx = Math.max(0, Math.floor(x - blockSize));
+  const ry = Math.max(0, Math.floor(y - Math.floor(blockSize / 2)));
+  const rwidth = Math.min(width - rx, Math.max(1, Math.ceil(plateWidth)));
+  const rheight = Math.min(height - ry, Math.max(1, Math.ceil(plateHeight)));
+
+  return {
+    x: rx,
+    y: ry,
+    width: rwidth,
+    height: rheight,
+    score: plateScore
+  };
+};
+
+/**
+ * Detects skin tone pixels using HSV color space analysis
+ * @param {number} r - Red value (0-255)
+ * @param {number} g - Green value (0-255)
+ * @param {number} b - Blue value (0-255)
+ * @returns {boolean} Whether the pixel is likely skin tone
+ */
+const isSkinTone = (r, g, b) => {
+  // Basic skin tone check
+  if (r > 95 && g > 40 && b > 20 && 
+      Math.max(r, g, b) - Math.min(r, g, b) > 15 &&
+      Math.abs(r - g) > 15 && r > g && r > b) {
+    return true;
+  }
+  return false;
+};
+
+/**
+ * Alternative skin tone detection for different ethnicities
+ * @param {number} r - Red value
+ * @param {number} g - Green value
+ * @param {number} b - Blue value
+ * @returns {boolean} Whether pixel is alternate skin tone
+ */
+const isAlternateSkinTone = (r, g, b) => {
+  // Darker skin tones
+  if (r > 60 && g > 40 && b > 20 && r > g && g >= b) return true;
+  
+  // Lighter skin tones
+  if (r > 200 && g > 160 && b > 130 && r > g && g > b) return true;
+  
+  return false;
+};
+
+/**
+ * Applies blur to a specific region of the canvas
+ * @param {CanvasRenderingContext2D} context - Canvas context
+ * @param {number} x - X coordinate
+ * @param {number} y - Y coordinate
+ * @param {number} width - Width of region
+ * @param {number} height - Height of region
+ * @param {number} blurAmount - Blur intensity in pixels
+ */
+const applyBlur = (context, x, y, width, height, blurAmount = 20) => {
+  // Save current state
+  context.save();
+  
+  // Create temporary canvas for the region
+  const tempCanvas = document.createElement('canvas');
+  const tempContext = tempCanvas.getContext('2d');
+  // Clamp coordinates to canvas bounds to avoid exceptions
+  const canvasWidth = context.canvas.width;
+  const canvasHeight = context.canvas.height;
+  let rx = Math.max(0, Math.floor(x));
+  let ry = Math.max(0, Math.floor(y));
+  let rwidth = Math.max(1, Math.min(width, canvasWidth - rx));
+  let rheight = Math.max(1, Math.min(height, canvasHeight - ry));
+
+  tempCanvas.width = rwidth;
+  tempCanvas.height = rheight;
+
+  // Copy the region to temp canvas
+  let imageData;
+  try {
+    imageData = context.getImageData(rx, ry, rwidth, rheight);
+  } catch (e) {
+    // If getImageData fails, bail out safely
+    console.warn('applyBlur: getImageData failed, skipping blur for region', rx, ry, rwidth, rheight, e);
+    context.restore();
+    return;
+  }
+  tempContext.putImageData(imageData, 0, 0);
+
+  // Apply blur filter to the main context when drawing the temp canvas back
+  context.filter = `blur(${blurAmount}px)`;
+  context.drawImage(tempCanvas, rx, ry);
+  
+  // Restore context
+  context.filter = 'none';
+  context.restore();
+};
+
+/**
+ * Applies Google Maps style solid overlay to license plates
+ * @param {CanvasRenderingContext2D} context - Canvas context
+ * @param {number} x - X coordinate
+ * @param {number} y - Y coordinate
+ * @param {number} width - Width of region
+ * @param {number} height - Height of region
+ */
+const applyGoogleMapsStyleOverlay = (context, x, y, width, height) => {
+  // Save current state
+  context.save();
+  
+  // Create rounded rectangle path
+  const radius = 6;
+  context.beginPath();
+  context.roundRect(x, y, width, height, radius);
+  
+  // Fill with semi-transparent dark color
+  context.fillStyle = 'rgba(60, 60, 60, 0.85)';
+  context.fill();
+  
+  // Add subtle border
+  context.strokeStyle = 'rgba(40, 40, 40, 0.9)';
+  context.lineWidth = 1;
+  context.stroke();
+  
+  // Add "hidden" text if region is large enough
+  if (width > 60 && height > 20) {
+    context.fillStyle = 'rgba(255, 255, 255, 0.7)';
+    context.font = `${Math.min(height * 0.6, 12)}px Arial`;
+    context.textAlign = 'center';
+    context.textBaseline = 'middle';
+    context.fillText('Hidden', x + width / 2, y + height / 2);
+  }
+  
+  // Restore context
+  context.restore();
+};
+
+/**
+ * Removes overlapping regions to avoid duplicate processing
+ * @param {Array} regions - Array of detected regions
+ * @returns {Array} Filtered regions without duplicates
+ */
+const removeDuplicateRegions = (regions) => {
+  if (regions.length === 0) return regions;
+  
+  // Sort regions by confidence (if available) and then by size
+  regions.sort((a, b) => {
+    const confA = a.confidence || 0;
+    const confB = b.confidence || 0;
+    
+    if (confA !== confB) return confB - confA; // Higher confidence first
+    
+    const sizeA = a.width * a.height;
+    const sizeB = b.width * b.height;
+    return sizeB - sizeA; // Larger size first
+  });
+  
+  const filtered = [];
+  
+  for (const region of regions) {
+    let shouldAdd = true;
+    let indexToReplace = -1;
+    
+    for (let i = 0; i < filtered.length; i++) {
+      const existing = filtered[i];
+      
+      if (regionsOverlap(region, existing)) {
+        const overlapArea = calculateOverlapArea(region, existing);
+        const regionArea = region.width * region.height;
+        const existingArea = existing.width * existing.height;
+        const overlapPercent = overlapArea / Math.min(regionArea, existingArea);
+        
+        // If overlap is significant (>40%), choose better region
+        if (overlapPercent > 0.4) {
+          const regionConf = region.confidence || 0;
+          const existingConf = existing.confidence || 0;
+          
+          if (regionConf > existingConf) {
+            // Replace existing with current (better confidence)
+            indexToReplace = i;
+            break;
+          } else {
+            // Keep existing, skip current
+            shouldAdd = false;
+            break;
+          }
+        }
+      }
+    }
+    
+    if (indexToReplace >= 0) {
+      filtered[indexToReplace] = region;
+    } else if (shouldAdd) {
+      filtered.push(region);
+    }
+  }
+  
+  return filtered;
+};
+
+/**
+ * Calculates the overlap area between two regions
+ */
+const calculateOverlapArea = (region1, region2) => {
+  const left = Math.max(region1.x, region2.x);
+  const right = Math.min(region1.x + region1.width, region2.x + region2.width);
+  const top = Math.max(region1.y, region2.y);
+  const bottom = Math.min(region1.y + region1.height, region2.y + region2.height);
+  
+  if (left >= right || top >= bottom) return 0;
+  
+  return (right - left) * (bottom - top);
+};
+
+/**
+ * Checks if two regions overlap
+ */
+const regionsOverlap = (region1, region2) => {
+  return !(
+    region1.x + region1.width < region2.x ||
+    region2.x + region2.width < region1.x ||
+    region1.y + region1.height < region2.y ||
+    region2.y + region2.height < region1.y
+  );
+};
+
+// The original implementation of applyPrivacyProtection has been removed.
+// This file intentionally exports no-op functions above so callers remain functional
+// but no image blurring or plate hiding is performed.

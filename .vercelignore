@@ -1,0 +1,41 @@
+# Vercel Ignore - Files to exclude from deployment
+
+# Node modules
+node_modules
+
+# Development files
+.env.local
+.env.development
+
+# Build cache
+.vite
+.cache
+
+# Editor directories
+.vscode
+.idea
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Git
+.git
+.gitignore
+
+# Other workspaces (not part of admin build)
+# NOTE: Comment out 'users' if deploying users app separately
+# users
+backend
+production-backend
+render-backend
+simple-backend
+
+# Documentation (optional, include if you want docs in deployment)
+*.md
+!README.md
+
+# Test files
+*.test.js
+*.spec.js
+__tests__

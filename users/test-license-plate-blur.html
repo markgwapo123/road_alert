@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>License Plate & Face Blur Test</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        .header p {
+            margin: 10px 0;
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+        .test-container {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        .upload-area {
+            border: 3px dashed #667eea;
+            border-radius: 12px;
+            padding: 50px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: #f8f9ff;
+        }
+        .upload-area:hover {
+            border-color: #764ba2;
+            background: #f0f2ff;
+            transform: translateY(-2px);
+        }
+        .upload-area.dragover {
+            border-color: #28a745;
+            background: #e8f5e9;
+        }
+        .upload-icon {
+            font-size: 3em;
+            margin-bottom: 10px;
+        }
+        .canvas-container {
+            margin: 20px 0;
+            text-align: center;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 20px;
+        }
+        .canvas-wrapper {
+            flex: 1;
+            min-width: 300px;
+            max-width: 500px;
+        }
+        .canvas-label {
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #333;
+            font-size: 1.1em;
+        }
+        canvas {
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            max-width: 100%;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+        .stats-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+        .stat-value {
+            font-size: 2.5em;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        .stat-label {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 1em;
+            font-weight: 600;
+            transition: all 0.3s;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(0,0,0,0.3);
+        }
+        button:active {
+            transform: translateY(0);
+        }
+        button.secondary {
+            background: #6c757d;
+        }
+        .log {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 13px;
+            height: 250px;
+            overflow-y: auto;
+            margin-top: 10px;
+            box-shadow: inset 0 2px 5px rgba(0,0,0,0.3);
+        }
+        .log-entry {
+            margin: 5px 0;
+            padding: 5px 0;
+            border-bottom: 1px solid #333;
+        }
+        .log-timestamp {
+            color: #858585;
+            margin-right: 10px;
+        }
+        .log-success {
+            color: #4ec9b0;
+        }
+        .log-error {
+            color: #f48771;
+        }
+        .log-info {
+            color: #9cdcfe;
+        }
+        .feature-badge {
+            display: inline-block;
+            padding: 5px 12px;
+            margin: 3px;
+            background: #28a745;
+            color: white;
+            border-radius: 15px;
+            font-size: 0.85em;
+            font-weight: 600;
+        }
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #667eea;
+        }
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🔒 Privacy Protection Test</h1>
+        <p>Face Detection + License Plate Blurring</p>
+        <div>
+            <span class="feature-badge">AI Face Detection</span>
+            <span class="feature-badge">Person Detection</span>
+            <span class="feature-badge">License Plate Detection</span>
+        </div>
+    </div>
+
+    <div class="test-container">
+        <h3>Upload Test Image</h3>
+        <div class="upload-area" id="uploadArea">
+            <div class="upload-icon">📸</div>
+            <p style="font-size: 1.2em; margin: 10px 0;"><strong>Click here or drag & drop an image</strong></p>
+            <p style="color: #666; font-size: 0.9em;">Supports JPG, PNG, WEBP</p>
+            <input type="file" id="fileInput" accept="image/*" style="display: none;">
+        </div>
+        
+        <div id="loadingIndicator" class="loading" style="display: none;">
+            <div class="spinner"></div>
+            <p>Processing image...</p>
+        </div>
+
+        <div class="canvas-container" id="canvasContainer" style="display: none;">
+            <div class="canvas-wrapper">
+                <div class="canvas-label">📷 Original Image</div>
+                <canvas id="originalCanvas"></canvas>
+            </div>
+            <div class="canvas-wrapper">
+                <div class="canvas-label">🔒 Privacy Protected</div>
+                <canvas id="processedCanvas"></canvas>
+            </div>
+        </div>
+
+        <div class="stats-container" id="statsContainer" style="display: none;">
+            <div class="stat-card">
+                <div class="stat-label">👤 Faces Detected</div>
+                <div class="stat-value" id="facesCount">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">👥 People Detected</div>
+                <div class="stat-value" id="peopleCount">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">🚗 License Plates</div>
+                <div class="stat-value" id="platesCount">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">⏱️ Processing Time</div>
+                <div class="stat-value" id="processingTime">0ms</div>
+            </div>
+        </div>
+
+        <div style="text-align: center; margin-top: 20px;">
+            <button onclick="testWithSampleImage()">🎨 Generate Test Pattern</button>
+            <button onclick="downloadProcessed()">💾 Download Protected Image</button>
+            <button class="secondary" onclick="clearResults()">🗑️ Clear</button>
+        </div>
+    </div>
+
+    <div class="test-container">
+        <h3>📋 Processing Log</h3>
+        <div class="log" id="processingLog"></div>
+    </div>
+
+    <script type="module">
+        import { applyAIPrivacyProtection, preloadModel } from './src/utils/aiPrivacyProtection.js';
+
+        let log = [];
+        let processedImageUrl = null;
+        
+        function logMessage(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = {
+                timestamp,
+                message,
+                type
+            };
+            log.push(logEntry);
+            updateLogDisplay();
+            console.log(`[${timestamp}] ${message}`);
+        }
+
+        function updateLogDisplay() {
+            const logElement = document.getElementById('processingLog');
+            logElement.innerHTML = log.slice(-30).map(entry => {
+                let className = 'log-info';
+                if (entry.type === 'success') className = 'log-success';
+                if (entry.type === 'error') className = 'log-error';
+                
+                return `<div class="log-entry"><span class="log-timestamp">${entry.timestamp}</span><span class="${className}">${entry.message}</span></div>`;
+            }).join('');
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+
+        // Setup drag and drop
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+
+        uploadArea.addEventListener('click', () => fileInput.click());
+        
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+        
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+        
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const file = e.dataTransfer.files[0];
+            if (file && file.type.startsWith('image/')) {
+                handleFile(file);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) handleFile(file);
+        });
+
+        async function handleFile(file) {
+            logMessage(`📁 Loading image: ${file.name} (${(file.size/1024).toFixed(1)}KB)`, 'info');
+            
+            const img = new Image();
+            img.onload = () => processImage(img);
+            img.onerror = () => logMessage('❌ Failed to load image', 'error');
+            img.src = URL.createObjectURL(file);
+        }
+
+        async function processImage(img) {
+            const startTime = Date.now();
+            logMessage(`🖼️ Processing ${img.width}x${img.height} image...`, 'info');
+
+            // Show loading
+            document.getElementById('loadingIndicator').style.display = 'block';
+            document.getElementById('canvasContainer').style.display = 'none';
+            document.getElementById('statsContainer').style.display = 'none';
+
+            // Draw original image
+            const originalCanvas = document.getElementById('originalCanvas');
+            const originalCtx = originalCanvas.getContext('2d');
+            originalCanvas.width = img.width;
+            originalCanvas.height = img.height;
+            originalCtx.drawImage(img, 0, 0);
+
+            try {
+                // Apply privacy protection
+                const processedCanvas = document.getElementById('processedCanvas');
+                const processedCtx = processedCanvas.getContext('2d');
+                processedCanvas.width = img.width;
+                processedCanvas.height = img.height;
+                processedCtx.drawImage(img, 0, 0);
+
+                logMessage('🤖 Loading AI models...', 'info');
+                logMessage('🔍 Detecting faces, people, and license plates...', 'info');
+                
+                const results = await applyAIPrivacyProtection(processedCanvas);
+
+                const processingTime = Date.now() - startTime;
+                
+                logMessage(`✅ Detection complete in ${processingTime}ms`, 'success');
+                logMessage(`👤 Faces detected: ${results.facesDetected}`, 'success');
+                logMessage(`👥 People detected: ${results.peopleDetected}`, 'success');
+                logMessage(`🚗 License plates detected: ${results.platesDetected}`, 'success');
+                
+                // Update stats
+                document.getElementById('facesCount').textContent = results.facesDetected;
+                document.getElementById('peopleCount').textContent = results.peopleDetected;
+                document.getElementById('platesCount').textContent = results.platesDetected;
+                document.getElementById('processingTime').textContent = `${processingTime}ms`;
+
+                // Store processed image
+                processedImageUrl = processedCanvas.toDataURL('image/png');
+
+                // Show results
+                document.getElementById('loadingIndicator').style.display = 'none';
+                document.getElementById('canvasContainer').style.display = 'flex';
+                document.getElementById('statsContainer').style.display = 'grid';
+
+            } catch (error) {
+                logMessage(`❌ Error: ${error.message}`, 'error');
+                console.error('Privacy protection error:', error);
+                document.getElementById('loadingIndicator').style.display = 'none';
+            }
+        }
+
+        window.testWithSampleImage = function() {
+            logMessage('🎨 Generating test pattern...', 'info');
+            
+            const canvas = document.createElement('canvas');
+            canvas.width = 800;
+            canvas.height = 600;
+            const ctx = canvas.getContext('2d');
+            
+            // Road background
+            ctx.fillStyle = '#555555';
+            ctx.fillRect(0, 0, 800, 600);
+            
+            // Road markings
+            ctx.strokeStyle = '#FFFF00';
+            ctx.lineWidth = 4;
+            ctx.setLineDash([20, 15]);
+            ctx.beginPath();
+            ctx.moveTo(0, 300);
+            ctx.lineTo(800, 300);
+            ctx.stroke();
+            
+            // Car body (simple rectangle)
+            ctx.fillStyle = '#3498db';
+            ctx.fillRect(250, 350, 300, 150);
+            
+            // Car windows
+            ctx.fillStyle = '#2c3e50';
+            ctx.fillRect(270, 370, 120, 80);
+            ctx.fillRect(410, 370, 120, 80);
+            
+            // Wheels
+            ctx.fillStyle = '#000000';
+            ctx.beginPath();
+            ctx.arc(310, 500, 30, 0, Math.PI * 2);
+            ctx.arc(490, 500, 30, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // License plate
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillRect(350, 480, 100, 35);
+            ctx.strokeStyle = '#000000';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(350, 480, 100, 35);
+            
+            // Plate text (simulated)
+            ctx.fillStyle = '#000000';
+            ctx.font = 'bold 16px monospace';
+            ctx.fillText('ABC-123', 360, 502);
+            
+            // Person silhouette
+            ctx.fillStyle = '#D4A574'; // Skin tone
+            ctx.beginPath();
+            ctx.arc(650, 200, 40, 0, Math.PI * 2); // Head
+            ctx.fill();
+            
+            ctx.fillStyle = '#2c3e50'; // Body
+            ctx.fillRect(625, 240, 50, 80);
+            
+            logMessage('✅ Test pattern generated', 'success');
+            
+            const img = new Image();
+            img.onload = () => processImage(img);
+            img.src = canvas.toDataURL();
+        };
+
+        window.downloadProcessed = function() {
+            if (!processedImageUrl) {
+                logMessage('⚠️ No processed image to download', 'error');
+                return;
+            }
+            
+            const a = document.createElement('a');
+            a.href = processedImageUrl;
+            a.download = `privacy-protected-${Date.now()}.png`;
+            a.click();
+            logMessage('💾 Downloaded protected image', 'success');
+        };
+
+        window.clearResults = function() {
+            const canvases = ['originalCanvas', 'processedCanvas'];
+            canvases.forEach(id => {
+                const canvas = document.getElementById(id);
+                const ctx = canvas.getContext('2d');
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+            });
+            
+            document.getElementById('canvasContainer').style.display = 'none';
+            document.getElementById('statsContainer').style.display = 'none';
+            processedImageUrl = null;
+            fileInput.value = '';
+            
+            log = [];
+            logMessage('🔒 Privacy Protection Test Ready', 'info');
+            logMessage('📋 Features: Face + Person + License Plate Detection', 'info');
+        };
+
+        // Initialize
+        logMessage('🚀 Initializing Privacy Protection System...', 'info');
+        logMessage('🤖 Preloading AI models...', 'info');
+        
+        preloadModel().then(() => {
+            logMessage('✅ AI models loaded and ready', 'success');
+            logMessage('📸 Upload an image to test privacy protection', 'info');
+        }).catch(err => {
+            logMessage('⚠️ Model preload failed, will load on first use', 'error');
+        });
+    </script>
+</body>
+</html>

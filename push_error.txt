@@ -1,0 +1,165 @@
+﻿git : remote: error: 
+GH013: Repository 
+rule violations found 
+for refs/heads/main.  
+      
+At line:1 char:1
++ git push -u origin 
+main --force 2>&1 | 
+Out-File -FilePath 
+C:\thesis\r ...
++ ~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~
+    + CategoryInfo    
+          : NotSpeci  
+  fied: (remote: er   
+ ror: ...s/main.      
+      :String) []    
+, RemoteException
+    + FullyQualifiedE 
+   rrorId : NativeCo  
+  mmandError
+ 
+remote: 
+remote: - GITHUB PUSH 
+PROTECTION        
+remote:   ΓÇöΓÇöΓÇöΓÇö
+ΓÇöΓÇöΓÇöΓÇöΓÇöΓÇöΓÇöΓ
+ÇöΓÇöΓÇöΓÇöΓÇöΓÇöΓÇöΓÇ
+öΓÇöΓÇöΓÇöΓÇöΓÇöΓÇöΓÇö
+ΓÇöΓÇöΓÇöΓÇöΓÇöΓÇöΓÇöΓ
+ÇöΓÇöΓÇöΓÇöΓÇöΓÇöΓÇöΓÇ
+ö        
+remote:     Resolve 
+the following 
+violations before 
+pushing again        
+remote: 
+remote:     - Push 
+cannot contain 
+secrets        
+remote: 
+remote:             
+remote:      (?) 
+Learn how to resolve 
+a blocked push        
+remote:      https://d
+ocs.github.com/code-se
+curity/secret-scanning
+/working-with-secret-s
+canning-and-push-prote
+ction/working-with-pus
+h-protection-from-the-
+command-line#resolving
+-a-blocked-push       
+ 
+remote:             
+remote:             
+remote:       ΓÇöΓÇö 
+Google OAuth Client 
+ID ΓÇöΓÇöΓÇöΓÇöΓÇöΓÇöΓ
+ÇöΓÇöΓÇöΓÇöΓÇöΓÇöΓÇöΓÇ
+öΓÇöΓÇöΓÇöΓÇöΓÇöΓÇöΓÇö
+ΓÇöΓÇöΓÇöΓÇöΓÇöΓÇöΓÇö 
+       
+remote:        
+locations:        
+remote:          - 
+commit: b8c49333603f28
+4c26ba172faf32bb0e1d73
+1886        
+remote:            
+path: GOOGLE_OAUTH_STA
+TUS.md:6        
+remote:          - 
+commit: b8c49333603f28
+4c26ba172faf32bb0e1d73
+1886        
+remote:            
+path: backend/DATABASE
+_HEALTH_REPORT.md:150 
+       
+remote:          - 
+commit: b8c49333603f28
+4c26ba172faf32bb0e1d73
+1886        
+remote:            
+path: backend/VERCEL_D
+EPLOYMENT_FIX.md:37   
+     
+remote:             
+remote:        (?) To 
+push, remove secret 
+from commit(s) or 
+follow this URL to 
+allow the secret.     
+   
+remote:        https:/
+/github.com/markgwapo1
+23/bantaydalan/securit
+y/secret-scanning/unbl
+ock-secret/3AEnZ6mBQWa
+u8GltJharDoBPigk      
+  
+remote:             
+remote:             
+remote:       ΓÇöΓÇö 
+Google OAuth Client 
+Secret ΓÇöΓÇöΓÇöΓÇöΓÇö
+ΓÇöΓÇöΓÇöΓÇöΓÇöΓÇöΓÇöΓ
+ÇöΓÇöΓÇöΓÇöΓÇöΓÇöΓÇöΓÇ
+öΓÇöΓÇöΓÇöΓÇö        
+remote:        
+locations:        
+remote:          - 
+commit: b8c49333603f28
+4c26ba172faf32bb0e1d73
+1886        
+remote:            
+path: GOOGLE_OAUTH_STA
+TUS.md:7        
+remote:          - 
+commit: b8c49333603f28
+4c26ba172faf32bb0e1d73
+1886        
+remote:            
+path: backend/DATABASE
+_HEALTH_REPORT.md:151 
+       
+remote:          - 
+commit: b8c49333603f28
+4c26ba172faf32bb0e1d73
+1886        
+remote:            
+path: backend/VERCEL_D
+EPLOYMENT_FIX.md:38   
+     
+remote:             
+remote:        (?) To 
+push, remove secret 
+from commit(s) or 
+follow this URL to 
+allow the secret.     
+   
+remote:        https:/
+/github.com/markgwapo1
+23/bantaydalan/securit
+y/secret-scanning/unbl
+ock-secret/3AEnZ56L4YN
+YzOXqkn2KWcSjOBC      
+  
+remote:             
+remote: 
+remote: 
+To https://github.com/
+markgwapo123/bantaydal
+an.git
+ ! [remote rejected] 
+main -> main (push 
+declined due to 
+repository rule 
+violations)
+error: failed to push 
+some refs to 'https://
+github.com/markgwapo12
+3/bantaydalan.git'

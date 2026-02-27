@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test EXIF GPS Extraction</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .upload-area {
+            border: 2px dashed #ccc;
+            border-radius: 10px;
+            padding: 40px;
+            text-align: center;
+            margin: 20px 0;
+            transition: border-color 0.3s;
+        }
+        .upload-area:hover {
+            border-color: #007bff;
+        }
+        .results {
+            margin: 20px 0;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .image-preview {
+            max-width: 300px;
+            max-height: 200px;
+            margin: 10px 0;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 EXIF GPS Data Extraction Test</h1>
+        <p>This tool tests the extraction of GPS coordinates from image EXIF data. Upload a JPEG image taken with a smartphone camera (with location services enabled) to see if GPS coordinates can be extracted.</p>
+        
+        <div class="upload-area" onclick="document.getElementById('fileInput').click()">
+            <p>📷 Click here to select an image file</p>
+            <p style="font-size: 14px; color: #666;">JPEG images taken with smartphones are most likely to contain GPS data</p>
+        </div>
+        
+        <input type="file" id="fileInput" accept="image/*" style="display: none;">
+        
+        <div id="results" class="results" style="display: none;">
+            <h3>Results:</h3>
+            <div id="resultContent"></div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/exifr/dist/lite.umd.js"></script>
+    <script>
+        document.getElementById('fileInput').addEventListener('change', async function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            const resultsDiv = document.getElementById('results');
+            const resultContent = document.getElementById('resultContent');
+            
+            resultsDiv.style.display = 'block';
+            resultContent.innerHTML = '<p>🔄 Processing image...</p>';
+            
+            try {
+                // Display basic file info
+                let html = `
+                    <div class="info">
+                        <h4>📁 File Information:</h4>
+                        <p><strong>Name:</strong> ${file.name}</p>
+                        <p><strong>Type:</strong> ${file.type}</p>
+                        <p><strong>Size:</strong> ${(file.size / 1024 / 1024).toFixed(2)} MB</p>
+                        <p><strong>Last Modified:</strong> ${new Date(file.lastModified).toLocaleString()}</p>
+                    </div>
+                `;
+                
+                // Show image preview
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    html += `<img src="${e.target.result}" class="image-preview" alt="Uploaded image">`;
+                    resultContent.innerHTML = html;
+                };
+                reader.readAsDataURL(file);
+                
+                // Extract EXIF data
+                console.log('Extracting EXIF data...');
+                const exifData = await exifr.parse(file, {
+                    gps: true,
+                    pick: ['latitude', 'longitude', 'GPSLatitude', 'GPSLongitude', 'GPSLatitudeRef', 'GPSLongitudeRef', 'GPSAltitude', 'GPSTimeStamp', 'GPSDateStamp', 'DateTime', 'Make', 'Model']
+                });
+                
+                console.log('EXIF data:', exifData);
+                
+                if (exifData && exifData.latitude && exifData.longitude) {
+                    html += `
+                        <div class="success">
+                            <h4>✅ GPS Coordinates Found!</h4>
+                            <p><strong>Latitude:</strong> ${exifData.latitude.toFixed(6)}</p>
+                            <p><strong>Longitude:</strong> ${exifData.longitude.toFixed(6)}</p>
+                            ${exifData.GPSAltitude ? `<p><strong>Altitude:</strong> ${exifData.GPSAltitude} meters</p>` : ''}
+                            <p><strong>Google Maps Link:</strong> <a href="https://www.google.com/maps?q=${exifData.latitude},${exifData.longitude}" target="_blank">View Location</a></p>
+                        </div>
+                    `;
+                    
+                    if (exifData.Make || exifData.Model) {
+                        html += `
+                            <div class="info">
+                                <h4>📱 Camera Information:</h4>
+                                ${exifData.Make ? `<p><strong>Make:</strong> ${exifData.Make}</p>` : ''}
+                                ${exifData.Model ? `<p><strong>Model:</strong> ${exifData.Model}</p>` : ''}
+                                ${exifData.DateTime ? `<p><strong>Date Taken:</strong> ${exifData.DateTime}</p>` : ''}
+                            </div>
+                        `;
+                    }
+                } else {
+                    html += `
+                        <div class="error">
+                            <h4>❌ No GPS Data Found</h4>
+                            <p>This image does not contain GPS coordinates in its EXIF data.</p>
+                            <p><strong>Possible reasons:</strong></p>
+                            <ul>
+                                <li>Location services were disabled when the photo was taken</li>
+                                <li>The image was edited and EXIF data was stripped</li>
+                                <li>The image format doesn't support EXIF data (PNG, GIF)</li>
+                                <li>The image was taken with a camera that doesn't record GPS data</li>
+                            </ul>
+                        </div>
+                    `;
+                }
+                
+                // Show all available EXIF data for debugging
+                if (exifData && Object.keys(exifData).length > 0) {
+                    html += `
+                        <details style="margin-top: 20px;">
+                            <summary style="cursor: pointer; font-weight: bold;">🔍 View All EXIF Data</summary>
+                            <pre style="background: #f8f9fa; padding: 15px; border-radius: 5px; margin-top: 10px; overflow-x: auto;">${JSON.stringify(exifData, null, 2)}</pre>
+                        </details>
+                    `;
+                }
+                
+                resultContent.innerHTML = html;
+                
+            } catch (error) {
+                console.error('Error processing image:', error);
+                resultContent.innerHTML = `
+                    <div class="error">
+                        <h4>❌ Error Processing Image</h4>
+                        <p>Failed to extract EXIF data from the image.</p>
+                        <p><strong>Error:</strong> ${error.message}</p>
+                    </div>
+                `;
+            }
+        });
+    </script>
+</body>
+</html>
