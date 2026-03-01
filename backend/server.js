@@ -33,15 +33,16 @@ app.use(helmet({
 }));
 app.use(cors({
   origin: [
-    'http://localhost:5173',
-    'http://localhost:5174',
-    'http://localhost:5175',
-    'http://localhost:5176',
+    'http://localhost:5173', 
+    'http://localhost:5174', 
+    'http://localhost:5175', 
+    'http://localhost:5176', 
     'http://localhost:3000',
     // Production URLs
     'https://road-alert-git-main-markstephens-projects.vercel.app',
     'https://*.vercel.app',
     'https://road-alert-users.vercel.app',
+    'https://users-ten-woad.vercel.app',
     /\.vercel\.app$/ // Allow all vercel.app subdomains
   ],
   credentials: true,
@@ -127,7 +128,7 @@ app.get('/', (req, res) => {
 app.get('/api/debug/uploads', (req, res) => {
   const fs = require('fs');
   const uploadsPath = path.join(__dirname, 'uploads');
-
+  
   try {
     // Check if uploads directory exists
     if (!fs.existsSync(uploadsPath)) {
@@ -138,7 +139,7 @@ app.get('/api/debug/uploads', (req, res) => {
         exists: false
       });
     }
-
+    
     // List files in uploads directory
     const files = fs.readdirSync(uploadsPath);
     const fileDetails = files.map(file => {
@@ -151,7 +152,7 @@ app.get('/api/debug/uploads', (req, res) => {
         url: `/uploads/${file}`
       };
     });
-
+    
     res.json({
       success: true,
       path: uploadsPath,
@@ -160,7 +161,7 @@ app.get('/api/debug/uploads', (req, res) => {
       files: fileDetails.slice(0, 20), // Limit to first 20 files
       totalFiles: files.length
     });
-
+    
   } catch (error) {
     res.status(500).json({
       success: false,
@@ -194,18 +195,18 @@ app.get('/api/system/status', async (req, res) => {
     const Report = require('./models/Report');
     const Admin = require('./models/Admin');
     const User = require('./models/User');
-
+    
     // Check database connectivity by trying to count documents
     const totalReports = await Report.countDocuments();
     const totalAdmins = await Admin.countDocuments();
     const totalUsers = await User.countDocuments();
-
+    
     // Count active users (users who logged in within last 24 hours)
     const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    const activeUsers = await User.countDocuments({
-      lastLogin: { $gte: oneDayAgo }
+    const activeUsers = await User.countDocuments({ 
+      lastLogin: { $gte: oneDayAgo } 
     });
-
+    
     res.json({
       success: true,
       status: 'OK',
@@ -249,16 +250,16 @@ app.get('/api/system/status', async (req, res) => {
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);
-
+  
   if (err.type === 'entity.too.large') {
     return res.status(413).json({
       error: 'File too large'
     });
   }
-
+  
   res.status(500).json({
-    error: process.env.NODE_ENV === 'production'
-      ? 'Something went wrong!'
+    error: process.env.NODE_ENV === 'production' 
+      ? 'Something went wrong!' 
       : err.message
   });
 });
@@ -280,7 +281,7 @@ const initializeDatabase = async () => {
   try {
     await connectDB();
     console.log('🎉 Database connected successfully!');
-
+    
     // Initialize system settings
     try {
       await SystemSettings.initializeDefaults();
@@ -288,10 +289,10 @@ const initializeDatabase = async () => {
     } catch (settingsError) {
       console.log('⚠️ Settings initialization warning:', settingsError.message);
     }
-
+    
     // Start scheduled tasks
     startScheduledTasks();
-
+    
   } catch (error) {
     console.log('⚠️  MongoDB connection failed, but server will continue running');
     console.log('Error:', error.message);
@@ -304,7 +305,7 @@ const startScheduledTasks = () => {
   setInterval(() => {
     clearSettingsCache();
   }, 5 * 60 * 1000); // Every 5 minutes
-
+  
   console.log('⏰ Scheduled tasks started');
 };
 
