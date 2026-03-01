@@ -301,20 +301,24 @@ router.delete('/admin-user/:id', auth, requireSuperAdmin, async (req, res) => {
 router.get('/app-users', auth, async (req, res) => {
   try {
     // Get all users with basic info and activity status
+    // Exclude heavy fields for faster loading
     const users = await User.find({}, {
-      password: 0 // Exclude password field
-    }).sort({ createdAt: -1 });
+      password: 0,
+      'profile.profilePictureGallery': 0 // Exclude gallery for list view
+    })
+    .sort({ createdAt: -1 })
+    .lean()
+    .maxTimeMS(30000);
 
-    // Process users to include online status
+    // Process users to include online status (users already plain objects from .lean())
     const usersWithStatus = users.map(user => {
-      const userObj = user.toObject();
 
       // Calculate online status (active within last 5 minutes)
       const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
       const isOnline = user.lastActivity && user.lastActivity > fiveMinutesAgo;
 
       return {
-        ...userObj,
+        ...user,
         isOnline,
         lastActivityTime: user.lastActivity,
         onlineStatus: isOnline ? 'Online' : 'Offline',
