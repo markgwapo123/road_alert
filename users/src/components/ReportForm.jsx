@@ -7,6 +7,8 @@ import { applyAIPrivacyProtection, preloadModel } from '../utils/aiPrivacyProtec
 import { getReverseGeocode } from '../services/geocoding.js';
 import { processGeocodedAddress } from '../utils/addressMatcher.js';
 import { useSettings } from '../context/SettingsContext.jsx';
+import FaceBlurOverlay, { preloadFaceDetectionModel } from './FaceBlurOverlay.jsx';
+import './FaceBlurOverlay.css';
 
 const ALERT_TYPES = [
   { value: 'emergency', label: 'Emergency Alert', example: 'ROAD CLOSED - Accident Ahead' },
@@ -56,6 +58,9 @@ const ReportForm = ({ onReport, onClose }) => {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   
+  // Face detection states
+  const [detectedFaces, setDetectedFaces] = useState([]);
+  
   // Daily limit state
   const [dailyLimit, setDailyLimit] = useState(null);
   const [checkingLimit, setCheckingLimit] = useState(true);
@@ -96,9 +101,15 @@ const ReportForm = ({ onReport, onClose }) => {
 
   // Preload AI face detection model on component mount
   useEffect(() => {
-    preloadModel().catch(err => {
-      console.warn('⚠️ Failed to preload face detection model:', err);
-    });
+    // Preload both privacy protection and face detection models
+    Promise.all([
+      preloadModel().catch(err => {
+        console.warn('⚠️ Failed to preload privacy protection model:', err);
+      }),
+      preloadFaceDetectionModel().catch(err => {
+        console.warn('⚠️ Failed to preload face detection overlay model:', err);
+      })
+    ]);
   }, []);
 
   // Handle location toggle
@@ -386,6 +397,7 @@ const ReportForm = ({ onReport, onClose }) => {
   const retakePhoto = () => {
     setForm(f => ({ ...f, image: null }));
     setCapturedImage(null);
+    setDetectedFaces([]);
     setSuccess('');
     startCamera();
   };
@@ -627,6 +639,7 @@ const ReportForm = ({ onReport, onClose }) => {
       // Clear the form
       setForm({ type: '', province: '', city: '', barangay: '', description: '', image: null, location: null });
       setCapturedImage(null);
+      setDetectedFaces([]);
       
       // Call the callback to refresh any parent components
       if (onReport) {
@@ -1011,29 +1024,56 @@ const ReportForm = ({ onReport, onClose }) => {
 
           {capturedImage && (
             <div className="captured-photo">
-              <img 
-                src={capturedImage} 
-                alt="Captured road condition" 
-                className="captured-image"
+              <FaceBlurOverlay
+                imageSrc={capturedImage}
+                imageAlt="Captured road condition"
+                imageClassName="captured-image"
+                containerClassName="captured-image-container"
+                onFacesDetected={setDetectedFaces}
+                minConfidence={0.60}
+                blurLargestOnly={false}
+                showLoadingState={true}
+                animate={true}
               />
+              {detectedFaces.length > 0 && (
+                <div className="face-detection-status" style={{
+                  marginTop: '8px',
+                  padding: '6px 12px',
+                  background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                  borderRadius: '6px',
+                  fontSize: '13px',
+                  color: 'white',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}>
+                  <span>🔒</span>
+                  <span>
+                    {detectedFaces.length === 1 
+                      ? '1 face detected and blurred' 
+                      : `${detectedFaces.length} faces detected and blurred`}
+                  </span>
+                </div>
+              )}
               <div className="photo-controls">
                 <button 
                   type="button" 
                   onClick={retakePhoto}
                   className="camera-btn retake"
                 >
-                  🔄 Retake Photo
+                  🔄 Retake
                 </button>
                 <button 
                   type="button" 
                   onClick={() => {
                     setForm(f => ({ ...f, image: null }));
                     setCapturedImage(null);
+                    setDetectedFaces([]);
                     setSuccess('');
                   }}
                   className="camera-btn remove"
                 >
-                  🗑️ Remove Photo
+                  🗑️ Remove
                 </button>
               </div>
             </div>

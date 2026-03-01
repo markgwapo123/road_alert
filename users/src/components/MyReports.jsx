@@ -6,6 +6,7 @@ const MyReports = ({ token }) => {
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [enlargedImage, setEnlargedImage] = useState(null);
 
   console.log('MyReports component rendered with token:', token ? 'present' : 'missing');
 
@@ -202,6 +203,7 @@ const MyReports = ({ token }) => {
                   {report.images && Array.isArray(report.images) && report.images.length > 0 && (
                     <img 
                       className="report-image"
+                      style={{ cursor: 'pointer' }}
                       src={(() => {
                         const imageData = report.images[0];
                         // If it's a Base64 data URL, use it directly
@@ -225,6 +227,7 @@ const MyReports = ({ token }) => {
                         return '';
                       })()}
                       alt="Report"
+                      onClick={(e) => setEnlargedImage(e.target.src)}
                       onError={(e) => {
                         e.target.style.display = 'none';
                       }}
@@ -234,6 +237,66 @@ const MyReports = ({ token }) => {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Image Lightbox Modal */}
+      {enlargedImage && (
+        <div 
+          className="image-lightbox-overlay"
+          onClick={() => setEnlargedImage(null)}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.9)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999,
+            padding: '20px',
+            cursor: 'zoom-out'
+          }}
+        >
+          <button
+            onClick={() => setEnlargedImage(null)}
+            style={{
+              position: 'absolute',
+              top: '20px',
+              right: '20px',
+              background: 'rgba(255, 255, 255, 0.1)',
+              border: 'none',
+              color: 'white',
+              fontSize: '32px',
+              width: '50px',
+              height: '50px',
+              borderRadius: '50%',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              transition: 'background 0.2s'
+            }}
+            onMouseOver={(e) => e.target.style.background = 'rgba(255, 255, 255, 0.2)'}
+            onMouseOut={(e) => e.target.style.background = 'rgba(255, 255, 255, 0.1)'}
+          >
+            ×
+          </button>
+          <img
+            src={enlargedImage}
+            alt="Enlarged report"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              maxWidth: '90vw',
+              maxHeight: '90vh',
+              objectFit: 'contain',
+              borderRadius: '8px',
+              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5)',
+              cursor: 'default'
+            }}
+          />
         </div>
       )}
     </div>

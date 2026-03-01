@@ -59,7 +59,7 @@ mongodb://markstephenmagbatos:***@ac-hazu7ht-shard-00-00.mx6qk3q.mongodb.net:270
 
 **Better (SRV):**
 ```
-mongodb+srv://markstephenmagbatos:your_password@ac-hazu7ht.mx6qk3q.mongodb.net/roadalert?retryWrites=true&w=majority
+mongodb+srv://markstephenmagbatos:P0tLG6YhSS0WBMyl@ac-hazu7ht.mx6qk3q.mongodb.net/roadalert?retryWrites=true&w=majority
 ```
 
 ### **Option 5: Check MongoDB Atlas**
@@ -90,10 +90,10 @@ Update your `.env` file:
 
 ```env
 # OLD (Direct IP)
-MONGODB_URI=mongodb://markstephenmagbatos:your_password@ac-hazu7ht-shard-00-00.mx6qk3q.mongodb.net:27017,ac-hazu7ht-shard-00-01.mx6qk3q.mongodb.net:27017,ac-hazu7ht-shard-00-02.mx6qk3q.mongodb.net:27017/roadalert?ssl=true&authSource=admin&retryWrites=true&w=majority
+MONGODB_URI=mongodb://markstephenmagbatos:P0tLG6YhSS0WBMyl@ac-hazu7ht-shard-00-00.mx6qk3q.mongodb.net:27017,ac-hazu7ht-shard-00-01.mx6qk3q.mongodb.net:27017,ac-hazu7ht-shard-00-02.mx6qk3q.mongodb.net:27017/roadalert?ssl=true&authSource=admin&retryWrites=true&w=majority
 
 # NEW (SRV - Better routing)
-MONGODB_URI=mongodb+srv://markstephenmagbatos:your_password@ac-hazu7ht.mx6qk3q.mongodb.net/roadalert?retryWrites=true&w=majority
+MONGODB_URI=mongodb+srv://markstephenmagbatos:P0tLG6YhSS0WBMyl@ac-hazu7ht.mx6qk3q.mongodb.net/roadalert?retryWrites=true&w=majority
 ```
 
 Then restart the backend server.

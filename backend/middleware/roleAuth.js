@@ -154,16 +154,15 @@ const auth = async (req, res, next) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
     // Check if admin still exists and is active
-    const admin = await Admin.findById(decoded.id).select('-password').maxTimeMS(5000);
+    const admin = await Admin.findById(decoded.id).select('-password');
     
-    // Temporarily disabled verbose logging to reduce console noise
-    // console.log('🔐 Admin authentication check:', {
-    //   adminId: decoded.id,
-    //   adminFound: !!admin,
-    //   adminActive: admin?.isActive,
-    //   adminRole: admin?.role,
-    //   permissionsLength: admin?.permissions?.length
-    // });
+    console.log('🔐 Admin authentication check:', {
+      adminId: decoded.id,
+      adminFound: !!admin,
+      adminActive: admin?.isActive,
+      adminRole: admin?.role,
+      permissionsLength: admin?.permissions?.length
+    });
     
     if (!admin) {
       return res.status(401).json({
@@ -192,14 +191,13 @@ const auth = async (req, res, next) => {
       isSuperAdmin: admin.role === 'super_admin'
     };
 
-    // Temporarily disabled verbose logging
-    // console.log('🔐 Admin attached to request:', {
-    //   id: req.admin.id,
-    //   username: req.admin.username,
-    //   role: req.admin.role,
-    //   isSuperAdmin: req.admin.isSuperAdmin,
-    //   permissionsCount: req.admin.allPermissions.length
-    // });
+    console.log('🔐 Admin attached to request:', {
+      id: req.admin.id,
+      username: req.admin.username,
+      role: req.admin.role,
+      isSuperAdmin: req.admin.isSuperAdmin,
+      permissionsCount: req.admin.allPermissions.length
+    });
 
     next();
 

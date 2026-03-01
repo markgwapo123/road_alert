@@ -86,8 +86,9 @@ router.get('/', async (req, res) => {
     sort[sortBy] = sortOrder === 'desc' ? -1 : 1;
 
     // Execute query with pagination and timeout protection
-    // Removed populate to fix timeout issues - data is already in the report
+    // Exclude large image data from list view for faster loading
     const reports = await Report.find(filter)
+      .select('-images.data -evidencePhoto.data')
       .sort(sort)
       .limit(limit * 1)
       .skip((page - 1) * limit)

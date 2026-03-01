@@ -79,6 +79,9 @@ router.post('/login', checkLoginAttempts, async (req, res) => {
   try {
     const { email, username, password } = req.body;
 
+    // Debug logging
+    console.log('🔐 Login attempt:', { email, username, passwordLength: password?.length });
+
     // Validate input
     if ((!email && !username) || !password) {
       return res.status(400).json({
@@ -90,10 +93,12 @@ router.post('/login', checkLoginAttempts, async (req, res) => {
     let user = null;
     if (email) {
       user = await User.findOne({ email });
+      console.log('👤 User lookup by email:', email, '- Found:', !!user);
     } else if (username) {
       user = await User.findOne({ username });
     }    if (user) {
       const isMatch = await user.comparePassword(password);
+      console.log('🔑 Password check for', user.email, '- Match:', isMatch);
       if (!isMatch) {
         // Record failed login attempt
         if (req.loginAttempts) {
