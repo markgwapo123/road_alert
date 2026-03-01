@@ -8635,6 +8635,27 @@ main h1 {
   gap: 12px;
 }
 
+.captured-image-container {
+  position: relative;
+  width: 100%;
+  max-width: 500px;
+  margin: 0 auto;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 2px solid #e2e8f0;
+}
+
+.captured-image-container img.captured-image {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 300px;
+  object-fit: cover;
+  border: none;
+  margin: 0;
+  border-radius: 0;
+}
+
 .captured-image {
   width: 100%;
   max-width: 500px;
@@ -8697,6 +8718,14 @@ main h1 {
   }
 
   .captured-image {
+    max-height: 250px;
+  }
+
+  .captured-image-container {
+    max-width: 100%;
+  }
+
+  .captured-image-container img.captured-image {
     max-height: 250px;
   }
 }

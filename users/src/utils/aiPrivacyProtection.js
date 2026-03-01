@@ -22,16 +22,16 @@ let personModel = null;
 // ============================================================================
 
 // Confidence thresholds - detections below these will NOT be blurred
-const FACE_CONFIDENCE_THRESHOLD = 0.70;  // Lowered from 0.75 for distant faces
+const FACE_CONFIDENCE_THRESHOLD = 0.60;  // Lowered for distant faces
 const FACE_HIGH_CONFIDENCE = 0.85;       // High confidence - definitely a face
-const FACE_MIN_CONFIDENCE = 0.55;        // Absolute minimum for multi-scale
+const FACE_MIN_CONFIDENCE = 0.50;        // Absolute minimum for multi-scale
 const PERSON_CONFIDENCE_THRESHOLD = 0.5; // COCO-SSD person confidence
 const PLATE_CONFIDENCE_THRESHOLD = 0.50; // License plate detection - lowered for privacy safety
 const PLATE_BORDERLINE_THRESHOLD = 0.45; // Borderline plates - raised to reduce false positives
 
 // Multi-scale detection settings
-const SCALE_FACTORS = [1.0, 1.5, 2.0, 2.5]; // Upscale factors for distant faces
-const MIN_FACE_SIZE = 20;   // Minimum face size in pixels to detect
+const SCALE_FACTORS = [1.0, 1.5, 2.0, 2.5, 3.0]; // Upscale factors for distant faces
+const MIN_FACE_SIZE = 15;   // Lowered minimum face size for distant faces
 const MAX_FACE_SIZE = 500;  // Maximum face size in pixels
 const NMS_IOU_THRESHOLD = 0.3; // IoU threshold for NMS - tighter to reduce overlapping boxes
 
@@ -643,11 +643,6 @@ export const blurFaces = (canvas, faces) => {
       console.log(`   📍 Face center: (${centerX.toFixed(0)}, ${centerY.toFixed(0)})`);
       console.log(`   📍 Blur region: (${blurX.toFixed(0)},${blurY.toFixed(0)}) size ${blurW.toFixed(0)}x${blurH.toFixed(0)}`);
       console.log(`   📍 Canvas size: ${imgWidth}x${imgHeight}`);
-
-      // DEBUG: Draw detected face box in red
-      context.strokeStyle = 'red';
-      context.lineWidth = 2;
-      context.strokeRect(x1, y1, faceWidth, faceHeight);
 
       // Clamp to image bounds
       const finalX = Math.max(0, Math.floor(blurX));
