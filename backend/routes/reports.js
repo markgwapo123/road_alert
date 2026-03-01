@@ -387,7 +387,7 @@ router.get('/map', async (req, res) => {
     console.log('🔍 Final filter object:', filter);
 
     const reports = await Report.find(filter)
-      .select('type location province city barangay severity status createdAt description reportedBy images.filename images.mimetype images.originalName')
+      .select('type location province city barangay severity status createdAt description reportedBy')
       .select('-images.data -evidencePhoto.data') // Exclude heavy image data
       .limit(1000) // Limit for performance
       .lean()
