@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import config from '../config/index.js';
 import ChangePassword from './ChangePassword.jsx';
+import './ProfilePage.css';
 
 const ProfilePage = ({ onBack, onLogout, onUserUpdate }) => {
   // User data states
@@ -234,10 +235,10 @@ const ProfilePage = ({ onBack, onLogout, onUserUpdate }) => {
   // Loading state
   if (loading) {
     return (
-      <div className="mvp-profile-page">
-        <div className="mvp-profile-loading">
-          <div className="loading-spinner"></div>
-          <p>Loading profile...</p>
+      <div className="profile-page">
+        <div className="profile-loading">
+          <div className="profile-loading__spinner"></div>
+          <p className="profile-loading__text">Loading profile...</p>
         </div>
       </div>
     );
@@ -246,12 +247,12 @@ const ProfilePage = ({ onBack, onLogout, onUserUpdate }) => {
   // Error state (no user)
   if (error && !user) {
     return (
-      <div className="mvp-profile-page">
-        <div className="mvp-profile-error">
-          <span className="error-icon">⚠️</span>
-          <h2>Error Loading Profile</h2>
-          <p>{error}</p>
-          <button onClick={onBack} className="mvp-btn mvp-btn-secondary">← Back</button>
+      <div className="profile-page">
+        <div className="profile-error">
+          <span className="profile-error__icon">⚠️</span>
+          <h2 className="profile-error__title">Error Loading Profile</h2>
+          <p className="profile-error__message">{error}</p>
+          <button onClick={onBack} className="profile-btn profile-btn--secondary">← Back</button>
         </div>
       </div>
     );
@@ -263,104 +264,109 @@ const ProfilePage = ({ onBack, onLogout, onUserUpdate }) => {
   }
 
   return (
-    <div className="mvp-profile-page">
-      <div className="mvp-profile-container">
+    <div className="profile-page">
+      <div className="profile-container">
         
-        {/* Success Message */}
+        {/* Success Toast */}
         {successMessage && (
-          <div className="mvp-success-toast">
+          <div className="profile-toast profile-toast--success">
             <span>✓</span> {successMessage}
           </div>
         )}
 
-        {/* Error Message */}
+        {/* Error Toast */}
         {error && (
-          <div className="mvp-error-toast">
+          <div className="profile-toast profile-toast--error">
             <span>⚠️</span> {error}
-            <button onClick={() => setError('')}>×</button>
+            <button className="profile-toast__close" onClick={() => setError('')}>×</button>
           </div>
         )}
 
-        {/* ==================== VIEW PROFILE SECTION ==================== */}
-        <section className="mvp-profile-section mvp-view-section">
-          <div className="mvp-profile-header">
-            {/* Avatar - Fixed size container with proper aspect ratio */}
-            <div className="mvp-avatar-wrapper">
-              <div className="mvp-avatar-container">
+        {/* ==================== PROFILE CARD ==================== */}
+        <div className="profile-card">
+          {/* Avatar Section */}
+          <div className="profile-avatar-section">
+            <div className="profile-avatar-wrapper">
+              <div className="profile-avatar">
                 {profileImage ? (
                   <img 
                     src={profileImage} 
-                    alt="Profile" 
-                    className="mvp-avatar"
+                    alt="Profile"
                     onError={(e) => {
                       e.target.style.display = 'none';
-                      e.target.parentElement.classList.add('mvp-avatar-error');
+                      e.target.nextElementSibling && (e.target.nextElementSibling.style.display = 'block');
                     }}
                   />
                 ) : (
-                  <div className="mvp-avatar-default">
-                    <span>👤</span>
-                  </div>
+                  <span className="profile-avatar__default">👤</span>
                 )}
               </div>
             </div>
-
-            {/* User Info - with consistent spacing */}
-            <div className="mvp-user-info">
-              <h1 className="mvp-user-name">
+            
+            {/* User Info */}
+            <div className="profile-user-info">
+              <h1 className="profile-user-name">
                 {user?.profile?.fullName || user?.username || 'User'}
               </h1>
-              <p className="mvp-user-email">{user?.email}</p>
-              {user?.profile?.phone && (
-                <p className="mvp-user-phone">📱 {user.profile.phone}</p>
-              )}
-              {user?.profile?.gender && (
-                <p className="mvp-user-gender">
-                  {user.profile.gender === 'male' ? '👨' : user.profile.gender === 'female' ? '👩' : '🧑'} {user.profile.gender.charAt(0).toUpperCase() + user.profile.gender.slice(1).replace('-', ' ')}
-                </p>
-              )}
-              {user?.profile?.address && (
-                <p className="mvp-user-address">📍 {user.profile.address}</p>
-              )}
-              <div className="mvp-user-meta">
-                <span className="mvp-join-date">
-                  📅 Joined {user?.createdAt ? new Date(user.createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : 'Unknown'}
-                </span>
+              <p className="profile-user-email">{user?.email}</p>
+              
+              <div className="profile-user-details">
+                {user?.profile?.phone && (
+                  <span className="profile-user-detail">
+                    <span className="profile-user-detail__icon">📱</span>
+                    {user.profile.phone}
+                  </span>
+                )}
+                {user?.profile?.gender && (
+                  <span className="profile-user-detail">
+                    <span className="profile-user-detail__icon">
+                      {user.profile.gender === 'male' ? '👨' : user.profile.gender === 'female' ? '👩' : '🧑'}
+                    </span>
+                    {user.profile.gender.charAt(0).toUpperCase() + user.profile.gender.slice(1).replace('-', ' ')}
+                  </span>
+                )}
+                {user?.profile?.address && (
+                  <span className="profile-user-detail">
+                    <span className="profile-user-detail__icon">📍</span>
+                    {user.profile.address}
+                  </span>
+                )}
               </div>
+              
+              <p className="profile-join-date">
+                📅 Joined {user?.createdAt ? new Date(user.createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : 'Unknown'}
+              </p>
             </div>
           </div>
 
-          {/* Report Summary Stats */}
-          <div className="mvp-stats-section">
-            <h3 className="mvp-section-title">📊 Report Summary</h3>
-            <div className="mvp-stats-grid">
-              <div className="mvp-stat-card">
-                <span className="mvp-stat-number">{stats.totalReports}</span>
-                <span className="mvp-stat-label">Total Reports</span>
-              </div>
-              <div className="mvp-stat-card mvp-stat-pending">
-                <span className="mvp-stat-number">{stats.pendingReports}</span>
-                <span className="mvp-stat-label">Pending</span>
-              </div>
-              <div className="mvp-stat-card mvp-stat-resolved">
-                <span className="mvp-stat-number">{stats.resolvedReports}</span>
-                <span className="mvp-stat-label">Resolved</span>
-              </div>
+          {/* Stats Section */}
+          <div className="profile-stats">
+            <div className="profile-stat">
+              <span className="profile-stat__number">{stats.totalReports}</span>
+              <span className="profile-stat__label">Total Reports</span>
+            </div>
+            <div className="profile-stat profile-stat--pending">
+              <span className="profile-stat__number">{stats.pendingReports}</span>
+              <span className="profile-stat__label">Pending</span>
+            </div>
+            <div className="profile-stat profile-stat--resolved">
+              <span className="profile-stat__number">{stats.resolvedReports}</span>
+              <span className="profile-stat__label">Resolved</span>
             </div>
           </div>
-        </section>
+        </div>
 
-        {/* Section Divider */}
-        <div className="mvp-section-divider"></div>
-
-        {/* ==================== EDIT PROFILE SECTION ==================== */}
-        <section className="mvp-profile-section mvp-edit-section">
-          <div className="mvp-section-header">
-            <h2 className="mvp-section-title">✏️ Edit Profile</h2>
+        {/* ==================== EDIT PROFILE CARD ==================== */}
+        <div className="profile-card">
+          <div className="profile-section-header">
+            <h2 className="profile-section-title">
+              <span className="profile-section-title__icon">✏️</span>
+              Edit Profile
+            </h2>
             {activeSection === 'edit' && (
               <button 
                 onClick={() => setActiveSection('view')} 
-                className="mvp-btn mvp-btn-text"
+                className="profile-btn profile-btn--text"
               >
                 Cancel
               </button>
@@ -368,49 +374,47 @@ const ProfilePage = ({ onBack, onLogout, onUserUpdate }) => {
           </div>
 
           {activeSection === 'view' ? (
-            /* View Mode - Show Edit Button */
             <button 
               onClick={() => setActiveSection('edit')} 
-              className="mvp-btn mvp-btn-primary mvp-btn-block"
+              className="profile-btn profile-btn--primary profile-btn--block"
             >
               ✏️ Edit Profile Information
             </button>
           ) : (
-            /* Edit Mode - Show Form */
-            <div className="mvp-edit-form">
+            <div className="profile-form">
               {/* Profile Picture Upload */}
-              <div className="mvp-form-group">
-                <label className="mvp-form-label">Profile Picture</label>
-                <div className="mvp-image-upload">
-                  <div className="mvp-image-preview">
+              <div className="profile-form-group">
+                <label className="profile-form-label">Profile Picture</label>
+                <div className="profile-image-upload">
+                  <div className="profile-image-preview">
                     {previewImage ? (
                       <img src={previewImage} alt="Preview" />
                     ) : profileImage ? (
                       <img src={profileImage} alt="Current" />
                     ) : (
-                      <div className="mvp-image-placeholder">👤</div>
+                      <span className="profile-image-preview__placeholder">👤</span>
                     )}
                   </div>
-                  <div className="mvp-image-actions">
+                  <div className="profile-image-actions">
                     {previewImage ? (
                       <>
                         <button 
                           onClick={handleUploadImage} 
-                          className="mvp-btn mvp-btn-success mvp-btn-sm"
+                          className="profile-btn profile-btn--success profile-btn--sm"
                           disabled={uploadingImage}
                         >
                           {uploadingImage ? 'Uploading...' : '✓ Save'}
                         </button>
                         <button 
                           onClick={handleCancelImage} 
-                          className="mvp-btn mvp-btn-secondary mvp-btn-sm"
+                          className="profile-btn profile-btn--secondary profile-btn--sm"
                         >
                           Cancel
                         </button>
                       </>
                     ) : (
                       <>
-                        <label className="mvp-btn mvp-btn-secondary mvp-btn-sm">
+                        <label className="profile-btn profile-btn--secondary profile-btn--sm">
                           📷 Change
                           <input 
                             type="file" 
@@ -422,7 +426,7 @@ const ProfilePage = ({ onBack, onLogout, onUserUpdate }) => {
                         {profileImage && (
                           <button 
                             onClick={handleRemoveImage} 
-                            className="mvp-btn mvp-btn-danger mvp-btn-sm"
+                            className="profile-btn profile-btn--danger profile-btn--sm"
                           >
                             🗑️ Remove
                           </button>
@@ -430,44 +434,44 @@ const ProfilePage = ({ onBack, onLogout, onUserUpdate }) => {
                       </>
                     )}
                   </div>
+                  <p className="profile-file-hint">Max: 5MB • JPG, PNG, GIF</p>
                 </div>
-                <p className="mvp-file-hint">Max file size: 5MB. Supported formats: JPG, PNG, GIF</p>
               </div>
 
               {/* Full Name */}
-              <div className="mvp-form-group">
-                <label className="mvp-form-label">Full Name</label>
+              <div className="profile-form-group">
+                <label className="profile-form-label">Full Name</label>
                 <input
                   type="text"
                   name="fullName"
                   value={formData.fullName}
                   onChange={handleInputChange}
-                  className="mvp-form-input"
+                  className="profile-form-input"
                   placeholder="Enter your full name"
                 />
               </div>
 
               {/* Contact Number */}
-              <div className="mvp-form-group">
-                <label className="mvp-form-label">Contact Number</label>
+              <div className="profile-form-group">
+                <label className="profile-form-label">Contact Number</label>
                 <input
                   type="tel"
                   name="phone"
                   value={formData.phone}
                   onChange={handleInputChange}
-                  className="mvp-form-input"
+                  className="profile-form-input"
                   placeholder="e.g. +63 912 345 6789"
                 />
               </div>
 
               {/* Gender Selection */}
-              <div className="mvp-form-group">
-                <label className="mvp-form-label">Gender</label>
+              <div className="profile-form-group">
+                <label className="profile-form-label">Gender</label>
                 <select
                   name="gender"
                   value={formData.gender}
                   onChange={handleInputChange}
-                  className="mvp-form-input mvp-form-select"
+                  className="profile-form-input profile-form-select"
                 >
                   <option value="">Select Gender</option>
                   <option value="male">Male</option>
@@ -478,62 +482,70 @@ const ProfilePage = ({ onBack, onLogout, onUserUpdate }) => {
               </div>
 
               {/* Address */}
-              <div className="mvp-form-group">
-                <label className="mvp-form-label">Address</label>
+              <div className="profile-form-group">
+                <label className="profile-form-label">Address</label>
                 <textarea
                   name="address"
                   value={formData.address}
                   onChange={handleInputChange}
-                  className="mvp-form-input mvp-form-textarea"
+                  className="profile-form-input profile-form-textarea"
                   placeholder="Enter your address"
                   rows="3"
                 />
               </div>
 
               {/* Notification Toggle */}
-              <div className="mvp-form-group mvp-toggle-group">
-                <div className="mvp-toggle-info">
-                  <label className="mvp-form-label">🔔 Notifications</label>
-                  <span className="mvp-toggle-desc">Receive alerts about your reports</span>
+              <div className="profile-form-group profile-toggle-group">
+                <div className="profile-toggle-info">
+                  <label className="profile-form-label">
+                    <span>🔔</span> Notifications
+                  </label>
+                  <span className="profile-toggle-desc">Receive alerts about your reports</span>
                 </div>
-                <label className="mvp-toggle">
+                <label className="profile-toggle">
                   <input
                     type="checkbox"
                     name="notificationsEnabled"
                     checked={formData.notificationsEnabled}
                     onChange={handleInputChange}
                   />
-                  <span className="mvp-toggle-slider"></span>
+                  <span className="profile-toggle-slider"></span>
                 </label>
               </div>
 
               {/* Save Button */}
               <button 
                 onClick={handleSaveProfile}
-                className="mvp-btn mvp-btn-primary mvp-btn-block"
+                className="profile-btn profile-btn--primary profile-btn--block"
                 disabled={saving}
               >
                 {saving ? 'Saving...' : '💾 Save Changes'}
               </button>
             </div>
           )}
+        </div>
 
-          {/* Change Password Button */}
-          <button 
-            onClick={() => setShowChangePassword(true)}
-            className="mvp-btn mvp-btn-outline mvp-btn-block"
-            style={{ marginTop: '12px' }}
-          >
-            🔒 Change Password
-          </button>
-        </section>
-
-        {/* ==================== ACCOUNT ACTIONS ==================== */}
-        <section className="mvp-profile-section mvp-actions-section">
-          <button onClick={onLogout} className="mvp-btn mvp-btn-danger mvp-btn-block">
-            🚪 Logout
-          </button>
-        </section>
+        {/* ==================== ACCOUNT ACTIONS CARD ==================== */}
+        <div className="profile-card">
+          <h2 className="profile-section-title">
+            <span className="profile-section-title__icon">⚙️</span>
+            Account
+          </h2>
+          <div className="profile-actions">
+            <button 
+              onClick={() => setShowChangePassword(true)}
+              className="profile-btn profile-btn--outline profile-btn--block"
+            >
+              🔒 Change Password
+            </button>
+            <button 
+              onClick={onLogout} 
+              className="profile-btn profile-btn--danger profile-btn--block"
+            >
+              🚪 Logout
+            </button>
+          </div>
+        </div>
 
       </div>
     </div>
