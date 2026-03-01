@@ -32,7 +32,10 @@ const upload = multer({
 // @access  Private
 router.get('/me', userAuth, async (req, res) => {
   try {
-    const user = await User.findById(req.user.id).select('-password');
+    const user = await User.findById(req.user.id)
+      .select('-password')
+      .lean()
+      .maxTimeMS(30000);
     
     if (!user) {
       return res.status(404).json({

@@ -160,13 +160,14 @@ router.get('/my-reports', require('../middleware/userAuth'), async (req, res) =>
     const sort = {};
     sort[sortBy] = sortOrder === 'desc' ? -1 : 1;
 
-    // Execute query with pagination
+    // Execute query with pagination - optimized for speed
     const reports = await Report.find(filter)
+      .select('-images.data -evidencePhoto.data') // Exclude heavy image data
       .sort(sort)
       .limit(limit * 1)
       .skip((page - 1) * limit)
-      .populate('verifiedBy', 'username')
-      .populate('reportedBy', 'username email profile')
+      .lean()
+      .maxTimeMS(30000)
       .exec();
 
     // Get total count for pagination
