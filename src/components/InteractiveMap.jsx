@@ -320,19 +320,29 @@ const InteractiveMap = ({ reports = [], filters = {}, onReportClick, focusReport
                           if (image?.data) {
                             // Base64 data
                             imageUrl = `data:${image.mimetype || 'image/jpeg'};base64,${image.data}`;
-                          } else if (image?.filename) {
-                            // Filename from uploads folder
-                            imageUrl = `${config.BACKEND_URL}/uploads/${image.filename}`;
+                          } else if (typeof image?.filename === 'string') {
+                            if (image.filename.startsWith('http://') || image.filename.startsWith('https://')) {
+                              // Full URL (Cloudinary)
+                              imageUrl = image.filename;
+                            } else {
+                              // Use image API endpoint
+                              imageUrl = `${config.BACKEND_URL}/api/reports/${report._id}/image/${index}`;
+                            }
                           } else if (typeof image === 'string') {
-                            // String filename
-                            imageUrl = `${config.BACKEND_URL}/uploads/${image}`;
+                            if (image.startsWith('http://') || image.startsWith('https://')) {
+                              imageUrl = image;
+                            } else if (image.startsWith('data:')) {
+                              imageUrl = image;
+                            } else {
+                              // Use image API endpoint
+                              imageUrl = `${config.BACKEND_URL}/api/reports/${report._id}/image/${index}`;
+                            }
                           } else {
-                            imageUrl = null;
+                            // Fallback to image API endpoint
+                            imageUrl = `${config.BACKEND_URL}/api/reports/${report._id}/image/${index}`;
                           }
                           
                           console.log('🖼️ Popup image:', { index, image, imageUrl });
-                          
-                          if (!imageUrl) return null;
                           
                           return (
                             <div key={index} className="relative">

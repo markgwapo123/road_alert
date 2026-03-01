@@ -293,7 +293,7 @@ const Users = () => {
   }
 
   // Helper: resolve image source from any storage format (Base64 / URL / legacy filename)
-  const getImageSrc = (image) => {
+  const getImageSrc = (image, report = null, imageIndex = 0) => {
     if (!image) return null
     // 1. Base64 data stored in MongoDB
     if (image.data) {
@@ -304,7 +304,17 @@ const Users = () => {
     }
     // 2. Full URL (Cloudinary, etc.)
     if (image.url) return image.url
-    // 3. Legacy: local file served via /uploads
+    if (typeof image.filename === 'string' && (image.filename.startsWith('http://') || image.filename.startsWith('https://'))) {
+      return image.filename
+    }
+    if (typeof image === 'string' && (image.startsWith('http://') || image.startsWith('https://'))) {
+      return image
+    }
+    // 3. Use image API endpoint if report ID is available
+    if (report && report._id) {
+      return `${config.BACKEND_URL}/api/reports/${report._id}/image/${imageIndex}`
+    }
+    // 4. Legacy fallback: local file served via /uploads
     if (image.filename) return `${config.BACKEND_URL}/uploads/${image.filename}`
     return null
   }
@@ -725,10 +735,10 @@ const Users = () => {
                               </span>
                             )}
                           </div>
-                          {report.images && report.images.length > 0 && getImageSrc(report.images[0]) && (
+                          {report.images && report.images.length > 0 && getImageSrc(report.images[0], report, 0) && (
                             <div className="mt-2 flex items-center">
                               <img
-                                src={getImageSrc(report.images[0])}
+                                src={getImageSrc(report.images[0], report, 0)}
                                 alt="Report attachment"
                                 className="h-12 w-12 object-cover rounded border mr-2"
                                 onError={handleImageError}
@@ -961,7 +971,7 @@ const Users = () => {
                     </h4>
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                       {selectedReport.images.map((image, index) => {
-                        const imgSrc = getImageSrc(image)
+                        const imgSrc = getImageSrc(image, selectedReport, index)
                         if (!imgSrc) return null
                         return (
                           <div key={index} className="relative group">

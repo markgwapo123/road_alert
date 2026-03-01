@@ -496,16 +496,12 @@ const Dashboard = () => {
                                 console.log('🖼️ Using Cloudinary URL:', filename);
                                 return filename;
                               }
-                              
-                              // Remove any /api/reports prefix if present for local files
-                              const cleanFilename = filename.replace(/^.*\/uploads\//, '');
-                              const imageUrl = `${config.BACKEND_URL}/uploads/${cleanFilename}`;
-                              console.log('🖼️ Constructed local image URL:', imageUrl);
-                              return imageUrl;
                             }
                             
-                            // Fallback for non-string values
-                            return '';
+                            // Use the image API endpoint as fallback
+                            const imageUrl = `${config.BACKEND_URL}/api/reports/${selectedReport._id}/image/0`;
+                            console.log('🖼️ Using image API endpoint:', imageUrl);
+                            return imageUrl;
                           })()}
                           alt="Report evidence"
                           className="w-full h-auto object-contain max-h-64 cursor-pointer hover:opacity-90 transition-opacity"

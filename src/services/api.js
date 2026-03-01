@@ -58,6 +58,10 @@ export const reportsAPI = {
   
   // Get report by ID
   getReportById: (id) => api.get(`/reports/${id}`),
+  
+  // Get report image by report ID and image index
+  getReportImage: (reportId, imageIndex = 0) => api.get(`/reports/${reportId}/image/${imageIndex}`),
+  
   // Verify/Accept report
   verifyReport: (id) => {
     console.log('🔧 verifyReport called with ID:', id)

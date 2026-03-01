@@ -677,9 +677,9 @@ const NewsFeed = ({ user }) => {
                             if (filename.startsWith('data:')) {
                               return filename;
                             }
-                            return `${config.BACKEND_URL}/uploads/${filename}`;
                           }
-                          return '';
+                          // Use image API endpoint
+                          return `${config.BACKEND_URL}/api/reports/${report._id}/image/0`;
                         })()}
                         alt="Report preview"
                         style={{
@@ -886,11 +886,9 @@ const NewsFeed = ({ user }) => {
                                 if (filename.startsWith('data:')) {
                                   return filename;
                                 }
-                                // Otherwise, construct local path
-                                return `${config.BACKEND_URL}/uploads/${filename}`;
                               }
-                              // Fallback for non-string values
-                              return '';
+                              // Use image API endpoint
+                              return `${config.BACKEND_URL}/api/reports/${report._id}/image/0`;
                             })()}
                             alt="Report"
                             className="report-image"
@@ -899,49 +897,12 @@ const NewsFeed = ({ user }) => {
                             }}
                             onError={(e) => {
                               console.error('❌ Image failed to load:', e.target.src);
-                              console.error('Backend URL:', config.BACKEND_URL);
-                              const imageData = report.images[0];
-                              const filename = imageData?.filename || (typeof imageData === 'string' ? imageData : null);
-                              console.error('Image filename:', filename);
-                              
-                              // Only try alternative URLs if we have a valid filename string
-                              if (!filename || typeof filename !== 'string') {
-                                console.error('❌ No valid filename, hiding image');
-                                e.target.style.display = 'none';
-                                return;
-                              }
-                              
-                              // Try alternative URLs
-                              const originalSrc = e.target.src;
-                              
-                              // Try different URL formats
-                              const alternativeUrls = [
-                                `${config.BACKEND_URL}/uploads/${filename}`,
-                                `${config.API_BASE_URL}/../uploads/${filename}`,
-                                `https://roadalert-backend-xze4.onrender.com/uploads/${filename}`,
-                                `http://192.168.1.150:3001/uploads/${filename}`
-                              ];
-                              
-                              // Try the next URL in sequence
-                              const currentIndex = alternativeUrls.indexOf(originalSrc);
-                              const nextIndex = currentIndex + 1;
-                              
-                              if (nextIndex < alternativeUrls.length) {
-                                console.log('🔄 Trying alternative URL:', alternativeUrls[nextIndex]);
-                                e.target.src = alternativeUrls[nextIndex];
-                                return;
-                              }
-                              
-                              // If all URLs failed, show placeholder
-                              console.error('🚫 All image URLs failed, showing placeholder');
+                              // Show placeholder
                               e.target.style.display = 'none';
                               e.target.parentElement.innerHTML = `
                                 <div class="report-image-placeholder">
                                   <span class="placeholder-icon">📷</span>
                                   <span class="placeholder-text">Image not available</span>
-                                  <div style="font-size: 10px; color: #999; margin-top: 4px;">
-                                    Debug: ${filename}
-                                  </div>
                                 </div>
                               `;
                             }}

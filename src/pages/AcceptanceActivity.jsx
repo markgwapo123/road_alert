@@ -553,13 +553,10 @@ const AcceptanceActivity = () => {
                               if (filename.startsWith('http://') || filename.startsWith('https://')) {
                                 return filename;
                               }
-                              
-                              // Remove any /api/reports prefix if present for local files
-                              const cleanFilename = filename.replace(/^.*\/uploads\//, '');
-                              return `${config.BACKEND_URL}/uploads/${cleanFilename}`;
                             }
                             
-                            return '';
+                            // Use the image API endpoint as fallback
+                            return `${config.BACKEND_URL}/api/reports/${selectedReport._id}/image/0`;
                           })()}
                           alt="Report evidence"
                           className="w-full h-auto object-contain max-h-64 cursor-pointer hover:opacity-90 transition-opacity"

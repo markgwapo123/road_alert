@@ -86,8 +86,12 @@ const ReportDetailModal = ({ report, isOpen, onClose, reportUser }) => {
           } else if (filename.startsWith('data:')) {
             imageUrl = filename;
           } else {
-            imageUrl = `${config.BACKEND_URL}/uploads/${filename}`;
+            // Use the image API endpoint
+            imageUrl = `${config.BACKEND_URL}/api/reports/${report._id}/image/0`;
           }
+        } else {
+          // Fallback to image API endpoint
+          imageUrl = `${config.BACKEND_URL}/api/reports/${report._id}/image/0`;
         }
       }
       
@@ -425,11 +429,9 @@ const ReportDetailModal = ({ report, isOpen, onClose, reportUser }) => {
                       if (filename.startsWith('data:')) {
                         return filename;
                       }
-                      // Otherwise, construct local path
-                      return `${config.BACKEND_URL}/uploads/${filename}`;
                     }
-                    // Fallback for non-string values
-                    return '';
+                    // Use image API endpoint
+                    return `${config.BACKEND_URL}/api/reports/${report._id}/image/0`;
                   })()}
                   alt="Report image"
                   style={{
@@ -541,9 +543,9 @@ const ReportDetailModal = ({ report, isOpen, onClose, reportUser }) => {
                             if (filename.startsWith('data:')) {
                               return filename;
                             }
-                            return `${config.BACKEND_URL}/uploads/${filename}`;
                           }
-                          return '';
+                          // Use evidence photo API endpoint
+                          return `${config.BACKEND_URL}/api/reports/${report._id}/evidence-photo`;
                         })()}
                         alt="Admin Feedback"
                         style={{

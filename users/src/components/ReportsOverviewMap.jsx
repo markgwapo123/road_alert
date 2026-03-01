@@ -243,8 +243,14 @@ const ReportsOverviewMap = ({ searchQuery = '' }) => {
             if (firstImage.data) {
               return `data:${firstImage.mimetype || 'image/jpeg'};base64,${firstImage.data}`;
             }
-            // Otherwise use filename from backend
-            return `${config.BACKEND_URL}/uploads/${firstImage.filename}`;
+            // Check if it's a full URL
+            if (typeof firstImage.filename === 'string') {
+              if (firstImage.filename.startsWith('http://') || firstImage.filename.startsWith('https://')) {
+                return firstImage.filename;
+              }
+            }
+            // Use image API endpoint
+            return `${config.BACKEND_URL}/api/reports/${report._id}/image/0`;
           }
           return null;
         };

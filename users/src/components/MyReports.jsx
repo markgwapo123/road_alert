@@ -220,11 +220,9 @@ const MyReports = ({ token }) => {
                           if (filename.startsWith('data:')) {
                             return filename;
                           }
-                          // Otherwise, construct local path
-                          return `${config.BACKEND_URL}/uploads/${filename}`;
                         }
-                        // Fallback for non-string values
-                        return '';
+                        // Use image API endpoint
+                        return `${config.BACKEND_URL}/api/reports/${report._id}/image/0`;
                       })()}
                       alt="Report"
                       onClick={(e) => setEnlargedImage(e.target.src)}

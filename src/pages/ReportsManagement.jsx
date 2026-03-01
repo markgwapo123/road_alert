@@ -242,9 +242,12 @@ const ReportsManagement = () => {
           } else if (filename.startsWith('http://') || filename.startsWith('https://')) {
             imageUrl = filename;
           } else {
-            const cleanFilename = filename.replace(/^.*\/uploads\//, '');
-            imageUrl = `${config.BACKEND_URL}/uploads/${cleanFilename}`;
+            // Use the image API endpoint
+          imageUrl = `${config.BACKEND_URL}/api/reports/${report._id}/image/0`;
           }
+        } else {
+          // Use the image API endpoint as fallback
+          imageUrl = `${config.BACKEND_URL}/api/reports/${report._id}/image/0`;
         }
       }
       
@@ -492,11 +495,8 @@ const ReportsManagement = () => {
                             }
                           }
                           
-                          // Otherwise, construct local path
-                          const cleanFilename = typeof filename === 'string' 
-                            ? filename.replace(/^.*\/uploads\//, '') 
-                            : filename;
-                          return `${config.BACKEND_URL}/uploads/${cleanFilename}`;
+                          // Use the image API endpoint to fetch the image
+                          return `${config.BACKEND_URL}/api/reports/${report._id}/image/0`;
                         })()}
                         alt="Report evidence"
                         className="max-w-full max-h-full object-contain cursor-pointer hover:opacity-90 transition-opacity"
