@@ -7,7 +7,7 @@ import { useSettings } from '../context/SettingsContext';
 const Register = ({ onRegister, switchToLogin }) => {
   const { getSetting, validatePassword, getAuthConfig } = useSettings();
   const siteName = getSetting('site_name', 'BantayDalan');
-  
+
   // Split site name into brand parts (e.g., "BantayDalan" -> "Bantay" + "Dalan")
   const splitBrandName = (name) => {
     // Try to find capital letters to split (camelCase)
@@ -19,9 +19,9 @@ const Register = ({ onRegister, switchToLogin }) => {
     const mid = Math.ceil(name.length / 2);
     return { first: name.slice(0, mid), second: name.slice(mid) || '' };
   };
-  
+
   const { first: brandFirst, second: brandSecond } = splitBrandName(siteName);
-  
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -71,7 +71,7 @@ const Register = ({ onRegister, switchToLogin }) => {
     const newPassword = e.target.value;
     setPassword(newPassword);
     setPasswordStrength(checkPasswordStrength(newPassword));
-    
+
     // Validate password against system requirements
     if (newPassword) {
       const validation = validatePassword(newPassword);
@@ -97,7 +97,7 @@ const Register = ({ onRegister, switchToLogin }) => {
       setLoading(false);
       return;
     }
-    
+
     // Validate password using system settings
     const passwordValidation = validatePassword(password);
     if (!passwordValidation.isValid) {
@@ -105,7 +105,7 @@ const Register = ({ onRegister, switchToLogin }) => {
       setLoading(false);
       return;
     }
-    
+
     if (password !== confirmPassword) {
       showError('Passwords do not match');
       setLoading(false);
@@ -118,7 +118,7 @@ const Register = ({ onRegister, switchToLogin }) => {
         email: email.trim(),
         password
       }, {
-        timeout: 5000
+        timeout: 15000
       });
       if (res.data.token) {
         onRegister(res.data.token);
@@ -143,7 +143,7 @@ const Register = ({ onRegister, switchToLogin }) => {
   };
 
   const getPasswordStrengthText = () => {
-    switch(passwordStrength) {
+    switch (passwordStrength) {
       case 0: return { text: 'Very Weak', color: '#e74c3c' };
       case 1: return { text: 'Weak', color: '#e67e22' };
       case 2: return { text: 'Fair', color: '#f39c12' };
@@ -158,9 +158,9 @@ const Register = ({ onRegister, switchToLogin }) => {
       <div className="auth-left">
         {/* Mobile mockup image - visible only on mobile */}
         <div className="mobile-mockup">
-          <img 
-            src="/mockup-laptop-phone.png" 
-            alt="BantayDalan on laptop and phone" 
+          <img
+            src="/mockup-laptop-phone.png"
+            alt="BantayDalan on laptop and phone"
           />
         </div>
 
@@ -170,7 +170,7 @@ const Register = ({ onRegister, switchToLogin }) => {
             <span className="brand-name">{brandFirst}</span>{brandSecond && <span className="brand-suffix">{brandSecond}</span>}
           </h1>
         </div>
-        
+
         <form onSubmit={handleSubmit} className="auth-form" key={formKey}>
           <div className="input-group">
             <div className="input-wrapper">
@@ -241,9 +241,9 @@ const Register = ({ onRegister, switchToLogin }) => {
             )}
             {/* Password requirements hint */}
             {password && passwordErrors.length > 0 && (
-              <div style={{ 
-                fontSize: '12px', 
-                color: '#e74c3c', 
+              <div style={{
+                fontSize: '12px',
+                color: '#e74c3c',
                 marginTop: '8px',
                 padding: '8px',
                 backgroundColor: '#fef2f2',
@@ -257,10 +257,10 @@ const Register = ({ onRegister, switchToLogin }) => {
               </div>
             )}
             {/* Password requirements info */}
-            <div style={{ 
-              fontSize: '11px', 
-              color: '#6b7280', 
-              marginTop: '6px' 
+            <div style={{
+              fontSize: '11px',
+              color: '#6b7280',
+              marginTop: '6px'
             }}>
               Min {minPasswordLength} characters{requireStrongPassword ? ', uppercase, lowercase & number' : ''}
             </div>

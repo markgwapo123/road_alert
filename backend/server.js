@@ -38,6 +38,10 @@ app.use(cors({
     'http://localhost:5175',
     'http://localhost:5176',
     'http://localhost:3000',
+    // Capacitor (mobile app) origins
+    'https://localhost',
+    'capacitor://localhost',
+    'http://localhost',
     // Production URLs
     'https://road-alert-git-main-markstephens-projects.vercel.app',
     'https://*.vercel.app',

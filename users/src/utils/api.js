@@ -8,13 +8,11 @@ console.log('🔗 API Configuration:', {
   API_BASE_URL,
   BACKEND_URL,
   hostname: typeof window !== 'undefined' ? window.location.hostname : 'N/A',
-  isCapacitor,
   environment: import.meta.env.MODE
 });
 
 // Configure axios defaults
-axios.defaults.timeout = 10000; // 10 second timeout
-axios.defaults.withCredentials = true;
+axios.defaults.timeout = 15000; // 15 second timeout (Render free tier can be slow on cold start)
 
 // Test backend connection
 export const testConnection = async () => {
@@ -22,11 +20,11 @@ export const testConnection = async () => {
     const response = await axios.get(`${API_BASE_URL}/health`, { timeout: 3000 });
     return { success: true, data: response.data };
   } catch (error) {
-    return { 
-      success: false, 
-      error: error.code === 'ECONNREFUSED' 
-        ? 'Backend server is not responding' 
-        : error.message 
+    return {
+      success: false,
+      error: error.code === 'ECONNREFUSED'
+        ? 'Backend server is not responding'
+        : error.message
     };
   }
 };
