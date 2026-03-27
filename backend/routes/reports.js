@@ -387,7 +387,7 @@ router.get('/map', async (req, res) => {
     console.log('🔍 Final filter object:', filter);
 
     const reports = await Report.find(filter)
-      .select('type location province city barangay severity status createdAt description reportedBy')
+      .select('type location province city barangay severity status createdAt description reportedBy images.filename images.mimetype images.originalName')
       .select('-images.data -evidencePhoto.data') // Exclude heavy image data
       .limit(1000) // Limit for performance
       .lean()
@@ -573,30 +573,30 @@ router.get('/:id/image/:imageIndex', async (req, res) => {
   try {
     const { id, imageIndex } = req.params;
     const index = parseInt(imageIndex);
-    
+
     // Fetch only the specific image data we need with lean() for faster query
     const report = await Report.findById(id)
       .select('images')
       .lean()
       .maxTimeMS(30000);
-    
+
     if (!report) {
       return res.status(404).json({ error: 'Report not found' });
     }
-    
+
     if (!report.images || !report.images[index]) {
       return res.status(404).json({ error: 'Image not found' });
     }
-    
+
     const image = report.images[index];
-    
+
     if (!image.data) {
       return res.status(404).json({ error: 'Image data not available' });
     }
-    
+
     // Convert base64 to buffer and send as binary image
     const imageBuffer = Buffer.from(image.data, 'base64');
-    
+
     res.set({
       'Content-Type': image.mimetype || 'image/jpeg',
       'Content-Length': imageBuffer.length,
@@ -604,9 +604,9 @@ router.get('/:id/image/:imageIndex', async (req, res) => {
       'ETag': `"${id}-img-${index}"`,
       'Connection': 'keep-alive'
     });
-    
+
     res.send(imageBuffer);
-    
+
   } catch (error) {
     console.error('Get image error:', error);
     res.status(500).json({ error: 'Server error while fetching image' });
@@ -619,24 +619,24 @@ router.get('/:id/image/:imageIndex', async (req, res) => {
 router.get('/:id/evidence-photo', async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     // Fetch only the evidence photo data we need with lean() for faster query
     const report = await Report.findById(id)
       .select('evidencePhoto')
       .lean()
       .maxTimeMS(30000);
-    
+
     if (!report) {
       return res.status(404).json({ error: 'Report not found' });
     }
-    
+
     if (!report.evidencePhoto || !report.evidencePhoto.data) {
       return res.status(404).json({ error: 'Evidence photo not available' });
     }
-    
+
     // Convert base64 to buffer and send as binary image
     const imageBuffer = Buffer.from(report.evidencePhoto.data, 'base64');
-    
+
     res.set({
       'Content-Type': report.evidencePhoto.mimetype || 'image/jpeg',
       'Content-Length': imageBuffer.length,
@@ -644,9 +644,9 @@ router.get('/:id/evidence-photo', async (req, res) => {
       'ETag': `"${id}-evidence"`,
       'Connection': 'keep-alive'
     });
-    
+
     res.send(imageBuffer);
-    
+
   } catch (error) {
     console.error('Get evidence photo error:', error);
     res.status(500).json({ error: 'Server error while fetching evidence photo' });

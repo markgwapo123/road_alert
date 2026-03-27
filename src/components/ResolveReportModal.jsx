@@ -391,7 +391,7 @@ const ResolveReportModal = ({ report, onClose, onResolve }) => {
             </button>
             <button
               type="submit"
-              disabled={isLoading || adminFeedback.trim().length < 10}
+              disabled={isLoading}
               className="flex-1 px-4 py-3 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {isLoading ? (
