@@ -309,7 +309,19 @@ const startScheduledTasks = () => {
     clearSettingsCache();
   }, 5 * 60 * 1000); // Every 5 minutes
 
-  console.log('⏰ Scheduled tasks started');
+  // Keep-alive: ping own health endpoint every 14 minutes to prevent Render free tier from sleeping
+  const KEEP_ALIVE_URL = process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`;
+  setInterval(async () => {
+    try {
+      const response = await fetch(`${KEEP_ALIVE_URL}/api/health`);
+      const data = await response.json();
+      console.log(`💓 Keep-alive ping: ${data.status} (uptime: ${Math.round(data.uptime)}s)`);
+    } catch (err) {
+      console.warn('💔 Keep-alive ping failed:', err.message);
+    }
+  }, 14 * 60 * 1000); // Every 14 minutes
+
+  console.log('⏰ Scheduled tasks started (including keep-alive)');
 };
 
 initializeDatabase();
