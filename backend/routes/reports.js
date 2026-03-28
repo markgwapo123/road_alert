@@ -602,7 +602,9 @@ router.get('/:id/image/:imageIndex', async (req, res) => {
       'Content-Length': imageBuffer.length,
       'Cache-Control': 'public, max-age=604800', // Cache for 7 days
       'ETag': `"${id}-img-${index}"`,
-      'Connection': 'keep-alive'
+      'Connection': 'keep-alive',
+      'Access-Control-Allow-Origin': '*',
+      'Cross-Origin-Resource-Policy': 'cross-origin'
     });
 
     res.send(imageBuffer);
@@ -642,7 +644,9 @@ router.get('/:id/evidence-photo', async (req, res) => {
       'Content-Length': imageBuffer.length,
       'Cache-Control': 'public, max-age=604800', // Cache for 7 days
       'ETag': `"${id}-evidence"`,
-      'Connection': 'keep-alive'
+      'Connection': 'keep-alive',
+      'Access-Control-Allow-Origin': '*',
+      'Cross-Origin-Resource-Policy': 'cross-origin'
     });
 
     res.send(imageBuffer);

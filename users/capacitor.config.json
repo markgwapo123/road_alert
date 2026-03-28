@@ -3,9 +3,16 @@
   "appName": "BantayDalan",
   "webDir": "dist",
   "server": {
-    "androidScheme": "https"
+    "androidScheme": "https",
+    "allowNavigation": [
+      "roadalert-backend-xze4.onrender.com",
+      "*.onrender.com"
+    ]
   },
   "plugins": {
+    "CapacitorHttp": {
+      "enabled": true
+    },
     "Camera": {
       "permissions": [
         "camera",
