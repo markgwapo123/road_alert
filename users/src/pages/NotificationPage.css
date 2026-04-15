@@ -4,7 +4,12 @@
   max-width: 900px;
   margin: 0 auto;
   padding: 24px 16px;
-  padding-bottom: 100px;
+  padding-bottom: 32px;
+  height: calc(100vh - 80px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
 }
 
 /* Page Header */
@@ -888,7 +893,8 @@
 @media (max-width: 768px) {
   .notification-page {
     padding: 16px 12px;
-    padding-bottom: 100px;
+    padding-bottom: 80px;
+    height: calc(100vh - 140px);
   }
 
   .notification-page-header {

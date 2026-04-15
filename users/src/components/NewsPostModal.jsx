@@ -230,7 +230,7 @@ const NewsPostModal = ({ post, isOpen, onClose }) => {
                     {attachment.type === 'image' ? (
                       <div>
                         <img
-                          src={`${config.BACKEND_URL}${attachment.url}`}
+                          src={`${config.BACKEND_URL}/api/news/image/${post._id}/${index}`}
                           alt={attachment.originalName}
                           style={{
                             width: '100%',

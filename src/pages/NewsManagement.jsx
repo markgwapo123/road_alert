@@ -799,16 +799,16 @@ const NewsManagement = () => {
                           <div key={index} className="border rounded-lg overflow-hidden flex items-center justify-center bg-gray-50 max-w-md mx-auto">
                             {attachment.type === 'image' ? (
                               <img
-                                src={`${config.BACKEND_URL}${attachment.url}`}
+                                src={`${config.BACKEND_URL}/api/news/image/${selectedPost._id}/${index}`}
                                 alt="News attachment"
                                 className="max-w-full h-auto object-contain mx-auto"
                                 style={{ maxHeight: '400px' }}
                                 onError={(e) => {
-                                  console.log('Image failed to load:', `${config.BACKEND_URL}${attachment.url}`)
+                                  console.log('Image failed to load:', `${config.BACKEND_URL}/api/news/image/${selectedPost._id}/${index}`)
                                   e.target.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23f3f4f6"/><text x="50" y="50" font-family="Arial" font-size="12" text-anchor="middle" dy=".35em" fill="%236b7280">Image not found</text></svg>'
                                 }}
                                 onLoad={() => {
-                                  console.log('Image loaded successfully:', `${config.BACKEND_URL}${attachment.url}`)
+                                  console.log('Image loaded successfully')
                                 }}
                               />
                             ) : (

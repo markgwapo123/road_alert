@@ -1185,6 +1185,10 @@ body {
 .notification-card:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Red border only for notification cards outside the notification page */
+.notifications-grid .notification-card:hover {
   border-color: #ef4444;
 }
 
@@ -1388,11 +1392,15 @@ body {
 @media (max-width: 768px) {
   .notification-page {
     padding: 0;
-    min-height: calc(100vh - 140px);
+    height: calc(100vh - 140px);
     /* Account for mobile navigation */
     margin-bottom: 0;
     box-sizing: border-box;
     position: relative;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+    padding-bottom: 80px;
   }
 
   .notification-page-header {

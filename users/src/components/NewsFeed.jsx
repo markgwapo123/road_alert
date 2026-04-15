@@ -1074,7 +1074,7 @@ const NewsFeed = ({ user }) => {
                           }}>
                             {attachment.type === 'image' ? (
                               <img
-                                src={`${config.BACKEND_URL}${attachment.url}`}
+                                src={`${config.BACKEND_URL}/api/news/image/${post._id}/${index}`}
                                 alt={attachment.originalName}
                                 style={{
                                   width: '100%',

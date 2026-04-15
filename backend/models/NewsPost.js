@@ -84,6 +84,12 @@ const newsPostSchema = new mongoose.Schema({
       type: Number,
       required: true
     },
+    data: {
+      type: String  // Base64 encoded image data for persistent storage
+    },
+    mimetype: {
+      type: String  // e.g. 'image/jpeg', 'image/png'
+    },
     uploadedAt: {
       type: Date,
       default: Date.now

@@ -3,6 +3,7 @@ const NewsPost = require('../models/NewsPost');
 const { auth, canCreateNews, requirePermission } = require('../middleware/roleAuth');
 const { handleNewsUpload, getFileType } = require('../middleware/newsUpload');
 const path = require('path');
+const fs = require('fs');
 
 const router = express.Router();
 
@@ -22,17 +23,33 @@ router.post('/create', auth, canCreateNews, handleNewsUpload, async (req, res) =
       });
     }
 
-    // Process uploaded files
+    // Process uploaded files - read as base64 for persistent MongoDB storage
     let attachments = [];
     if (req.files && req.files.length > 0) {
-      attachments = req.files.map(file => ({
-        filename: file.filename,
-        originalName: file.originalname,
-        path: file.path,
-        url: `/uploads/news/${file.filename}`,
-        type: getFileType(file.filename),
-        size: file.size
-      }));
+      attachments = req.files.map(file => {
+        let base64Data = null;
+        let mimetype = file.mimetype;
+        
+        // Read file and convert to base64 for persistent storage
+        try {
+          const fileBuffer = fs.readFileSync(file.path);
+          base64Data = fileBuffer.toString('base64');
+          console.log(`📦 Converted ${file.originalname} to base64 (${Math.round(base64Data.length / 1024)}KB)`);
+        } catch (readError) {
+          console.error(`❌ Failed to read file ${file.originalname}:`, readError.message);
+        }
+        
+        return {
+          filename: file.filename,
+          originalName: file.originalname,
+          path: file.path,
+          url: `/uploads/news/${file.filename}`,
+          type: getFileType(file.filename),
+          size: file.size,
+          data: base64Data,
+          mimetype: mimetype
+        };
+      });
     }
 
     // Create new news post
@@ -51,7 +68,9 @@ router.post('/create', auth, canCreateNews, handleNewsUpload, async (req, res) =
         url: att.url,
         filename: att.filename,
         originalName: att.originalName,
-        size: att.size
+        size: att.size,
+        data: att.data,
+        mimetype: att.mimetype
       }))
     });
 
@@ -108,6 +127,7 @@ router.get('/admin/posts', auth, canCreateNews, async (req, res) => {
 
     const posts = await NewsPost.find(filter)
       .populate('author', 'username role')
+      .select('-attachments.data') // Exclude base64 data from list responses
       .sort({ createdAt: -1 })
       .limit(parseInt(limit))
       .skip(skip);
@@ -272,7 +292,7 @@ router.get('/public/posts', async (req, res) => {
 
     const posts = await NewsPost.find(filter)
       .populate('author', 'username')
-      .select('-viewedBy') // Don't send view tracking data to public
+      .select('-viewedBy -attachments.data') // Don't send view tracking or base64 data to public
       .sort({ priority: -1, publishDate: -1 })
       .limit(parseInt(limit))
       .skip(skip);
@@ -369,8 +389,55 @@ router.get('/public/post/:id', async (req, res) => {
   }
 });
 
+// @route   GET /api/news/image/:postId/:index
+// @desc    Serve news post image from MongoDB base64 data
+// @access  Public
+router.get('/image/:postId/:index', async (req, res) => {
+  try {
+    const { postId, index } = req.params;
+    const imageIndex = parseInt(index);
+
+    const newsPost = await NewsPost.findById(postId);
+    if (!newsPost) {
+      return res.status(404).json({ error: 'News post not found' });
+    }
+
+    const attachment = newsPost.attachments[imageIndex];
+    if (!attachment) {
+      return res.status(404).json({ error: 'Attachment not found' });
+    }
+
+    // Serve from base64 data stored in MongoDB
+    if (attachment.data) {
+      const imageBuffer = Buffer.from(attachment.data, 'base64');
+      const contentType = attachment.mimetype || 'image/jpeg';
+      
+      res.set({
+        'Content-Type': contentType,
+        'Content-Length': imageBuffer.length,
+        'Cache-Control': 'public, max-age=86400',
+        'Access-Control-Allow-Origin': '*'
+      });
+      return res.send(imageBuffer);
+    }
+
+    // Fallback: try filesystem
+    const { uploadDir } = require('../middleware/newsUpload');
+    const filePath = path.join(uploadDir, attachment.filename);
+    if (fs.existsSync(filePath)) {
+      return res.sendFile(filePath);
+    }
+
+    return res.status(404).json({ error: 'Image data not available' });
+
+  } catch (error) {
+    console.error('News image serve error:', error);
+    res.status(500).json({ error: 'Server error while serving image' });
+  }
+});
+
 // @route   GET /api/news/uploads/:filename
-// @desc    Serve uploaded news media files
+// @desc    Serve uploaded news media files (legacy - filesystem fallback)
 // @access  Public
 router.get('/uploads/:filename', (req, res) => {
   try {
@@ -378,8 +445,7 @@ router.get('/uploads/:filename', (req, res) => {
     const { uploadDir } = require('../middleware/newsUpload');
     const filePath = path.join(uploadDir, filename);
     
-    // Check if file exists
-    const fs = require('fs');
+    // Check if file exists on filesystem
     if (!fs.existsSync(filePath)) {
       return res.status(404).json({
         error: 'File not found'
