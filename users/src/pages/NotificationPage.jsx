@@ -1,103 +1,12 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import './NotificationPage.css';
+import React from 'react';
+import NotificationScreen from './NotificationScreen';
 
-/**
- * NotificationPage Component
- * 
- * Full-page notification view with filtering, sorting, and detailed views.
- * Supports both context-based and props-based usage for backward compatibility.
- */
-const NotificationPage = ({ 
-  notifications: propNotifications = [],
-  unreadCount: propUnreadCount = 0,
-  onMarkAsRead,
-  onMarkAllAsRead,
-  onRefresh
-}) => {
-  const notifications = propNotifications;
-  const unreadCount = propUnreadCount;
+const NotificationPage = () => {
+  return <NotificationScreen />;
+};
 
-  const [filterType, setFilterType] = useState('all');
-  const [sortBy, setSortBy] = useState('newest');
-  const [selectedNotification, setSelectedNotification] = useState(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [locallyRead, setLocallyRead] = useState(() => {
-    try {
-      const raw = localStorage.getItem('locallyReadNotifications');
-      if (!raw) return new Set();
-      const arr = JSON.parse(raw);
-      return new Set(Array.isArray(arr) ? arr : []);
-    } catch (e) {
-      return new Set();
-    }
-  });
+export default NotificationPage;
 
-  // Refresh notifications on mount
-  useEffect(() => {
-    if (onRefresh) {
-      onRefresh();
-    }
-  }, []);
-
-  // Keep locallyRead in sync with server
-  useEffect(() => {
-    if (locallyRead.size === 0) return;
-    setLocallyRead(prev => {
-      const next = new Set(prev);
-      for (const id of Array.from(prev)) {
-        const serverNotif = notifications.find(n => n._id === id);
-        if (serverNotif && (serverNotif.read || serverNotif.isRead)) next.delete(id);
-      }
-      if (next.size !== prev.size) {
-        localStorage.setItem('locallyReadNotifications', JSON.stringify(Array.from(next)));
-      }
-      return next;
-    });
-  }, [notifications]);
-
-  // Get notification icon based on type
-  const getNotificationIcon = (type) => {
-    switch (type) {
-      case 'admin_response': return '📩';
-      case 'status_update':
-      case 'report_status_update': return '🔄';
-      case 'announcement': return '📢';
-      case 'verification_status': return '🔐';
-      case 'new_report': return '🚨';
-      case 'system_alert': return '⚠️';
-      case 'report_resolved': return '✅';
-      case 'welcome': return '👋';
-      default: return '🔔';
-    }
-  };
-
-  // Get notification type label
-  const getNotificationTypeLabel = (type) => {
-    switch (type) {
-      case 'admin_response': return 'Admin Response';
-      case 'status_update':
-      case 'report_status_update': return 'Status Update';
-      case 'announcement': return 'Announcement';
-      case 'verification_status': return 'Verification';
-      case 'new_report': return 'New Report';
-      case 'system_alert': return 'System Alert';
-      default: return 'Notification';
-    }
-  };
-
-  // Get relative time
-  const getRelativeTime = (date) => {
-    const now = new Date();
-    const notifDate = new Date(date);
-    const diffInMinutes = Math.floor((now - notifDate) / (1000 * 60));
-    if (diffInMinutes < 1) return 'Just now';
-    if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
-    const diffInHours = Math.floor(diffInMinutes / 60);
-    if (diffInHours < 24) return `${diffInHours}h ago`;
-    const diffInDays = Math.floor(diffInHours / 24);
-    if (diffInDays < 7) return `${diffInDays}d ago`;
-    return notifDate.toLocaleDateString();
-  };
 
   // Calculate counts for filters
   const adminResponseCount = notifications.filter(n => n.type === 'admin_response').length;
