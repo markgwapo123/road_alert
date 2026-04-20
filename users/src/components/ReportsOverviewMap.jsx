@@ -5,27 +5,32 @@ import './ReportsOverviewMap.css';
 import config from '../config';
 import { useSettings } from '../context/SettingsContext.jsx';
 
-// Fix for default marker icon
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+// Fix for default marker icon issue with webpack
+import icon from 'leaflet/dist/images/marker-icon.png';
+import iconShadow from 'leaflet/dist/images/marker-shadow.png';
+
+let DefaultIcon = L.icon({
+    iconUrl: icon,
+    shadowUrl: iconShadow,
+    iconSize: [25, 41],
+    iconAnchor: [12, 41]
 });
+
+L.Marker.prototype.options.icon = DefaultIcon;
 
 // Map tile layers for different styles
 const MAP_TILES = {
   streets: {
     url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-    attribution: '© OpenStreetMap contributors'
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
   },
   satellite: {
     url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-    attribution: '© Esri'
+    attribution: '&copy; Esri'
   },
   dark: {
     url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-    attribution: '© CartoDB'
+    attribution: '&copy; CartoDB'
   }
 };
 
@@ -40,7 +45,30 @@ const ReportsOverviewMap = ({ searchQuery = '' }) => {
   const [reports, setReports] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [isPopupOpen, setIsPopupOpen] = useState(false); // Track popup state
+  const [permissionError, setPermissionError] = useState(null);
+  const [userLocation, setUserLocation] = useState(null);
+
+  const locateUser = () => {
+    if (!navigator.geolocation) {
+      setPermissionError("Geolocation is not supported by your browser.");
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        const userLatLng = { lat: latitude, lng: longitude };
+        setUserLocation(userLatLng);
+        if (mapInstanceRef.current) {
+          mapInstanceRef.current.setView(userLatLng, 17);
+        }
+        setPermissionError(null);
+      },
+      (error) => {
+        setPermissionError(`Error getting location: ${error.message}`);
+      }
+    );
+  };
 
   // Fetch all verified reports
   useEffect(() => {
@@ -49,71 +77,39 @@ const ReportsOverviewMap = ({ searchQuery = '' }) => {
         setIsLoading(true);
         const token = localStorage.getItem('token');
         
-        console.log('🗺️ ReportsOverviewMap: Fetching reports...');
-        console.log('🗺️ API URL:', `${config.API_BASE_URL}/reports`);
-        
         const response = await fetch(`${config.API_BASE_URL}/reports?status=verified&limit=100`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
+          headers: { 'Authorization': `Bearer ${token}` }
         });
 
-        if (!response.ok) {
-          throw new Error(`Failed to fetch reports: ${response.status}`);
-        }
+        if (!response.ok) throw new Error(`Failed to fetch reports: ${response.status}`);
 
         const responseData = await response.json();
-        console.log('📍 API Response:', responseData);
-        
-        // Extract the reports array from the response
         const data = responseData.data || responseData.reports || [];
-        console.log('📍 Fetched reports for overview map:', data);
-        console.log('📍 Number of reports:', Array.isArray(data) ? data.length : 'Not an array!');
         
-        // Ensure data is an array before filtering
         if (!Array.isArray(data)) {
-          console.error('❌ Data is not an array:', typeof data, data);
+          console.error('Data is not an array:', data);
           setReports([]);
-          setLoading(false);
+          setIsLoading(false);
           return;
         }
         
-        // Filter reports that have valid location data
-        const validReports = data.filter(report => {
-          // Check both possible location structures
-          const hasNewFormat = report.location?.lat && report.location?.lng;
-          const hasOldFormat = report.location?.coordinates?.latitude && report.location?.coordinates?.longitude;
-          
-          console.log('🔍 Checking report:', {
-            id: report._id,
-            location: report.location,
-            hasNewFormat,
-            hasOldFormat
-          });
-          
-          return (hasNewFormat && !isNaN(report.location.lat) && !isNaN(report.location.lng)) ||
-                 (hasOldFormat && !isNaN(report.location.coordinates.latitude) && !isNaN(report.location.coordinates.longitude));
-        });
+        const validReports = data.filter(report => 
+          (report.location?.lat && report.location?.lng) ||
+          (report.location?.coordinates?.latitude && report.location?.coordinates?.longitude)
+        );
         
-        // Normalize location format
         const normalizedReports = validReports.map(report => ({
           ...report,
           location: {
-            ...report.location,
-            lat: report.location.lat || report.location.coordinates?.latitude,
-            lng: report.location.lng || report.location.coordinates?.longitude
+            lat: report.location.lat ?? report.location.coordinates.latitude,
+            lng: report.location.lng ?? report.location.coordinates.longitude,
           }
         }));
         
-        console.log('📍 Valid reports with location:', normalizedReports.length);
-        console.log('📍 Valid reports details:', normalizedReports);
-        
-        console.log(`✅ ${normalizedReports.length} reports with valid locations`);
         setReports(normalizedReports);
-        setError(null);
       } catch (err) {
-        console.error('❌ Error fetching reports:', err);
         setError(err.message);
+        console.error(err);
       } finally {
         setIsLoading(false);
       }
@@ -122,314 +118,96 @@ const ReportsOverviewMap = ({ searchQuery = '' }) => {
     fetchReports();
   }, []);
 
+  // Initialize map
   useEffect(() => {
-    // Initialize map only once
-    if (!mapInstanceRef.current && mapRef.current) {
-      // Use settings for map center and zoom
-      const { center, zoom, style } = mapConfig;
-      
-      mapInstanceRef.current = L.map(mapRef.current, {
-        scrollWheelZoom: false,
-        dragging: true,
-        touchZoom: true
-      }).setView([center.lat, center.lng], zoom);
+    if (mapRef.current && !mapInstanceRef.current) {
+      const map = L.map(mapRef.current, {
+        center: [mapConfig.center.lat, mapConfig.center.lng],
+        zoom: mapConfig.zoom,
+        zoomControl: true, // Keep zoom controls, but they can be styled
+        attributionControl: false, // We will add it manually
+      });
+      mapInstanceRef.current = map;
 
-      // Get tile layer based on style setting
-      const tileConfig = MAP_TILES[style] || MAP_TILES.streets;
-      tileLayerRef.current = L.tileLayer(tileConfig.url, {
-        attribution: tileConfig.attribution,
-        maxZoom: 19
-      }).addTo(mapInstanceRef.current);
-
-      // Create a layer group for markers
-      markersLayerRef.current = L.layerGroup().addTo(mapInstanceRef.current);
+      tileLayerRef.current = L.tileLayer(MAP_TILES[mapConfig.style].url).addTo(map);
       
-      setIsLoading(false);
+      // Add custom attribution
+      L.control.attribution({
+        prefix: false,
+        position: 'bottomright'
+      }).addAttribution(MAP_TILES[mapConfig.style].attribution).addTo(map);
+
+      markersLayerRef.current = L.layerGroup().addTo(map);
     }
+  }, [mapConfig]);
 
-    return () => {
-      // Cleanup on unmount
-      if (mapInstanceRef.current) {
-        mapInstanceRef.current.remove();
-        mapInstanceRef.current = null;
-      }
-    };
-  }, []);
-
-  // Update tile layer when map style changes
+  // Update markers when reports change
   useEffect(() => {
-    if (!mapInstanceRef.current || !tileLayerRef.current) return;
-
-    const { style } = mapConfig;
-    const tileConfig = MAP_TILES[style] || MAP_TILES.streets;
-
-    // Remove old tile layer
-    tileLayerRef.current.remove();
-
-    // Add new tile layer
-    tileLayerRef.current = L.tileLayer(tileConfig.url, {
-      attribution: tileConfig.attribution,
-      maxZoom: 19
-    }).addTo(mapInstanceRef.current);
-
-    console.log('🗺️ Map style updated to:', style);
-  }, [mapConfig.style]);
-
-  useEffect(() => {
-    // Update markers when reports change
-    if (mapInstanceRef.current && markersLayerRef.current && reports) {
-      // Clear existing markers
+    if (markersLayerRef.current) {
       markersLayerRef.current.clearLayers();
-
-      // Filter reports with valid location data
-      let reportsWithLocation = reports.filter(
-        report => report.location?.lat && report.location?.lng
-      );
-
-      // Apply search filter if searchQuery exists
-      if (searchQuery && searchQuery.trim() !== '') {
-        const query = searchQuery.toLowerCase();
-        reportsWithLocation = reportsWithLocation.filter(report => {
-          const matchesCity = report.city?.toLowerCase().includes(query);
-          const matchesBarangay = report.barangay?.toLowerCase().includes(query);
-          const matchesProvince = report.province?.toLowerCase().includes(query);
-          const matchesDescription = report.description?.toLowerCase().includes(query);
-          const matchesAlertType = report.alertType?.toLowerCase().includes(query);
-          
-          return matchesCity || matchesBarangay || matchesProvince || matchesDescription || matchesAlertType;
-        });
-      }
-
-      if (reportsWithLocation.length === 0) {
-        return;
-      }
-
-      // Create custom icons based on alert type
-      const getMarkerIcon = (alertType) => {
-        const colors = {
-          'Pothole': '#ef4444',
-          'Road Damage': '#f97316',
-          'Obstruction': '#eab308',
-          'Construction': '#3b82f6',
-          'Accident': '#dc2626',
-          'Flood': '#06b6d4',
-          'Traffic': '#8b5cf6',
-          'Other': '#6b7280'
-        };
-
-        const color = colors[alertType] || '#6b7280';
-
-        return L.divIcon({
-          className: 'custom-marker',
-          html: `<div style="background-color: ${color}; width: 30px; height: 30px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); border: 3px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.3);"><div style="transform: rotate(45deg); margin-top: 5px; font-size: 14px;">📍</div></div>`,
-          iconSize: [30, 30],
-          iconAnchor: [15, 30],
-          popupAnchor: [0, -30]
-        });
-      };
-
-      // Add markers for each report
-      reportsWithLocation.forEach(report => {
-        const marker = L.marker(
-          [report.location.lat, report.location.lng],
-          { icon: getMarkerIcon(report.alertType) }
-        );
-
-        // Create popup content with report image
-        const getImageUrl = (report) => {
-          if (report.images && report.images.length > 0) {
-            const firstImage = report.images[0];
-            // Check if it's base64 data
-            if (firstImage.data) {
-              return `data:${firstImage.mimetype || 'image/jpeg'};base64,${firstImage.data}`;
-            }
-            // Check if it's a full URL
-            if (typeof firstImage.filename === 'string') {
-              if (firstImage.filename.startsWith('http://') || firstImage.filename.startsWith('https://')) {
-                return firstImage.filename;
-              }
-            }
-            // Use image API endpoint
-            return `${config.BACKEND_URL}/api/reports/${report._id}/image/0`;
-          }
-          return null;
-        };
-
-        const imageUrl = getImageUrl(report);
-        
-        const popupContent = `
-          <div style="min-width: 250px; max-width: 300px;">
-            ${imageUrl ? `
-              <div style="margin-bottom: 8px; border-radius: 8px; overflow: hidden;">
-                <img 
-                  src="${imageUrl}" 
-                  alt="Report Image"
-                  style="width: 100%; height: 150px; object-fit: cover; display: block;"
-                  onerror="this.style.display='none'"
-                />
-              </div>
-            ` : ''}
-            <h4 style="margin: 0 0 8px 0; color: #1f2937; font-size: 14px; font-weight: 600;">
-              ${report.alertType || 'Report'}
-            </h4>
-            <p style="margin: 0 0 6px 0; color: #6b7280; font-size: 12px;">
-              📍 ${report.barangay}, ${report.city}
-            </p>
-            ${report.description ? `
-              <p style="margin: 0 0 8px 0; color: #374151; font-size: 12px; line-height: 1.4;">
-                ${report.description.substring(0, 100)}${report.description.length > 100 ? '...' : ''}
-              </p>
-            ` : ''}
-            <p style="margin: 6px 0 0 0; color: #9ca3af; font-size: 11px;">
-              ${new Date(report.createdAt).toLocaleDateString('en-US', { 
-                month: 'short', 
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-              })}
-            </p>
-          </div>
-        `;
-
-        marker.bindPopup(popupContent);
-        
-        // Add event listeners for popup open/close
-        marker.on('popupopen', () => setIsPopupOpen(true));
-        marker.on('popupclose', () => setIsPopupOpen(false));
-        
+      reports.forEach(report => {
+        const marker = L.marker([report.location.lat, report.location.lng]);
+        marker.bindPopup(`<b>${report.type}</b><br>${report.description}`);
         markersLayerRef.current.addLayer(marker);
       });
+    }
+  }, [reports]);
 
-      // Fit map to show all markers with better centering
-      if (reportsWithLocation.length > 0) {
-        const bounds = L.latLngBounds(
-          reportsWithLocation.map(r => [r.location.lat, r.location.lng])
-        );
-        
-        // Use setTimeout to ensure map is fully loaded
-        setTimeout(() => {
-          if (mapInstanceRef.current) {
-            if (reportsWithLocation.length === 1) {
-              // If only one marker, center on it with good zoom
-              mapInstanceRef.current.setView(
-                [reportsWithLocation[0].location.lat, reportsWithLocation[0].location.lng],
-                14
-              );
-            } else {
-              // Multiple markers - fit all with padding
-              mapInstanceRef.current.fitBounds(bounds, { 
-                padding: [30, 30],
-                maxZoom: 13,
-                animate: true
-              });
-            }
-          }
-        }, 100);
+  // Update map style
+  useEffect(() => {
+    if (tileLayerRef.current) {
+      tileLayerRef.current.setUrl(MAP_TILES[mapConfig.style].url);
+      // Also update attribution
+      const attributionControl = mapInstanceRef.current.attributionControl;
+      if (attributionControl) {
+        attributionControl.remove();
+        L.control.attribution({
+          prefix: false,
+          position: 'bottomright'
+        }).addAttribution(MAP_TILES[mapConfig.style].attribution).addTo(mapInstanceRef.current);
       }
     }
-  }, [reports, searchQuery]); // Re-run when reports or searchQuery changes
+  }, [mapConfig.style]);
 
-  // Map control functions
-  const handleResetView = () => {
-    if (mapInstanceRef.current) {
-      mapInstanceRef.current.setView([10.1617, 122.9747], 10);
-    }
-  };
+  // User location marker
+  useEffect(() => {
+    if (userLocation && mapInstanceRef.current) {
+      const userMarker = L.circleMarker([userLocation.lat, userLocation.lng], {
+        radius: 8,
+        fillColor: "#1a73e8",
+        color: "#fff",
+        weight: 2,
+        opacity: 1,
+        fillOpacity: 1
+      }).addTo(mapInstanceRef.current);
 
-  const handleFitAll = () => {
-    if (mapInstanceRef.current && reports.length > 0) {
-      const reportsWithLocation = reports.filter(r => r.location?.lat && r.location?.lng);
-      if (reportsWithLocation.length > 0) {
-        if (reportsWithLocation.length === 1) {
-          // Center on single marker
-          mapInstanceRef.current.setView(
-            [reportsWithLocation[0].location.lat, reportsWithLocation[0].location.lng],
-            14,
-            { animate: true }
-          );
-        } else {
-          // Fit multiple markers
-          const bounds = L.latLngBounds(
-            reportsWithLocation.map(r => [r.location.lat, r.location.lng])
-          );
-          mapInstanceRef.current.fitBounds(bounds, { 
-            padding: [30, 30], 
-            maxZoom: 13,
-            animate: true
-          });
-        }
-      }
+      const pulsingIcon = L.divIcon({
+          className: 'pulsing-dot',
+          iconSize: [20, 20]
+      });
+      L.marker([userLocation.lat, userLocation.lng], { icon: pulsingIcon }).addTo(mapInstanceRef.current);
     }
-  };
-
-  const handleZoomIn = () => {
-    if (mapInstanceRef.current) {
-      mapInstanceRef.current.zoomIn();
-    }
-  };
-
-  const handleZoomOut = () => {
-    if (mapInstanceRef.current) {
-      mapInstanceRef.current.zoomOut();
-    }
-  };
+  }, [userLocation]);
 
   return (
-    <div className="reports-overview-map-container">
-      <div className="map-header">
-        <div className="map-title">
-          <span className="map-icon">📍</span>
-          <h3>Live Map</h3>
-        </div>
-        <div className="map-stats">
-          {isLoading ? (
-            <span className="loading-text">Loading...</span>
-          ) : error ? (
-            <span className="error-text">Error loading</span>
-          ) : (
-            <span className="reports-count">{reports.length} reports shown</span>
-          )}
-        </div>
-      </div>
-      
-      <div className="map-wrapper">
-        <div 
-          ref={mapRef} 
-          className="reports-overview-map"
-          style={{ height: '400px', width: '100%' }}
-        >
-          {isLoading && (
-            <div className="map-loading">
-              <div className="spinner"></div>
-              <p>Loading map...</p>
-            </div>
-          )}
-        </div>
-
-        {/* Map Controls - Hide when popup is open */}
-        {!isPopupOpen && (
-          <div className="map-controls">
-            <button onClick={handleResetView} className="map-control-btn reset-btn" title="Reset View">
-              <span className="btn-icon">🔄</span>
-              Reset View
-            </button>
-            <button onClick={handleFitAll} className="map-control-btn fit-btn" title="Fit All Markers">
-              <span className="btn-icon">📍</span>
-              Fit All
-            </button>
-            <button onClick={handleZoomIn} className="map-control-btn zoom-btn" title="Zoom In">
-              <span className="btn-icon">+</span>
-              Zoom In
-            </button>
-            <button onClick={handleZoomOut} className="map-control-btn zoom-btn" title="Zoom Out">
-              <span className="btn-icon">−</span>
-              Zoom Out
-            </button>
-          </div>
-        )}
-      </div>
+    <div className="map-overview-container">
+      <div ref={mapRef} className="map-overview-map"></div>
+      <button onClick={locateUser} className="locate-me-btn-overview" aria-label="Center map on your location">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <circle cx="12" cy="12" r="6"></circle>
+            <line x1="22" y1="12" x2="18" y2="12"></line>
+            <line x1="6" y1="12" x2="2" y2="12"></line>
+            <line x1="12" y1="6" x2="12" y2="2"></line>
+            <line x1="12" y1="22" x2="12" y2="18"></line>
+        </svg>
+      </button>
+      {permissionError && <div className="map-permission-error-overview">{permissionError}</div>}
+      {isLoading && <div className="map-loading-overlay">Loading Map...</div>}
+      {error && <div className="map-error-overlay">Error: {error}</div>}
     </div>
   );
 };
 
 export default ReportsOverviewMap;
+

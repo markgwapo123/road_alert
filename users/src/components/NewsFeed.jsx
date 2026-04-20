@@ -333,7 +333,9 @@ const NewsFeed = ({ user }) => {
             alignItems: 'center',
             gap: '3px',
             boxShadow: activeTab === 'reports' ? '0 -2px 8px rgba(0,123,255,0.2)' : 'none',
-            border: activeTab === 'reports' ? '2px solid #007bff' : '2px solid transparent',
+            borderTop: activeTab === 'reports' ? '2px solid #007bff' : '2px solid transparent',
+            borderLeft: activeTab === 'reports' ? '2px solid #007bff' : '2px solid transparent',
+            borderRight: activeTab === 'reports' ? '2px solid #007bff' : '2px solid transparent',
             borderBottom: 'none'
           }}
           onMouseOver={(e) => {
@@ -381,7 +383,9 @@ const NewsFeed = ({ user }) => {
             alignItems: 'center',
             gap: '3px',
             boxShadow: activeTab === 'resolved' ? '0 -2px 8px rgba(16,185,129,0.2)' : 'none',
-            border: activeTab === 'resolved' ? '2px solid #10b981' : '2px solid transparent',
+            borderTop: activeTab === 'resolved' ? '2px solid #10b981' : '2px solid transparent',
+            borderLeft: activeTab === 'resolved' ? '2px solid #10b981' : '2px solid transparent',
+            borderRight: activeTab === 'resolved' ? '2px solid #10b981' : '2px solid transparent',
             borderBottom: 'none'
           }}
           onMouseOver={(e) => {
@@ -429,7 +433,9 @@ const NewsFeed = ({ user }) => {
             alignItems: 'center',
             gap: '3px',
             boxShadow: activeTab === 'news' ? '0 -2px 8px rgba(0,123,255,0.2)' : 'none',
-            border: activeTab === 'news' ? '2px solid #007bff' : '2px solid transparent',
+            borderTop: activeTab === 'news' ? '2px solid #007bff' : '2px solid transparent',
+            borderLeft: activeTab === 'news' ? '2px solid #007bff' : '2px solid transparent',
+            borderRight: activeTab === 'news' ? '2px solid #007bff' : '2px solid transparent',
             borderBottom: 'none'
           }}
           onMouseOver={(e) => {

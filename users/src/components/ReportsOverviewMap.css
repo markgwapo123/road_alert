@@ -158,6 +158,11 @@
   100% { transform: rotate(360deg); }
 }
 
+/* Hide the Leaflet attribution control */
+.leaflet-control-attribution {
+  display: none !important;
+}
+
 /* Mobile responsive */
 @media (max-width: 768px) {
   .map-header {
