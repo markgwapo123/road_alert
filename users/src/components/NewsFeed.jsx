@@ -316,6 +316,7 @@ const NewsFeed = ({ user }) => {
         padding: '0 4px'
       }}>
         <button
+          className="tab-toggle-btn"
           onClick={() => setActiveTab('reports')}
           style={{
             width: '100%',
@@ -329,6 +330,9 @@ const NewsFeed = ({ user }) => {
             fontWeight: '600',
             fontSize: '12px',
             marginBottom: '-2px',
+            userSelect: 'none',
+            WebkitUserSelect: 'none',
+            WebkitTapHighlightColor: 'transparent',
             transition: 'all 0.2s ease',
             display: 'flex',
             flexDirection: 'row',
@@ -368,6 +372,7 @@ const NewsFeed = ({ user }) => {
           </span>
         </button>
         <button
+          className="tab-toggle-btn"
           onClick={() => setActiveTab('resolved')}
           style={{
             width: '100%',
@@ -381,6 +386,9 @@ const NewsFeed = ({ user }) => {
             fontWeight: '600',
             fontSize: '12px',
             marginBottom: '-2px',
+            userSelect: 'none',
+            WebkitUserSelect: 'none',
+            WebkitTapHighlightColor: 'transparent',
             transition: 'all 0.2s ease',
             display: 'flex',
             flexDirection: 'row',
@@ -420,6 +428,7 @@ const NewsFeed = ({ user }) => {
           </span>
         </button>
         <button
+          className="tab-toggle-btn"
           onClick={() => setActiveTab('news')}
           style={{
             width: '100%',
@@ -433,6 +442,9 @@ const NewsFeed = ({ user }) => {
             fontWeight: '600',
             fontSize: '12px',
             marginBottom: '-2px',
+            userSelect: 'none',
+            WebkitUserSelect: 'none',
+            WebkitTapHighlightColor: 'transparent',
             transition: 'all 0.2s ease',
             display: 'flex',
             flexDirection: 'row',
