@@ -1,7 +1,7 @@
 .reports-overview-map-container {
   margin: 1rem 0;
   background: white;
-  border-radius: 12px;
+  border-radius: 10px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   overflow: hidden;
   min-height: 300px; /* Reduced from 500px */
@@ -190,7 +190,7 @@
   }
 
   .reports-overview-map {
-    height: 200px; /* Reduced from 300px for mobile */
+    height: 240px;
   }
 
   .map-header {
