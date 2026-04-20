@@ -1,0 +1,284 @@
+/* BantaydalanScreen.css */
+
+/* --- Color & Font System --- */
+:root {
+    --primary-blue: #2563EB;
+    --success-green: #16A34A;
+    --background-color: #F9FAFB;
+    --surface-color: #FFFFFF;
+    --text-primary: #111827;
+    --text-secondary: #6B7280;
+    --border-color: #E5E7EB;
+    --font-family: 'Inter', 'Roboto', sans-serif;
+}
+
+/* --- Base Container --- */
+.bantaydalan-container {
+    display: flex;
+    justify-content: center;
+    background-color: #E5E7EB;
+    padding: 20px 0;
+    font-family: var(--font-family);
+}
+
+.bantaydalan-screen {
+    width: 375px; /* iPhone X width */
+    max-width: 100%;
+    height: 812px; /* iPhone X height */
+    background-color: var(--background-color);
+    border-radius: 16px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+}
+
+.app-main-content {
+    flex-grow: 1;
+    padding: 0 16px;
+    overflow-y: auto;
+}
+
+/* --- Header --- */
+.app-header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 16px;
+    background-color: var(--surface-color);
+    border-bottom: 1px solid var(--border-color);
+    color: var(--primary-blue);
+}
+
+.app-title {
+    font-size: 18px;
+    font-weight: 700;
+    margin: 0;
+    color: var(--text-primary);
+}
+
+/* --- Search Section --- */
+.search-section {
+    padding: 16px 0;
+}
+
+.search-bar {
+    display: flex;
+    align-items: center;
+    background-color: var(--surface-color);
+    border-radius: 12px;
+    padding: 8px 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.search-bar input {
+    flex-grow: 1;
+    border: none;
+    outline: none;
+    background: transparent;
+    font-size: 14px;
+    margin: 0 8px;
+    color: var(--text-primary);
+}
+
+.search-icon-wrapper,
+.filter-icon-wrapper {
+    color: var(--text-secondary);
+}
+
+.search-chips {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding: 16px 0 0;
+    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none; /* Firefox */
+}
+
+.search-chips::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, Opera */
+}
+
+.chip {
+    background-color: var(--surface-color);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    padding: 6px 12px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+/* --- Segmented Control --- */
+.segmented-control {
+    display: flex;
+    background-color: #E5E7EB;
+    border-radius: 10px;
+    padding: 4px;
+    margin-bottom: 16px;
+}
+
+.segment-button {
+    flex: 1;
+    padding: 8px;
+    border: none;
+    border-radius: 8px;
+    background-color: transparent;
+    color: var(--text-secondary);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.segment-button.active {
+    background-color: var(--primary-blue);
+    color: var(--surface-color);
+    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
+}
+
+.segment-count {
+    margin-left: 4px;
+    font-weight: 700;
+}
+
+/* --- Map Section --- */
+.map-section {
+    background-color: var(--surface-color);
+    border-radius: 16px;
+    padding: 16px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.map-header {
+    margin-bottom: 12px;
+}
+
+.map-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.map-subtitle {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin: 4px 0 0;
+}
+
+.map-view {
+    height: 250px;
+    border-radius: 12px;
+    overflow: hidden;
+    background-color: #E5E7EB;
+}
+
+/* Mock Map */
+.mock-map-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+.map-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-secondary);
+    font-size: 16px;
+}
+.map-controls {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.map-control-button {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: none;
+    background-color: rgba(255, 255, 255, 0.9);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    color: var(--text-primary);
+    font-size: 20px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+
+/* --- Bottom Navigation --- */
+.bottom-navigation {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 80px;
+    background-color: var(--surface-color);
+    box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.05);
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    padding: 0 16px;
+    border-top-left-radius: 16px;
+    border-top-right-radius: 16px;
+}
+
+.nav-item-container {
+    display: flex;
+    justify-content: space-around;
+    flex-grow: 1;
+}
+
+.nav-item {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 8px;
+    color: var(--text-secondary);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    position: relative;
+}
+
+.nav-item.active {
+    color: var(--primary-blue);
+}
+
+.nav-item.active::after {
+    content: '';
+    position: absolute;
+    bottom: -4px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background-color: var(--primary-blue);
+}
+
+.fab {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background-color: var(--primary-blue);
+    color: white;
+    border: none;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    margin-top: -30px; /* Lifts the FAB */
+    z-index: 1;
+}

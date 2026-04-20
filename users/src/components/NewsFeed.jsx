@@ -310,9 +310,9 @@ const NewsFeed = ({ user }) => {
       <div style={{
         display: 'flex',
         gap: '4px',
-        marginBottom: '20px',
+        marginBottom: '10px',
         borderBottom: '2px solid #e9ecef',
-        padding: '0 8px'
+        padding: '0 4px'
       }}>
         <button
           onClick={() => setActiveTab('reports')}
@@ -350,7 +350,7 @@ const NewsFeed = ({ user }) => {
           }}
         >
           <span style={{ fontSize: '18px' }}>🚨</span>
-          <span style={{ fontSize: '11px', whiteSpace: 'nowrap' }}>Mga Alerto</span>
+          <span style={{ fontSize: '11px', whiteSpace: 'nowrap' }}>Alerts</span>
           <span style={{ 
             fontSize: '10px', 
             fontWeight: '700',
