@@ -545,7 +545,10 @@ const NewsFeed = ({ user }) => {
 
       {/* Reports Overview Map - Shows all reports with pins */}
       {(activeTab === 'reports' || activeTab === 'resolved') && (
-        <ReportsOverviewMap searchQuery={searchQuery} />
+        <ReportsOverviewMap
+          searchQuery={searchQuery}
+          statusFilter={activeTab}
+        />
       )}
       
       {/* Reports Map - Only show on Reports and Resolved tabs */}

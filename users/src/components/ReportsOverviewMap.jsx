@@ -29,7 +29,7 @@ const MAP_TILES = {
   }
 };
 
-const ReportsOverviewMap = ({ searchQuery = '' }) => {
+const ReportsOverviewMap = ({ searchQuery = '', statusFilter = 'reports' }) => {
   const { getMapConfig } = useSettings();
   const mapConfig = getMapConfig();
   
@@ -48,11 +48,12 @@ const ReportsOverviewMap = ({ searchQuery = '' }) => {
       try {
         setIsLoading(true);
         const token = localStorage.getItem('token');
+        const statusParam = statusFilter === 'resolved' ? 'resolved' : 'verified';
         
         console.log('🗺️ ReportsOverviewMap: Fetching reports...');
         console.log('🗺️ API URL:', `${config.API_BASE_URL}/reports`);
         
-        const response = await fetch(`${config.API_BASE_URL}/reports?status=verified&limit=100`, {
+        const response = await fetch(`${config.API_BASE_URL}/reports?status=${statusParam}&limit=100`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -120,7 +121,7 @@ const ReportsOverviewMap = ({ searchQuery = '' }) => {
     };
 
     fetchReports();
-  }, []);
+  }, [statusFilter]);
 
   useEffect(() => {
     // Initialize map only once
@@ -300,31 +301,22 @@ const ReportsOverviewMap = ({ searchQuery = '' }) => {
         markersLayerRef.current.addLayer(marker);
       });
 
-      // Fit map to show all markers with better centering
+      // Auto-center on the latest report marker (most recent createdAt)
       if (reportsWithLocation.length > 0) {
-        const bounds = L.latLngBounds(
-          reportsWithLocation.map(r => [r.location.lat, r.location.lng])
-        );
-        
-        // Use setTimeout to ensure map is fully loaded
-        setTimeout(() => {
-          if (mapInstanceRef.current) {
-            if (reportsWithLocation.length === 1) {
-              // If only one marker, center on it with good zoom
-              mapInstanceRef.current.setView(
-                [reportsWithLocation[0].location.lat, reportsWithLocation[0].location.lng],
-                14
-              );
-            } else {
-              // Multiple markers - fit all with padding
-              mapInstanceRef.current.fitBounds(bounds, { 
-                padding: [30, 30],
-                maxZoom: 13,
-                animate: true
-              });
+        const latestReport = [...reportsWithLocation].sort((a, b) => {
+          return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
+        })[0];
+
+        const latestLat = Number(latestReport?.location?.lat);
+        const latestLng = Number(latestReport?.location?.lng);
+
+        if (!Number.isNaN(latestLat) && !Number.isNaN(latestLng)) {
+          setTimeout(() => {
+            if (mapInstanceRef.current) {
+              mapInstanceRef.current.setView([latestLat, latestLng], 14, { animate: true });
             }
-          }
-        }, 100);
+          }, 100);
+        }
       }
     }
   }, [reports, searchQuery]); // Re-run when reports or searchQuery changes
