@@ -491,8 +491,8 @@ const NewsFeed = ({ user }) => {
             type="text"
             className="search-input"
             placeholder={activeTab === 'news'
-              ? "Search news by title, content, or author..."
-              : "Search by city, barangay, or location..." 
+              ? "Search by: city,baranggay"
+              : "Search by: city,baranggay" 
             }
             value={searchQuery}
             onChange={handleSearchChange}
@@ -509,25 +509,6 @@ const NewsFeed = ({ user }) => {
             </button>
           )}
         </div>
-        
-        {/* Quick Search Suggestions */}
-        {!searchQuery && (activeTab === 'reports' || activeTab === 'resolved') && (
-          <div className="search-suggestions">
-            <span className="suggestions-label">Popular searches:</span>
-            {['Kabankalan', 'Bacolod', 'Bago', 'Silay', 'Talisay'].map(city => (
-              <button
-                key={city}
-                className="suggestion-chip"
-                onClick={() => {
-                  setSearchQuery(city);
-                  filterContent(city);
-                }}
-              >
-                {city}
-              </button>
-            ))}
-          </div>
-        )}
         
         {searchQuery && (
           <div className="search-results-info">
