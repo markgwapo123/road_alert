@@ -322,12 +322,6 @@ const ReportsOverviewMap = ({ searchQuery = '', statusFilter = 'reports' }) => {
   }, [reports, searchQuery]); // Re-run when reports or searchQuery changes
 
   // Map control functions
-  const handleResetView = () => {
-    if (mapInstanceRef.current) {
-      mapInstanceRef.current.setView([10.1617, 122.9747], 10);
-    }
-  };
-
   const handleFitAll = () => {
     if (mapInstanceRef.current && reports.length > 0) {
       const reportsWithLocation = reports.filter(r => r.location?.lat && r.location?.lng);
@@ -401,10 +395,6 @@ const ReportsOverviewMap = ({ searchQuery = '', statusFilter = 'reports' }) => {
         {/* Map Controls - Hide when popup is open */}
         {!isPopupOpen && (
           <div className="map-controls">
-            <button onClick={handleResetView} className="map-control-btn reset-btn" title="Reset View">
-              <span className="btn-icon">🔄</span>
-              Reset View
-            </button>
             <button onClick={handleFitAll} className="map-control-btn fit-btn" title="Fit All Markers">
               <span className="btn-icon">📍</span>
               Fit All
