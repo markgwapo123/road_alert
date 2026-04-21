@@ -84,7 +84,7 @@ const ReportsMap = ({ reports }) => {
     // Clear the container first
     mapContainerRef.current.innerHTML = '';
     
-    const newMap = L.map(mapContainerRef.current).setView(
+    const newMap = L.map(mapContainerRef.current, { tap: false, keyboard: false }).setView(
       [defaultCenter.lat, defaultCenter.lng],
       defaultZoom
     );

@@ -41,6 +41,7 @@ const ReportsOverviewMap = ({ searchQuery = '', statusFilter = 'reports' }) => {
   const [reports, setReports] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isPopupOpen, setIsPopupOpen] = useState(false);
 
   // Fetch all verified reports
   useEffect(() => {
@@ -133,6 +134,8 @@ const ReportsOverviewMap = ({ searchQuery = '', statusFilter = 'reports' }) => {
         scrollWheelZoom: false,
         dragging: true,
         touchZoom: true,
+        tap: false,
+        keyboard: false,
         attributionControl: false, // Disable attribution control
       }).setView([center.lat, center.lng], zoom);
 
@@ -161,6 +164,9 @@ const ReportsOverviewMap = ({ searchQuery = '', statusFilter = 'reports' }) => {
       updateLabelVisibilityRef.current = updateLabelVisibility;
       mapInstanceRef.current.on('zoomend', updateLabelVisibility);
       updateLabelVisibility();
+      
+      mapInstanceRef.current.on('popupopen', () => setIsPopupOpen(true));
+      mapInstanceRef.current.on('popupclose', () => setIsPopupOpen(false));
       
       setIsLoading(false);
     }
@@ -359,8 +365,7 @@ const ReportsOverviewMap = ({ searchQuery = '', statusFilter = 'reports' }) => {
         marker.bindPopup(popupContent, {
           autoPan: true,
           keepInView: true,
-          autoPanPaddingTopLeft: [16, 92],
-          autoPanPaddingBottomRight: [16, 96],
+          autoPanPadding: [10, 10],
           offset: [0, -18],
           closeButton: true,
           maxWidth: 340,
@@ -438,7 +443,7 @@ const ReportsOverviewMap = ({ searchQuery = '', statusFilter = 'reports' }) => {
   }, []);
 
   return (
-    <div className="reports-overview-map-container">
+    <div className={`reports-overview-map-container ${isPopupOpen ? 'popup-active' : ''}`}>
       <div className="map-header">
         <div className="map-title">
           <img
@@ -473,16 +478,7 @@ const ReportsOverviewMap = ({ searchQuery = '', statusFilter = 'reports' }) => {
           )}
         </div>
 
-        <div className="map-controls">
-          <button
-            onClick={handleFitAll}
-            className="map-control-btn fit-btn fit-icon-btn"
-            title="Fit All Markers"
-            aria-label="Fit all markers"
-          >
-            <span className="btn-icon">⤢</span>
-          </button>
-        </div>
+
       </div>
     </div>
   );

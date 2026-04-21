@@ -88,11 +88,11 @@
   z-index: 1000;
 }
 
-/* Place Leaflet zoom (+/-) under the fit icon on the right */
+/* Place Leaflet zoom (+/-) at the top right */
 .reports-overview-map-container .leaflet-top.leaflet-left {
   left: auto;
   right: 10px;
-  top: 40px;
+  top: 10px;
 }
 
 .map-control-btn {
@@ -230,7 +230,7 @@
 
   .reports-overview-map-container .leaflet-top.leaflet-left {
     right: 6px;
-    top: 42px;
+    top: 6px;
   }
 
   .map-control-btn {
@@ -353,4 +353,10 @@
   .report-popup-image-wrap {
     height: 110px;
   }
+}
+
+/* Hide map controls when a report is clicked and pop up is active */
+.reports-overview-map-container.popup-active .leaflet-control-zoom,
+.reports-overview-map-container.popup-active .map-controls {
+  display: none !important;
 }
