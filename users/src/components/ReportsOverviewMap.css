@@ -24,7 +24,10 @@
 }
 
 .map-icon {
-  font-size: 1.25rem; /* Reduced from 1.5rem */
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+  display: inline-block;
 }
 
 .map-title h3 {

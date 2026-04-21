@@ -366,7 +366,11 @@ const ReportsOverviewMap = ({ searchQuery = '', statusFilter = 'reports' }) => {
     <div className="reports-overview-map-container">
       <div className="map-header">
         <div className="map-title">
-          <span className="map-icon">📍</span>
+          <img
+            src="https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png"
+            alt="location"
+            className="map-icon"
+          />
           <h3>Live Map</h3>
         </div>
         <div className="map-stats">
