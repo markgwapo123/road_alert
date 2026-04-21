@@ -356,7 +356,6 @@ const NewsFeed = ({ user }) => {
             }
           }}
         >
-          <span style={{ fontSize: '16px', lineHeight: 1 }}>🚨</span>
           <span style={{ fontSize: '13px', whiteSpace: 'nowrap' }}>Alerts</span>
           <span style={{ 
             fontSize: '11px', 
@@ -412,7 +411,6 @@ const NewsFeed = ({ user }) => {
             }
           }}
         >
-          <span style={{ fontSize: '16px', lineHeight: 1 }}>✅</span>
           <span style={{ fontSize: '13px', whiteSpace: 'nowrap' }}>Resolved</span>
           <span style={{ 
             fontSize: '11px', 
@@ -468,7 +466,6 @@ const NewsFeed = ({ user }) => {
             }
           }}
         >
-          <span style={{ fontSize: '16px', lineHeight: 1 }}>📰</span>
           <span style={{ fontSize: '13px', whiteSpace: 'nowrap' }}>News</span>
           <span style={{ 
             fontSize: '11px', 
