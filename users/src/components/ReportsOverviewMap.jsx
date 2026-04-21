@@ -401,13 +401,13 @@ const ReportsOverviewMap = ({ searchQuery = '', statusFilter = 'reports' }) => {
         {/* Map Controls - Hide when popup is open */}
         {!isPopupOpen && (
           <div className="map-controls">
-            <button onClick={handleFitAll} className="map-control-btn fit-btn" title="Fit All Markers">
-              <span className="btn-icon"> <img
-            src="https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png"
-            alt="location"
-            className="map-icon"
-          /></span>
-              Fit All
+            <button
+              onClick={handleFitAll}
+              className="map-control-btn fit-btn fit-icon-btn"
+              title="Fit All Markers"
+              aria-label="Fit all markers"
+            >
+              <span className="btn-icon">⤢</span>
             </button>
          
           </div>

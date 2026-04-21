@@ -73,12 +73,19 @@
 
 .map-controls {
   position: absolute;
-  top: 8px;
-  right: 8px;
+  top: 10px;
+  right: 10px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
   z-index: 1000;
+}
+
+/* Place Leaflet zoom (+/-) under the fit icon on the right */
+.reports-overview-map-container .leaflet-top.leaflet-left {
+  left: auto;
+  right: 10px;
+  top: 40px;
 }
 
 .map-control-btn {
@@ -122,13 +129,22 @@
 }
 
 .fit-btn {
-  background: #10b981;
-  color: white;
-  border: none;
+  background: #ffffff;
+  color: #374151;
+  border: 1px solid #e5e7eb;
+}
+
+.fit-icon-btn {
+  min-width: 0;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  justify-content: center;
 }
 
 .fit-btn:hover {
-  background: #059669;
+  background: #f9fafb;
+  border-color: #cbd5e1;
 }
 
 .zoom-btn {
@@ -136,7 +152,29 @@
 }
 
 .btn-icon {
-  font-size: 14px;
+  font-size: 16px;
+  line-height: 1;
+}
+
+.reports-overview-map-container .leaflet-bar {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+  overflow: hidden;
+}
+
+.reports-overview-map-container .leaflet-control-zoom a {
+  width: 34px;
+  height: 34px;
+  line-height: 34px;
+  background: #ffffff;
+  color: #374151;
+  border-color: #e5e7eb;
+}
+
+.reports-overview-map-container .leaflet-control-zoom a:hover {
+  background: #f9fafb;
+  color: #111827;
 }
 
 .map-loading {
@@ -178,9 +216,14 @@
   }
 
   .map-controls {
-    right: 5px;
-    top: 5px;
-    gap: 4px;
+    right: 6px;
+    top: 6px;
+    gap: 6px;
+  }
+
+  .reports-overview-map-container .leaflet-top.leaflet-left {
+    right: 6px;
+    top: 42px;
   }
 
   .map-control-btn {
