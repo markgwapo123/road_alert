@@ -402,17 +402,14 @@ const ReportsOverviewMap = ({ searchQuery = '', statusFilter = 'reports' }) => {
         {!isPopupOpen && (
           <div className="map-controls">
             <button onClick={handleFitAll} className="map-control-btn fit-btn" title="Fit All Markers">
-              <span className="btn-icon">📍</span>
+              <span className="btn-icon"> <img
+            src="https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png"
+            alt="location"
+            className="map-icon"
+          /></span>
               Fit All
             </button>
-            <button onClick={handleZoomIn} className="map-control-btn zoom-btn" title="Zoom In">
-              <span className="btn-icon">+</span>
-              Zoom In
-            </button>
-            <button onClick={handleZoomOut} className="map-control-btn zoom-btn" title="Zoom Out">
-              <span className="btn-icon">−</span>
-              Zoom Out
-            </button>
+         
           </div>
         )}
       </div>
