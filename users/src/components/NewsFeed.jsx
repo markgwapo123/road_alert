@@ -313,7 +313,7 @@ const NewsFeed = ({ user }) => {
         gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
         gap: '4px',
         marginBottom: '10px',
-        borderBottom: '2px solid #e9ecef',
+        borderBottom: 'none',
         padding: '0 4px'
       }}>
         <button

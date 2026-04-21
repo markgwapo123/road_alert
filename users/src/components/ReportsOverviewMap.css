@@ -1,7 +1,8 @@
 .reports-overview-map-container {
   margin: 0.5rem 0 0.75rem;
   background: white;
-  border-radius: 10px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   overflow: hidden;
   min-height: 300px; /* Reduced from 500px */
@@ -14,7 +15,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: none;
 }
 
 .map-title {
@@ -63,12 +64,15 @@
 
 .map-wrapper {
   position: relative;
+  border-top: none;
 }
 
 .reports-overview-map {
   width: 100%;
   height: 250px; /* Reduced from 400px */
   z-index: 1;
+  border: none;
+  box-sizing: border-box;
 }
 
 .map-controls {
@@ -263,4 +267,28 @@
   position: relative;
   width: 30px;
   height: 30px;
+}
+
+/* Label shown above each marker pin */
+.reports-overview-map-container .report-pin-label {
+  background: rgba(15, 23, 42, 0.92);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 999px;
+  padding: 3px 8px;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.1;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.reports-overview-map-container .report-pin-label:before {
+  display: none;
+}
+
+/* Hide labels in fit/all-visible view, show them when zoomed in */
+.reports-overview-map.labels-hidden .report-pin-label {
+  display: none !important;
 }

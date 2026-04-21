@@ -37,6 +37,7 @@ const ReportsOverviewMap = ({ searchQuery = '', statusFilter = 'reports' }) => {
   const mapInstanceRef = useRef(null);
   const markersLayerRef = useRef(null);
   const tileLayerRef = useRef(null);
+  const updateLabelVisibilityRef = useRef(null);
   const [reports, setReports] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -145,6 +146,22 @@ const ReportsOverviewMap = ({ searchQuery = '', statusFilter = 'reports' }) => {
 
       // Create a layer group for markers
       markersLayerRef.current = L.layerGroup().addTo(mapInstanceRef.current);
+
+      // Hide labels at lower zoom (fit-all view), show when zoomed in
+      const LABEL_SHOW_ZOOM = 14;
+      const updateLabelVisibility = () => {
+        if (!mapInstanceRef.current || !mapRef.current) return;
+        const zoom = mapInstanceRef.current.getZoom();
+        if (zoom >= LABEL_SHOW_ZOOM) {
+          mapRef.current.classList.remove('labels-hidden');
+        } else {
+          mapRef.current.classList.add('labels-hidden');
+        }
+      };
+
+      updateLabelVisibilityRef.current = updateLabelVisibility;
+      mapInstanceRef.current.on('zoomend', updateLabelVisibility);
+      updateLabelVisibility();
       
       setIsLoading(false);
     }
@@ -233,10 +250,28 @@ const ReportsOverviewMap = ({ searchQuery = '', statusFilter = 'reports' }) => {
 
       // Add markers for each report
       reportsWithLocation.forEach(report => {
+        const labelText = (() => {
+          const description = String(report.description || '').trim();
+          if (description) {
+            return description.length > 32 ? `${description.slice(0, 32)}...` : description;
+          }
+          const alertType = String(report.alertType || '').trim();
+          return alertType || 'Report';
+        })();
+
         const marker = L.marker(
           [report.location.lat, report.location.lng],
           { icon: getMarkerIcon(report.alertType) }
         );
+
+        // Show report type label above each pin
+        marker.bindTooltip(labelText, {
+          permanent: true,
+          direction: 'top',
+          offset: [0, -34],
+          className: 'report-pin-label',
+          opacity: 1
+        });
 
         // Create popup content with report image
         const getImageUrl = (report) => {
@@ -303,22 +338,32 @@ const ReportsOverviewMap = ({ searchQuery = '', statusFilter = 'reports' }) => {
         markersLayerRef.current.addLayer(marker);
       });
 
-      // Auto-center on the latest report marker (most recent createdAt)
+      // Center map to show all visible reports
       if (reportsWithLocation.length > 0) {
-        const latestReport = [...reportsWithLocation].sort((a, b) => {
-          return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
-        })[0];
+        setTimeout(() => {
+          if (!mapInstanceRef.current) return;
 
-        const latestLat = Number(latestReport?.location?.lat);
-        const latestLng = Number(latestReport?.location?.lng);
-
-        if (!Number.isNaN(latestLat) && !Number.isNaN(latestLng)) {
-          setTimeout(() => {
-            if (mapInstanceRef.current) {
-              mapInstanceRef.current.setView([latestLat, latestLng], 14, { animate: true });
+          if (reportsWithLocation.length === 1) {
+            const singleLat = Number(reportsWithLocation[0]?.location?.lat);
+            const singleLng = Number(reportsWithLocation[0]?.location?.lng);
+            if (!Number.isNaN(singleLat) && !Number.isNaN(singleLng)) {
+              mapInstanceRef.current.setView([singleLat, singleLng], 14, { animate: true });
             }
-          }, 100);
-        }
+          } else {
+            const bounds = L.latLngBounds(
+              reportsWithLocation.map(r => [r.location.lat, r.location.lng])
+            );
+            mapInstanceRef.current.fitBounds(bounds, {
+              padding: [30, 30],
+              maxZoom: 13,
+              animate: true
+            });
+          }
+
+          if (updateLabelVisibilityRef.current) {
+            updateLabelVisibilityRef.current();
+          }
+        }, 100);
       }
     }
   }, [reports, searchQuery]); // Re-run when reports or searchQuery changes
@@ -346,6 +391,10 @@ const ReportsOverviewMap = ({ searchQuery = '', statusFilter = 'reports' }) => {
             animate: true
           });
         }
+
+        if (updateLabelVisibilityRef.current) {
+          updateLabelVisibilityRef.current();
+        }
       }
     }
   };
@@ -361,6 +410,15 @@ const ReportsOverviewMap = ({ searchQuery = '', statusFilter = 'reports' }) => {
       mapInstanceRef.current.zoomOut();
     }
   };
+
+  // Cleanup label visibility listener
+  useEffect(() => {
+    return () => {
+      if (mapInstanceRef.current && updateLabelVisibilityRef.current) {
+        mapInstanceRef.current.off('zoomend', updateLabelVisibilityRef.current);
+      }
+    };
+  }, []);
 
   return (
     <div className="reports-overview-map-container">
