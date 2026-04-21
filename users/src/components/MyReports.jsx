@@ -173,7 +173,12 @@ const MyReports = ({ token }) => {
                 <div className="report-content">
                   <h3>{report.type || 'Unknown Type'}</h3>
                   <p className="description">{report.description || 'No description available'}</p>
-                  <p className="location">📍 {typeof report.location === 'object' ? (report.location?.address || 'Location not available') : (report.location || 'Location not available')}</p>
+                  <p className="location" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="#dc2626">
+                      <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
+                    </svg> 
+                    {typeof report.location === 'object' ? (report.location?.address || 'Location not available') : (report.location || 'Location not available')}
+                  </p>
                   
                   {/* Status-specific information */}
                   {report.status === 'pending' && (

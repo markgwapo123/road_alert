@@ -4,7 +4,7 @@ import config from '../config/index.js';
 const ReportDetailModal = ({ report, isOpen, onClose, reportUser }) => {
   const [imageModalOpen, setImageModalOpen] = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);
-  
+
   if (!isOpen || !report) return null;
 
   // Debug: Log reportUser data to see what's available
@@ -71,11 +71,11 @@ const ReportDetailModal = ({ report, isOpen, onClose, reportUser }) => {
 
   const handleImageClick = (e) => {
     e.stopPropagation();
-    
+
     if (report.images && report.images.length > 0) {
       const imageData = report.images[0];
       let imageUrl;
-      
+
       if (imageData?.data) {
         imageUrl = `data:${imageData.mimetype};base64,${imageData.data}`;
       } else {
@@ -94,14 +94,14 @@ const ReportDetailModal = ({ report, isOpen, onClose, reportUser }) => {
           imageUrl = `${config.BACKEND_URL}/api/reports/${report._id}/image/0`;
         }
       }
-      
+
       setSelectedImage(imageUrl);
       setImageModalOpen(true);
     }
   };
 
   return (
-    <div 
+    <div
       onClick={handleBackdropClick}
       style={{
         position: 'fixed',
@@ -132,11 +132,12 @@ const ReportDetailModal = ({ report, isOpen, onClose, reportUser }) => {
       >
         {/* Header */}
         <div style={{
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-          color: 'white',
+          background: 'white',
+          color: 'black',
           padding: '24px',
           borderRadius: '12px 12px 0 0',
-          position: 'relative'
+          position: 'relative',
+          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
         }}>
           <button
             onClick={onClose}
@@ -144,7 +145,7 @@ const ReportDetailModal = ({ report, isOpen, onClose, reportUser }) => {
               position: 'absolute',
               top: '16px',
               right: '16px',
-              background: 'rgba(255, 255, 255, 0.2)',
+              background: 'rgba(0, 0, 0, 0.05)',
               border: 'none',
               borderRadius: '50%',
               width: '32px',
@@ -152,43 +153,39 @@ const ReportDetailModal = ({ report, isOpen, onClose, reportUser }) => {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: 'white',
+              color: '#374151',
               fontSize: '18px',
               cursor: 'pointer',
               transition: 'background-color 0.2s'
             }}
-            onMouseOver={(e) => e.target.style.backgroundColor = 'rgba(255, 255, 255, 0.3)'}
-            onMouseOut={(e) => e.target.style.backgroundColor = 'rgba(255, 255, 255, 0.2)'}
+            onMouseOver={(e) => e.target.style.backgroundColor = 'rgba(0, 0, 0, 0.1)'}
+            onMouseOut={(e) => e.target.style.backgroundColor = 'rgba(0, 0, 0, 0.05)'}
           >
             ×
           </button>
-          
-          <div style={{ display: 'flex', alignItems: 'center', marginBottom: '12px' }}>
+
+          <div style={{ display: 'flex', alignItems: 'center' }}>
             <span style={{ fontSize: '24px', marginRight: '8px' }}>
               {getTypeIcon(report.type)}
             </span>
-            <h2 style={{ 
-              margin: 0, 
-              fontSize: '20px', 
+            <h2 style={{
+              margin: 0,
+              fontSize: '20px',
               fontWeight: '600',
               textTransform: 'capitalize'
             }}>
               {report.type} Report
             </h2>
           </div>
-          
-          <p style={{ margin: 0, fontSize: '14px', opacity: 0.9 }}>
-            Report #{report._id?.slice(-6) || 'N/A'}
-          </p>
         </div>
 
         {/* Content */}
         <div style={{ padding: '24px' }}>
-          
+
           {/* Status and Priority */}
-          <div style={{ 
-            display: 'flex', 
-            gap: '12px', 
+          <div style={{
+            display: 'flex',
+            gap: '12px',
             marginBottom: '20px',
             flexWrap: 'wrap'
           }}>
@@ -232,7 +229,7 @@ const ReportDetailModal = ({ report, isOpen, onClose, reportUser }) => {
               </h3>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                 {reportUser.profile?.profileImage ? (
-                  <img 
+                  <img
                     src={reportUser.profile.profileImage.startsWith('data:') ? reportUser.profile.profileImage : `${config.BACKEND_URL}${reportUser.profile.profileImage}`}
                     alt="Reporter"
                     style={{
@@ -290,13 +287,23 @@ const ReportDetailModal = ({ report, isOpen, onClose, reportUser }) => {
 
           {/* Location */}
           <div style={{ marginBottom: '20px' }}>
-            <h3 style={{ margin: '0 0 12px 0', color: '#1f2937', fontSize: '16px', fontWeight: '600' }}>
-              📍 Location
+            <h3 style={{ 
+              margin: '0 0 12px 0', 
+              color: '#1f2937', 
+              fontSize: '16px', 
+              fontWeight: '600',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}>
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="#dc2626">
+                <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
+              </svg> Location
             </h3>
-            <div style={{ 
-              background: '#f8fafc', 
-              padding: '12px', 
-              borderRadius: '8px', 
+            <div style={{
+              background: '#f8fafc',
+              padding: '12px',
+              borderRadius: '8px',
               border: '1px solid #e2e8f0'
             }}>
               <p style={{ margin: '0 0 8px 0', fontWeight: '500', color: '#1f2937' }}>
@@ -347,7 +354,7 @@ const ReportDetailModal = ({ report, isOpen, onClose, reportUser }) => {
                 </button>
               </div>
             </div>
-            
+
             {/* Embedded Map */}
             {report.location?.coordinates?.latitude && report.location?.coordinates?.longitude && (
               <div style={{
@@ -392,15 +399,15 @@ const ReportDetailModal = ({ report, isOpen, onClose, reportUser }) => {
           {/* Images - UPDATED WITH LARGER SIZE */}
           {report.images && report.images.length > 0 && (
             <div style={{ marginBottom: '20px' }}>
-              <h3 style={{ 
-                margin: '0 0 12px 0', 
-                color: '#1f2937', 
-                fontSize: '16px', 
-                fontWeight: '600' 
+              <h3 style={{
+                margin: '0 0 12px 0',
+                color: '#1f2937',
+                fontSize: '16px',
+                fontWeight: '600'
               }}>
                 📷 Images ({report.images.length})
               </h3>
-              <div style={{ 
+              <div style={{
                 border: '1px solid #e5e7eb',
                 borderRadius: '8px',
                 overflow: 'hidden',
@@ -412,7 +419,7 @@ const ReportDetailModal = ({ report, isOpen, onClose, reportUser }) => {
                 alignItems: 'center',
                 justifyContent: 'center'
               }}>
-                <img 
+                <img
                   src={(() => {
                     const imageData = report.images[0];
                     // If it's a Base64 data URL, use it directly
@@ -478,10 +485,10 @@ const ReportDetailModal = ({ report, isOpen, onClose, reportUser }) => {
           {/* Admin Feedback */}
           {report.status === 'resolved' && report.adminFeedback && (
             <div style={{ marginBottom: '20px' }}>
-              <h3 style={{ 
-                margin: '0 0 12px 0', 
-                color: '#1e40af', 
-                fontSize: '16px', 
+              <h3 style={{
+                margin: '0 0 12px 0',
+                color: '#1e40af',
+                fontSize: '16px',
                 fontWeight: '600',
                 display: 'flex',
                 alignItems: 'center',
@@ -504,7 +511,7 @@ const ReportDetailModal = ({ report, isOpen, onClose, reportUser }) => {
                 }}>
                   {report.adminFeedback}
                 </div>
-                
+
                 {/* Admin Feedback Image */}
                 {report.evidencePhoto && (
                   <div>
@@ -516,7 +523,7 @@ const ReportDetailModal = ({ report, isOpen, onClose, reportUser }) => {
                     }}>
                       📸 Resolution Image
                     </div>
-                    <div style={{ 
+                    <div style={{
                       border: '1px solid #bfdbfe',
                       borderRadius: '8px',
                       overflow: 'hidden',
@@ -591,28 +598,28 @@ const ReportDetailModal = ({ report, isOpen, onClose, reportUser }) => {
                   </div>
                 )}
               </div>
-              
+
               {/* Resolved Date */}
               {report.resolvedAt && (
-                <div style={{ 
-                  background: '#f8fafc', 
-                  padding: '12px', 
+                <div style={{
+                  background: '#f8fafc',
+                  padding: '12px',
                   borderRadius: '8px',
                   border: '1px solid #bfdbfe',
                   textAlign: 'center',
                   marginTop: '12px'
                 }}>
-                  <div style={{ 
-                    fontSize: '13px', 
+                  <div style={{
+                    fontSize: '13px',
                     color: '#1e40af',
-                    marginBottom: '4px' 
+                    marginBottom: '4px'
                   }}>
                     Resolved on
                   </div>
-                  <div style={{ 
-                    fontSize: '15px', 
+                  <div style={{
+                    fontSize: '15px',
                     fontWeight: '600',
-                    color: '#1f2937' 
+                    color: '#1f2937'
                   }}>
                     {formatDate(report.resolvedAt)}
                   </div>
@@ -622,24 +629,24 @@ const ReportDetailModal = ({ report, isOpen, onClose, reportUser }) => {
           )}
 
           {/* Timestamp */}
-          <div style={{ 
-            background: '#f9fafb', 
-            padding: '16px', 
+          <div style={{
+            background: '#f9fafb',
+            padding: '16px',
             borderRadius: '8px',
             border: '1px solid #e2e8f0',
             textAlign: 'center'
           }}>
-            <div style={{ 
-              fontSize: '14px', 
+            <div style={{
+              fontSize: '14px',
               color: '#6b7280',
-              marginBottom: '4px' 
+              marginBottom: '4px'
             }}>
               Reported on
             </div>
-            <div style={{ 
-              fontSize: '16px', 
+            <div style={{
+              fontSize: '16px',
               fontWeight: '600',
-              color: '#1f2937' 
+              color: '#1f2937'
             }}>
               {formatDate(report.createdAt)}
             </div>
@@ -650,7 +657,7 @@ const ReportDetailModal = ({ report, isOpen, onClose, reportUser }) => {
 
       {/* Image Lightbox Modal */}
       {imageModalOpen && selectedImage && (
-        <div 
+        <div
           style={{
             position: 'fixed',
             top: 0,
@@ -693,7 +700,7 @@ const ReportDetailModal = ({ report, isOpen, onClose, reportUser }) => {
             >
               ×
             </button>
-            
+
             {/* Image */}
             <img
               src={selectedImage}
@@ -710,7 +717,7 @@ const ReportDetailModal = ({ report, isOpen, onClose, reportUser }) => {
                 e.target.style.display = 'none';
               }}
             />
-            
+
             {/* Instructions */}
             <div style={{
               position: 'absolute',

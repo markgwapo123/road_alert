@@ -62,18 +62,18 @@ const NewsFeed = ({ user }) => {
     console.log('- Is Mobile:', config.IS_MOBILE);
     console.log('- Is Web:', config.IS_WEB);
     console.log('- User Agent:', navigator.userAgent);
-    
+
     // Test backend connectivity
     const testBackendConnection = async () => {
       try {
         const response = await fetch(`${config.BACKEND_URL}/api/health`);
         console.log('🌐 Backend health check:', response.status, response.ok ? '✅' : '❌');
-        
+
         // Test uploads directory
         const uploadsResponse = await fetch(`${config.BACKEND_URL}/api/debug/uploads`);
         const uploadsData = await uploadsResponse.json();
         console.log('📁 Uploads directory debug:', uploadsData);
-        
+
         if (uploadsData.success && uploadsData.files?.length > 0) {
           console.log('📷 Sample files in uploads:', uploadsData.files.slice(0, 3));
         }
@@ -82,7 +82,7 @@ const NewsFeed = ({ user }) => {
       }
     };
     testBackendConnection();
-    
+
     const fetchData = async () => {
       try {
         // Fetch both reports and news posts
@@ -101,20 +101,20 @@ const NewsFeed = ({ user }) => {
             }
           })
         ]);
-        
+
         const reportsData = reportsResponse.data.data || [];
         const newsData = newsResponse.data.posts || [];
-        
+
         // Separate active (verified) and resolved reports
         const activeReports = reportsData.filter(r => r.status === 'verified');
         const resolvedReportsData = reportsData.filter(r => r.status === 'resolved');
-        
+
         console.log('📊 Reports loaded:', {
           total: reportsData.length,
           active: activeReports.length,
           resolved: resolvedReportsData.length
         });
-        
+
         setReports(activeReports);
         setResolvedReports(resolvedReportsData);
         setNewsPosts(newsData);
@@ -142,7 +142,7 @@ const NewsFeed = ({ user }) => {
     }
 
     const searchTerm = query.toLowerCase().trim();
-    
+
     // Filter active reports
     const filteredReportsData = reports.filter(report => {
       const city = report.city?.toLowerCase() || '';
@@ -151,13 +151,13 @@ const NewsFeed = ({ user }) => {
       const address = report.location?.address?.toLowerCase() || '';
       const description = report.description?.toLowerCase() || '';
 
-      return city.includes(searchTerm) || 
-             barangay.includes(searchTerm) || 
-             province.includes(searchTerm) ||
-             address.includes(searchTerm) ||
-             description.includes(searchTerm);
+      return city.includes(searchTerm) ||
+        barangay.includes(searchTerm) ||
+        province.includes(searchTerm) ||
+        address.includes(searchTerm) ||
+        description.includes(searchTerm);
     });
-    
+
     // Filter resolved reports
     const filteredResolvedData = resolvedReports.filter(report => {
       const city = report.city?.toLowerCase() || '';
@@ -166,11 +166,11 @@ const NewsFeed = ({ user }) => {
       const address = report.location?.address?.toLowerCase() || '';
       const description = report.description?.toLowerCase() || '';
 
-      return city.includes(searchTerm) || 
-             barangay.includes(searchTerm) || 
-             province.includes(searchTerm) ||
-             address.includes(searchTerm) ||
-             description.includes(searchTerm);
+      return city.includes(searchTerm) ||
+        barangay.includes(searchTerm) ||
+        province.includes(searchTerm) ||
+        address.includes(searchTerm) ||
+        description.includes(searchTerm);
     });
 
     // Filter news posts
@@ -180,10 +180,10 @@ const NewsFeed = ({ user }) => {
       const tags = post.tags?.join(' ').toLowerCase() || '';
       const authorName = post.authorName?.toLowerCase() || '';
 
-      return title.includes(searchTerm) || 
-             content.includes(searchTerm) ||
-             tags.includes(searchTerm) ||
-             authorName.includes(searchTerm);
+      return title.includes(searchTerm) ||
+        content.includes(searchTerm) ||
+        tags.includes(searchTerm) ||
+        authorName.includes(searchTerm);
     });
 
     setFilteredReports(filteredReportsData);
@@ -213,18 +213,45 @@ const NewsFeed = ({ user }) => {
   };
 
   const getPriorityStyle = (priority) => {
-    switch (priority) {
-      case 'urgent':
-        return { backgroundColor: '#dc2626', color: '#ffffff' };
-      case 'high':
-        return { backgroundColor: '#ea580c', color: '#ffffff' };
-      case 'normal':
-        return { backgroundColor: '#2563eb', color: '#ffffff' };
-      case 'low':
-        return { backgroundColor: '#16a34a', color: '#ffffff' };
-      default:
-        return { backgroundColor: '#6b7280', color: '#ffffff' };
-    }
+    const priorityLower = (priority || '').toLowerCase();
+    const colors = {
+      urgent: '#dc2626',
+      high: '#ea580c',
+      normal: '#2563eb',
+      medium: '#f59e0b',
+      low: '#10b981'
+    };
+    const color = colors[priorityLower] || '#6b7280';
+    return {
+      backgroundColor: `${color}15`,
+      color: color,
+      border: `1px solid ${color}40`,
+      borderRadius: '7px',
+      padding: '4px 10px',
+      fontSize: '11px',
+      fontWeight: '600',
+      textTransform: 'uppercase'
+    };
+  };
+
+  const getSeverityStyle = (severity) => {
+    const severityLower = (severity || '').toLowerCase();
+    const colors = {
+      high: '#dc2626',
+      medium: '#f59e0b',
+      low: '#10b981'
+    };
+    const color = colors[severityLower] || '#6b7280';
+    return {
+      backgroundColor: `${color}15`,
+      color: color,
+      border: `1px solid ${color}40`,
+      borderRadius: '5px',
+      padding: '4px 10px',
+      fontSize: '11px',
+      fontWeight: '600',
+      textTransform: 'uppercase'
+    };
   };
 
   const getTypeIcon = (type) => {
@@ -255,7 +282,7 @@ const NewsFeed = ({ user }) => {
   const handleReportClick = async (report) => {
     setSelectedReport(report);
     setIsModalOpen(true);
-    
+
     // Use the populated user data directly from the report
     if (report.reportedBy) {
       setSelectedReportUser(report.reportedBy);
@@ -267,7 +294,7 @@ const NewsFeed = ({ user }) => {
   const handleNewsPostClick = async (post) => {
     setSelectedNewsPost(post);
     setIsNewsModalOpen(true);
-    
+
     // Track post view with user ID for unique counting
     try {
       const payload = user ? { userId: user._id } : {};
@@ -306,7 +333,7 @@ const NewsFeed = ({ user }) => {
 
   return (
     <div className="news-feed">
-      
+
       {/* Tabs */}
       <div style={{
         display: 'grid',
@@ -358,8 +385,8 @@ const NewsFeed = ({ user }) => {
           }}
         >
           <span style={{ fontSize: '13px', whiteSpace: 'nowrap' }}>Alerts</span>
-          <span style={{ 
-            fontSize: '11px', 
+          <span style={{
+            fontSize: '11px',
             fontWeight: '700',
             backgroundColor: activeTab === 'reports' ? 'rgba(255,255,255,0.2)' : '#007bff',
             color: 'white',
@@ -413,8 +440,8 @@ const NewsFeed = ({ user }) => {
           }}
         >
           <span style={{ fontSize: '13px', whiteSpace: 'nowrap' }}>Resolved</span>
-          <span style={{ 
-            fontSize: '11px', 
+          <span style={{
+            fontSize: '11px',
             fontWeight: '700',
             backgroundColor: activeTab === 'resolved' ? 'rgba(255,255,255,0.2)' : '#10b981',
             color: 'white',
@@ -468,8 +495,8 @@ const NewsFeed = ({ user }) => {
           }}
         >
           <span style={{ fontSize: '13px', whiteSpace: 'nowrap' }}>News</span>
-          <span style={{ 
-            fontSize: '11px', 
+          <span style={{
+            fontSize: '11px',
             fontWeight: '700',
             backgroundColor: activeTab === 'news' ? 'rgba(255,255,255,0.2)' : '#007bff',
             color: 'white',
@@ -482,7 +509,7 @@ const NewsFeed = ({ user }) => {
           </span>
         </button>
       </div>
-      
+
       {/* Search Bar */}
       <div className="search-container">
         <div className="search-input-wrapper">
@@ -492,13 +519,13 @@ const NewsFeed = ({ user }) => {
             className="search-input"
             placeholder={activeTab === 'news'
               ? "Search by: city,baranggay"
-              : "Search by: city,baranggay" 
+              : "Search by: city,baranggay"
             }
             value={searchQuery}
             onChange={handleSearchChange}
           />
           {searchQuery && (
-            <button 
+            <button
               className="clear-search"
               onClick={() => {
                 setSearchQuery('');
@@ -509,14 +536,14 @@ const NewsFeed = ({ user }) => {
             </button>
           )}
         </div>
-        
+
         {searchQuery && (
           <div className="search-results-info">
-            {activeTab === 'reports' 
+            {activeTab === 'reports'
               ? `${filteredReports.length} report${filteredReports.length !== 1 ? 's' : ''} found`
               : activeTab === 'resolved'
-              ? `${filteredResolvedReports.length} resolved report${filteredResolvedReports.length !== 1 ? 's' : ''} found`
-              : `${filteredNews.length} news item${filteredNews.length !== 1 ? 's' : ''} found`
+                ? `${filteredResolvedReports.length} resolved report${filteredResolvedReports.length !== 1 ? 's' : ''} found`
+                : `${filteredNews.length} news item${filteredNews.length !== 1 ? 's' : ''} found`
             } for "{searchQuery}"
           </div>
         )}
@@ -529,7 +556,7 @@ const NewsFeed = ({ user }) => {
           statusFilter={activeTab}
         />
       )}
-      
+
       {/* Reports Map - Only show on Reports and Resolved tabs */}
       {activeTab === 'reports' && filteredReports.length > 0 && (
         <ReportsMap reports={filteredReports} />
@@ -537,7 +564,7 @@ const NewsFeed = ({ user }) => {
       {activeTab === 'resolved' && filteredResolvedReports.length > 0 && (
         <ReportsMap reports={filteredResolvedReports} />
       )}
-      
+
       {/* Content Area */}
       {activeTab === 'resolved' ? (
         // Resolved Reports Tab Content
@@ -555,7 +582,7 @@ const NewsFeed = ({ user }) => {
             <div style={{ fontSize: '24px', marginBottom: '10px' }}>
               {searchQuery ? '🔍' : '✅'}
             </div>
-            {searchQuery 
+            {searchQuery
               ? `No resolved reports found for "${searchQuery}"`
               : 'No resolved reports yet'
             }
@@ -569,7 +596,7 @@ const NewsFeed = ({ user }) => {
           <div className="news-feed-grid">
             {filteredResolvedReports.map((report) => {
               const alertStyle = ALERT_COLORS[report.type] || ALERT_COLORS.info;
-              
+
               return (
                 <div
                   key={report._id}
@@ -636,13 +663,13 @@ const NewsFeed = ({ user }) => {
                       </div>
                     </div>
                   )}
-                  
+
                   {/* Compact Content Section */}
                   <div className="report-content">
                     <p className="report-description">
                       {report.description}
                     </p>
-                    
+
                     {/* Location Information */}
                     <div className="report-location-info" style={{
                       display: 'flex',
@@ -661,13 +688,13 @@ const NewsFeed = ({ user }) => {
                           .join(', ')}
                       </span>
                     </div>
-                    
+
                     {/* Mobile-optimized Media Section */}
                     <div className="report-media">
                       {/* Report Image */}
                       <div className="report-image-container">
                         {report.images && report.images.length > 0 ? (
-                          <img 
+                          <img
                             src={(() => {
                               const imageData = report.images[0];
                               console.log('🖼️ Image Data Debug:', {
@@ -722,13 +749,13 @@ const NewsFeed = ({ user }) => {
                           </div>
                         )}
                       </div>
-                      
+
                       {/* Compact Map */}
                       <div className="report-map-container">
                         {report.location?.coordinates?.latitude && report.location?.coordinates?.longitude ? (
-                          <ReportCardMap 
-                            lat={report.location.coordinates.latitude} 
-                            lng={report.location.coordinates.longitude} 
+                          <ReportCardMap
+                            lat={report.location.coordinates.latitude}
+                            lng={report.location.coordinates.longitude}
                           />
                         ) : (
                           <div className="report-map-placeholder">
@@ -739,7 +766,7 @@ const NewsFeed = ({ user }) => {
                       </div>
                     </div>
                   </div>
-                    
+
                   {/* Compact Footer */}
                   <div className="report-card-footer">
                     <div className="report-author">
@@ -759,7 +786,7 @@ const NewsFeed = ({ user }) => {
                           fontSize: '12px'
                         }}>
                           {report.reportedBy?.profile?.profileImage ? (
-                            <img 
+                            <img
                               src={report.reportedBy.profile.profileImage.startsWith('data:') ? report.reportedBy.profile.profileImage : `${config.BACKEND_URL}${report.reportedBy.profile.profileImage}`}
                               alt="Reporter"
                               style={{
@@ -780,11 +807,11 @@ const NewsFeed = ({ user }) => {
                         <span>{report.reportedBy?.name || report.reportedBy?.username || 'Anonymous'}</span>
                       </div>
                     </div>
-                    <div className="report-severity-badge" style={{
-                      background: alertStyle.background === '#fbbf24' ? '#000' : alertStyle.background,
-                      color: alertStyle.background === '#fbbf24' ? '#fff' : 'white'
-                    }}>
-                      {report.severity}
+                    <div
+                      className="report-severity-badge"
+                      style={getSeverityStyle(report.severity)}
+                    >
+                      {report.severity} PRIORITY
                     </div>
                   </div>
                 </div>
@@ -827,7 +854,7 @@ const NewsFeed = ({ user }) => {
           <div className="news-feed-grid">
             {filteredReports.map((report) => {
               const alertStyle = ALERT_COLORS[report.type] || ALERT_COLORS.info;
-              
+
               return (
                 <div
                   key={report._id}
@@ -896,14 +923,13 @@ const NewsFeed = ({ user }) => {
                       </div>
                     </div>
                   )}
-                  
+
                   {/* Compact Content Section */}
                   <div className="report-content">
                     <p className="report-description">
                       {report.description}
                     </p>
-                    
-                    {/* Location Information */}
+
                     <div className="report-location-info" style={{
                       display: 'flex',
                       alignItems: 'center',
@@ -914,20 +940,22 @@ const NewsFeed = ({ user }) => {
                       borderRadius: '6px',
                       fontSize: '13px'
                     }}>
-                      <span style={{ fontSize: '14px' }}>📍</span>
+                      <svg viewBox="0 0 24 24" width="16" height="16" fill="#dc2626">
+                        <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
+                      </svg>
                       <span style={{ color: '#495057', fontWeight: '500' }}>
                         {[report.barangay, report.city, report.province]
                           .filter(Boolean)
                           .join(', ')}
                       </span>
                     </div>
-                    
+
                     {/* Mobile-optimized Media Section */}
                     <div className="report-media">
                       {/* Report Image */}
                       <div className="report-image-container">
                         {report.images && report.images.length > 0 ? (
-                          <img 
+                          <img
                             src={(() => {
                               const imageData = report.images[0];
                               console.log('🖼️ Image Data Debug:', {
@@ -982,13 +1010,13 @@ const NewsFeed = ({ user }) => {
                           </div>
                         )}
                       </div>
-                      
+
                       {/* Compact Map */}
                       <div className="report-map-container">
                         {report.location?.coordinates?.latitude && report.location?.coordinates?.longitude ? (
-                          <ReportCardMap 
-                            lat={report.location.coordinates.latitude} 
-                            lng={report.location.coordinates.longitude} 
+                          <ReportCardMap
+                            lat={report.location.coordinates.latitude}
+                            lng={report.location.coordinates.longitude}
                           />
                         ) : (
                           <div className="report-map-placeholder">
@@ -999,7 +1027,7 @@ const NewsFeed = ({ user }) => {
                       </div>
                     </div>
                   </div>
-                    
+
                   {/* Compact Footer */}
                   <div className="report-card-footer">
                     <div className="report-author">
@@ -1019,7 +1047,7 @@ const NewsFeed = ({ user }) => {
                           fontSize: '12px'
                         }}>
                           {report.reportedBy?.profile?.profileImage ? (
-                            <img 
+                            <img
                               src={report.reportedBy.profile.profileImage.startsWith('data:') ? report.reportedBy.profile.profileImage : `${config.BACKEND_URL}${report.reportedBy.profile.profileImage}`}
                               alt="Reporter"
                               style={{
@@ -1040,11 +1068,11 @@ const NewsFeed = ({ user }) => {
                         <span>{report.reportedBy?.name || report.reportedBy?.username || 'Anonymous'}</span>
                       </div>
                     </div>
-                    <div className="report-severity-badge" style={{
-                      background: alertStyle.background === '#fbbf24' ? '#000' : alertStyle.background,
-                      color: alertStyle.background === '#fbbf24' ? '#fff' : 'white'
-                    }}>
-                      {report.severity}
+                    <div
+                      className="report-severity-badge"
+                      style={getSeverityStyle(report.severity)}
+                    >
+                      {report.severity} PRIORITY
                     </div>
                   </div>
                 </div>
@@ -1087,7 +1115,7 @@ const NewsFeed = ({ user }) => {
           <div className="news-feed-grid">
             {filteredNews.map((post) => {
               const priorityStyle = getPriorityStyle(post.priority);
-              
+
               return (
                 <div
                   key={post._id}
@@ -1104,7 +1132,7 @@ const NewsFeed = ({ user }) => {
                       {formatDate(post.publishDate)}
                     </div>
                   </div>
-                  
+
                   {/* News Content */}
                   <div className="report-content">
                     <h3 style={{
@@ -1115,7 +1143,7 @@ const NewsFeed = ({ user }) => {
                     }}>
                       {post.title}
                     </h3>
-                    
+
                     <p className="report-description" style={{
                       fontSize: '14px',
                       lineHeight: '1.5',
@@ -1123,7 +1151,7 @@ const NewsFeed = ({ user }) => {
                     }}>
                       {post.content}
                     </p>
-                    
+
                     {/* Attachments */}
                     {post.attachments && post.attachments.length > 0 && (
                       <div className="news-attachments" style={{
@@ -1179,7 +1207,7 @@ const NewsFeed = ({ user }) => {
                         ))}
                       </div>
                     )}
-                    
+
                     {/* Tags */}
                     {post.tags && post.tags.length > 0 && (
                       <div style={{
@@ -1205,14 +1233,14 @@ const NewsFeed = ({ user }) => {
                       </div>
                     )}
                   </div>
-                    
+
                   {/* News Footer */}
                   <div className="report-card-footer">
                     <div className="report-author">
                       By: {post.authorName}
                     </div>
-                    <div className="report-severity-badge" style={priorityStyle}>
-                      {post.priority.toUpperCase()}
+                    <div className="report-severity-badge" style={getPriorityStyle(post.priority)}>
+                      {post.priority.toUpperCase()} PRIORITY
                     </div>
                   </div>
                 </div>
@@ -1221,7 +1249,7 @@ const NewsFeed = ({ user }) => {
           </div>
         )
       )}
-      
+
       {/* Report Detail Modal */}
       <ReportDetailModal
         report={selectedReport}
