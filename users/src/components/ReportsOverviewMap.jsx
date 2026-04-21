@@ -41,7 +41,6 @@ const ReportsOverviewMap = ({ searchQuery = '', statusFilter = 'reports' }) => {
   const [reports, setReports] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [isPopupOpen, setIsPopupOpen] = useState(false); // Track popup state
 
   // Fetch all verified reports
   useEffect(() => {
@@ -248,6 +247,31 @@ const ReportsOverviewMap = ({ searchQuery = '', statusFilter = 'reports' }) => {
         });
       };
 
+      const recenterToVisibleReports = () => {
+        if (!mapInstanceRef.current || reportsWithLocation.length === 0) return;
+
+        if (reportsWithLocation.length === 1) {
+          const singleLat = Number(reportsWithLocation[0]?.location?.lat);
+          const singleLng = Number(reportsWithLocation[0]?.location?.lng);
+          if (!Number.isNaN(singleLat) && !Number.isNaN(singleLng)) {
+            mapInstanceRef.current.setView([singleLat, singleLng], 14, { animate: true });
+          }
+        } else {
+          const bounds = L.latLngBounds(
+            reportsWithLocation.map(r => [r.location.lat, r.location.lng])
+          );
+          mapInstanceRef.current.fitBounds(bounds, {
+            padding: [30, 30],
+            maxZoom: 13,
+            animate: true
+          });
+        }
+
+        if (updateLabelVisibilityRef.current) {
+          updateLabelVisibilityRef.current();
+        }
+      };
+
       // Add markers for each report
       reportsWithLocation.forEach(report => {
         const labelText = (() => {
@@ -296,17 +320,19 @@ const ReportsOverviewMap = ({ searchQuery = '', statusFilter = 'reports' }) => {
         const imageUrl = getImageUrl(report);
         
         const popupContent = `
-          <div style="min-width: 250px; max-width: 300px;">
+          <div class="report-popup-content-root">
             ${imageUrl ? `
-              <div style="margin-bottom: 8px; border-radius: 8px; overflow: hidden;">
+              <div class="report-popup-image-wrap">
                 <img 
                   src="${imageUrl}" 
                   alt="Report Image"
-                  style="width: 100%; height: 150px; object-fit: cover; display: block;"
+                  class="report-popup-image"
+                  style="width: 100%; object-fit: cover; display: block;"
                   onerror="this.style.display='none'"
                 />
               </div>
             ` : ''}
+            <div class="report-popup-text">
             <h4 style="margin: 0 0 8px 0; color: #1f2937; font-size: 14px; font-weight: 600;">
               ${report.alertType || 'Report'}
             </h4>
@@ -326,14 +352,26 @@ const ReportsOverviewMap = ({ searchQuery = '', statusFilter = 'reports' }) => {
                 minute: '2-digit'
               })}
             </p>
+            </div>
           </div>
         `;
 
-        marker.bindPopup(popupContent);
-        
-        // Add event listeners for popup open/close
-        marker.on('popupopen', () => setIsPopupOpen(true));
-        marker.on('popupclose', () => setIsPopupOpen(false));
+        marker.bindPopup(popupContent, {
+          autoPan: true,
+          keepInView: true,
+          autoPanPaddingTopLeft: [16, 92],
+          autoPanPaddingBottomRight: [16, 96],
+          offset: [0, -18],
+          closeButton: true,
+          maxWidth: 340,
+          minWidth: 260,
+          className: 'report-map-popup'
+        });
+
+        // When popup is closed, re-center to show all visible reports.
+        marker.on('popupclose', () => {
+          setTimeout(recenterToVisibleReports, 120);
+        });
         
         markersLayerRef.current.addLayer(marker);
       });
@@ -341,28 +379,7 @@ const ReportsOverviewMap = ({ searchQuery = '', statusFilter = 'reports' }) => {
       // Center map to show all visible reports
       if (reportsWithLocation.length > 0) {
         setTimeout(() => {
-          if (!mapInstanceRef.current) return;
-
-          if (reportsWithLocation.length === 1) {
-            const singleLat = Number(reportsWithLocation[0]?.location?.lat);
-            const singleLng = Number(reportsWithLocation[0]?.location?.lng);
-            if (!Number.isNaN(singleLat) && !Number.isNaN(singleLng)) {
-              mapInstanceRef.current.setView([singleLat, singleLng], 14, { animate: true });
-            }
-          } else {
-            const bounds = L.latLngBounds(
-              reportsWithLocation.map(r => [r.location.lat, r.location.lng])
-            );
-            mapInstanceRef.current.fitBounds(bounds, {
-              padding: [30, 30],
-              maxZoom: 13,
-              animate: true
-            });
-          }
-
-          if (updateLabelVisibilityRef.current) {
-            updateLabelVisibilityRef.current();
-          }
+          recenterToVisibleReports();
         }, 100);
       }
     }
@@ -456,20 +473,16 @@ const ReportsOverviewMap = ({ searchQuery = '', statusFilter = 'reports' }) => {
           )}
         </div>
 
-        {/* Map Controls - Hide when popup is open */}
-        {!isPopupOpen && (
-          <div className="map-controls">
-            <button
-              onClick={handleFitAll}
-              className="map-control-btn fit-btn fit-icon-btn"
-              title="Fit All Markers"
-              aria-label="Fit all markers"
-            >
-              <span className="btn-icon">⤢</span>
-            </button>
-         
-          </div>
-        )}
+        <div className="map-controls">
+          <button
+            onClick={handleFitAll}
+            className="map-control-btn fit-btn fit-icon-btn"
+            title="Fit All Markers"
+            aria-label="Fit all markers"
+          >
+            <span className="btn-icon">⤢</span>
+          </button>
+        </div>
       </div>
     </div>
   );
