@@ -7900,10 +7900,10 @@ main h1 {
     margin-left: 0;
     width: 100%;
     padding: 16px;
-    padding-bottom: 80px;
-    min-height: calc(100vh - 144px);
-    /* Navbar (80px) + Mobile nav (64px) */
-    max-height: calc(100vh - 144px);
+    padding-bottom: 70px;
+    min-height: calc(100vh - 134px);
+    /* Navbar (80px) + Mobile nav (54px) */
+    max-height: calc(100vh - 134px);
     overflow-y: auto;
     box-sizing: border-box;
   }
@@ -7937,7 +7937,7 @@ main h1 {
 @media (max-width: 480px) {
   .main-content {
     padding: 12px;
-    padding-bottom: 80px;
+    padding-bottom: 70px;
   }
 
   .mobile-bottom-nav {

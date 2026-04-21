@@ -5,6 +5,7 @@ import ReportDetailModal from './ReportDetailModal.jsx';
 import NewsPostModal from './NewsPostModal.jsx';
 import ReportsMap from './ReportsMap.jsx';
 import ReportsOverviewMap from './ReportsOverviewMap.jsx';
+import ReportCardMap from './ReportCardMap.jsx';
 
 // Color configurations based on professional road & safety alert standards
 const ALERT_COLORS = {
@@ -679,69 +680,131 @@ const NewsFeed = ({ user }) => {
                           .join(', ')}
                       </span>
                     </div>
-                  </div>
-
-                  {/* Image Preview */}
-                  {report.images && report.images.length > 0 && (
-                    <div style={{
-                      borderTop: '1px solid #e9ecef',
-                      padding: '16px',
-                      background: '#f8f9fa'
-                    }}>
-                      <img
-                        src={(() => {
-                          const imageData = report.images[0];
-                          if (imageData?.data) {
-                            return `data:${imageData.mimetype};base64,${imageData.data}`;
-                          }
-                          const filename = imageData?.filename || imageData;
-                          if (typeof filename === 'string') {
-                            if (filename.startsWith('http://') || filename.startsWith('https://')) {
-                              return filename;
-                            }
-                            if (filename.startsWith('data:')) {
-                              return filename;
-                            }
-                          }
-                          // Use image API endpoint
-                          return `${config.BACKEND_URL}/api/reports/${report._id}/image/0`;
-                        })()}
-                        alt="Report preview"
-                        style={{
-                          width: '100%',
-                          height: '160px',
-                          objectFit: 'cover',
-                          borderRadius: '8px'
-                        }}
-                        onError={(e) => {
-                          e.target.style.display = 'none';
-                        }}
-                      />
+                    
+                    {/* Mobile-optimized Media Section */}
+                    <div className="report-media">
+                      {/* Report Image */}
+                      <div className="report-image-container">
+                        {report.images && report.images.length > 0 ? (
+                          <img 
+                            src={(() => {
+                              const imageData = report.images[0];
+                              console.log('🖼️ Image Data Debug:', {
+                                hasData: !!imageData?.data,
+                                hasFilename: !!imageData?.filename,
+                                dataType: typeof imageData,
+                                dataKeys: imageData ? Object.keys(imageData) : [],
+                                mimeType: imageData?.mimetype,
+                                dataLength: imageData?.data?.length
+                              });
+                              // If it's a Base64 data URL, use it directly
+                              if (imageData?.data) {
+                                const base64Url = `data:${imageData.mimetype};base64,${imageData.data}`;
+                                console.log('✅ Using Base64 data URL, length:', base64Url.length);
+                                return base64Url;
+                              }
+                              // Legacy: If filename is a full URL (Cloudinary), use it directly
+                              const filename = imageData?.filename || imageData;
+                              // Make sure filename is a string before calling startsWith
+                              if (typeof filename === 'string') {
+                                if (filename.startsWith('http://') || filename.startsWith('https://')) {
+                                  return filename;
+                                }
+                                if (filename.startsWith('data:')) {
+                                  return filename;
+                                }
+                              }
+                              // Use image API endpoint
+                              return `${config.BACKEND_URL}/api/reports/${report._id}/image/0`;
+                            })()}
+                            alt="Report"
+                            className="report-image"
+                            onLoad={(e) => {
+                              console.log('✅ Image loaded successfully:', e.target.src);
+                            }}
+                            onError={(e) => {
+                              console.error('❌ Image failed to load:', e.target.src);
+                              // Show placeholder
+                              e.target.style.display = 'none';
+                              e.target.parentElement.innerHTML = `
+                                <div class="report-image-placeholder">
+                                  <span class="placeholder-icon">📷</span>
+                                  <span class="placeholder-text">Image not available</span>
+                                </div>
+                              `;
+                            }}
+                          />
+                        ) : (
+                          <div className="report-image-placeholder">
+                            <span className="placeholder-icon">📷</span>
+                            <span className="placeholder-text">No Image</span>
+                          </div>
+                        )}
+                      </div>
+                      
+                      {/* Compact Map */}
+                      <div className="report-map-container">
+                        {report.location?.coordinates?.latitude && report.location?.coordinates?.longitude ? (
+                          <ReportCardMap 
+                            lat={report.location.coordinates.latitude} 
+                            lng={report.location.coordinates.longitude} 
+                          />
+                        ) : (
+                          <div className="report-map-placeholder">
+                            <span className="placeholder-icon">📍</span>
+                            <span className="placeholder-text">No Location</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  )}
-
-                  {/* Footer */}
-                  <div style={{
-                    padding: '12px 16px',
-                    borderTop: '1px solid #e9ecef',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    background: '#fff',
-                    fontSize: '13px'
-                  }}>
-                    <span style={{
-                      color: '#10b981',
-                      fontWeight: '600'
+                  </div>
+                    
+                  {/* Compact Footer */}
+                  <div className="report-card-footer">
+                    <div className="report-author">
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span>By:</span>
+                        {/* Profile Avatar beside username */}
+                        <div style={{
+                          width: '24px',
+                          height: '24px',
+                          borderRadius: '50%',
+                          overflow: 'hidden',
+                          border: '1px solid #e5e7eb',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          backgroundColor: '#f3f4f6',
+                          fontSize: '12px'
+                        }}>
+                          {report.reportedBy?.profile?.profileImage ? (
+                            <img 
+                              src={report.reportedBy.profile.profileImage.startsWith('data:') ? report.reportedBy.profile.profileImage : `${config.BACKEND_URL}${report.reportedBy.profile.profileImage}`}
+                              alt="Reporter"
+                              style={{
+                                width: '100%',
+                                height: '100%',
+                                objectFit: 'cover'
+                              }}
+                              onError={(e) => {
+                                console.log('Profile image failed to load:', e.target.src);
+                                e.target.style.display = 'none';
+                                e.target.parentElement.innerHTML = '👤';
+                              }}
+                            />
+                          ) : (
+                            '👤'
+                          )}
+                        </div>
+                        <span>{report.reportedBy?.name || report.reportedBy?.username || 'Anonymous'}</span>
+                      </div>
+                    </div>
+                    <div className="report-severity-badge" style={{
+                      background: alertStyle.background === '#fbbf24' ? '#000' : alertStyle.background,
+                      color: alertStyle.background === '#fbbf24' ? '#fff' : 'white'
                     }}>
-                      Resolved {report.resolvedAt ? formatDate(report.resolvedAt) : ''}
-                    </span>
-                    <span style={{
-                      color: '#6c757d',
-                      fontSize: '12px'
-                    }}>
-                      👁️ {report.views || 0} views
-                    </span>
+                      {report.severity}
+                    </div>
                   </div>
                 </div>
               );
@@ -870,12 +933,11 @@ const NewsFeed = ({ user }) => {
                       borderRadius: '6px',
                       fontSize: '13px'
                     }}>
-                      <span className="location-icon">📍</span>
-                      <span className="location-text">
-                        {report.barangay && report.city && report.province 
-                          ? `${report.barangay}, ${report.city}, ${report.province}`
-                          : report.location?.address || 'Location not specified'
-                        }
+                      <span style={{ fontSize: '14px' }}>📍</span>
+                      <span style={{ color: '#495057', fontWeight: '500' }}>
+                        {[report.barangay, report.city, report.province]
+                          .filter(Boolean)
+                          .join(', ')}
                       </span>
                     </div>
                     
@@ -943,12 +1005,10 @@ const NewsFeed = ({ user }) => {
                       {/* Compact Map */}
                       <div className="report-map-container">
                         {report.location?.coordinates?.latitude && report.location?.coordinates?.longitude ? (
-                          <iframe
-                            src={`https://www.openstreetmap.org/export/embed.html?bbox=${(report.location.coordinates.longitude - 0.01)},${(report.location.coordinates.latitude - 0.01)},${(report.location.coordinates.longitude + 0.01)},${(report.location.coordinates.latitude + 0.01)}&layer=mapnik&marker=${report.location.coordinates.latitude},${report.location.coordinates.longitude}`}
-                            className="report-map"
-                            loading="lazy"
-                            referrerPolicy="no-referrer-when-downgrade"
-                          ></iframe>
+                          <ReportCardMap 
+                            lat={report.location.coordinates.latitude} 
+                            lng={report.location.coordinates.longitude} 
+                          />
                         ) : (
                           <div className="report-map-placeholder">
                             <span className="placeholder-icon">📍</span>

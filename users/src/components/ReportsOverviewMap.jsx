@@ -132,13 +132,14 @@ const ReportsOverviewMap = ({ searchQuery = '', statusFilter = 'reports' }) => {
       mapInstanceRef.current = L.map(mapRef.current, {
         scrollWheelZoom: false,
         dragging: true,
-        touchZoom: true
+        touchZoom: true,
+        attributionControl: false, // Disable attribution control
       }).setView([center.lat, center.lng], zoom);
 
       // Get tile layer based on style setting
       const tileConfig = MAP_TILES[style] || MAP_TILES.streets;
       tileLayerRef.current = L.tileLayer(tileConfig.url, {
-        attribution: tileConfig.attribution,
+        attribution: '', // Remove attribution from tile layer
         maxZoom: 19
       }).addTo(mapInstanceRef.current);
 
@@ -220,12 +221,13 @@ const ReportsOverviewMap = ({ searchQuery = '', statusFilter = 'reports' }) => {
 
         const color = colors[alertType] || '#6b7280';
 
-        return L.divIcon({
-          className: 'custom-marker',
-          html: `<div style="background-color: ${color}; width: 30px; height: 30px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); border: 3px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.3);"><div style="transform: rotate(45deg); margin-top: 5px; font-size: 14px;">📍</div></div>`,
-          iconSize: [30, 30],
-          iconAnchor: [15, 30],
-          popupAnchor: [0, -30]
+        return L.icon({
+          iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+          shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+          iconSize: [25, 41],
+          iconAnchor: [12, 41],
+          popupAnchor: [1, -34],
+          shadowSize: [41, 41]
         });
       };
 
