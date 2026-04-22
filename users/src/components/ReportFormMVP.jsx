@@ -68,7 +68,7 @@ const ReportFormMVP = ({ onReport, onClose }) => {
 
   // Processing steps state for UI feedback
   const [processingStep, setProcessingStep] = useState('');
-  
+
   // AI Loading state to show overlay instead of freezing
   const [isAILoading, setIsAILoading] = useState(false);
 
@@ -676,7 +676,7 @@ const ReportFormMVP = ({ onReport, onClose }) => {
   const selectedHazard = ALERT_TYPES.find(t => t.value === form.type);
 
   // Check if form is valid for submission
-  const isFormValid = 
+  const isFormValid =
     form.type !== '' &&
     form.province !== '' &&
     form.city !== '' &&
@@ -692,20 +692,10 @@ const ReportFormMVP = ({ onReport, onClose }) => {
           {/* Header */}
           <header className="mvp-report-header mvp-instructions-header">
             <div className="mvp-header-content">
-              <h1 className="mvp-report-title">📋 How to Submit a Report</h1>
+              <h3 className="mvp-report-title">📋 How to Submit a Report</h3>
               <p className="mvp-report-subtitle">Quick guide to reporting road hazards</p>
             </div>
-            <button
-              type="button"
-              className="mvp-close-btn"
-              onClick={onClose}
-              aria-label="Close"
-            >
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
-              </svg>
-            </button>
+
           </header>
 
           {/* Instructions Content */}
@@ -825,11 +815,11 @@ const ReportFormMVP = ({ onReport, onClose }) => {
         <header className="mvp-report-header">
           <div className="mvp-header-icon-container">
             <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M12 2V4" stroke="#ef4444" strokeWidth="2" strokeLinecap="round"/>
-              <path d="M6 5L7.5 7" stroke="#ef4444" strokeWidth="2" strokeLinecap="round"/>
-              <path d="M18 5L16.5 7" stroke="#ef4444" strokeWidth="2" strokeLinecap="round"/>
-              <path d="M12 7L2 21H22L12 7Z" fill="#ef4444"/>
-              <path d="M11 12H13V16H11V12ZM11 18H13V20H11V18Z" fill="white"/>
+              <path d="M12 2V4" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" />
+              <path d="M6 5L7.5 7" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" />
+              <path d="M18 5L16.5 7" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" />
+              <path d="M12 7L2 21H22L12 7Z" fill="#ef4444" />
+              <path d="M11 12H13V16H11V12ZM11 18H13V20H11V18Z" fill="white" />
             </svg>
           </div>
           <div className="mvp-header-content">

@@ -9238,7 +9238,7 @@ main h1 {
   position: relative;
   display: flex;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: center;
   padding: 24px;
   background: linear-gradient(135deg, #f8fafc 0%, #eff6ff 100%);
   border-bottom: 1px solid #e2e8f0;
@@ -9260,6 +9260,7 @@ main h1 {
 .mvp-header-content {
   flex: 1;
   min-width: 0;
+  text-align: center;
 }
 
 .mvp-report-title {
@@ -10428,7 +10429,9 @@ main h1 {
 }
 
 .mvp-instructions-header {
-  background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+  /* background: linear-gradient(135deg, #059669 0%, #10b981 100%); */
+  background: linear-gradient(135deg, #f8fafc 0%, #eff6ff 100%);
+  border-bottom: 2px solid #e2e8f0;
 }
 
 /* Instructions Content */
