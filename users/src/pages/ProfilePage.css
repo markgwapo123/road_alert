@@ -141,7 +141,7 @@
   margin-top: -50px;
   position: relative;
   z-index: 2;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
 }
 
 .profile-avatar-wrapper {
@@ -206,7 +206,7 @@
   background: #f1f5f9;
   border-radius: 16px;
   overflow: hidden;
-  margin-top: 16px;
+  margin-top: 4px;
 }
 
 .profile-info-row {
