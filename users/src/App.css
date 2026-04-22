@@ -10346,8 +10346,8 @@ main h1 {
   }
 
   .mvp-report-modal {
-    max-width: 90%;
-    max-height: 85vh;
+    max-width: 95%;
+    max-height: 90vh;
     border-radius: 20px;
     margin: auto;
   }
@@ -10615,8 +10615,8 @@ main h1 {
 /* Responsive Instructions */
 @media (max-width: 640px) {
   .mvp-instructions-modal {
-    max-width: 90%;
-    max-height: 85vh;
+    max-width: 95%;
+    max-height: 90vh;
     border-radius: 20px;
     align-self: center;
     margin: auto;
