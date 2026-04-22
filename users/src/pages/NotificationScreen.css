@@ -40,12 +40,13 @@ body {
   position: sticky;
   top: 0;
   z-index: 10;
+  text-align: center;
 }
 
 .notif-title {
   font-size: 1.55rem;
   font-weight: 700;
-  color: var(--text-primary);
+  color: #dc2626;
   margin: 0;
 }
 
