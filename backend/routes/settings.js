@@ -2,6 +2,7 @@ const express = require('express');
 const SystemSettings = require('../models/SystemSettings');
 const AuditLog = require('../models/AuditLog');
 const { auth, requireSuperAdmin, canAccessSettings, canViewAuditLogs, createAuditLog } = require('../middleware/roleAuth');
+const cache = require('../services/cache');
 
 const router = express.Router();
 
@@ -168,6 +169,17 @@ router.get('/', auth, canAccessSettings, async (req, res) => {
 // @access  Public
 router.get('/public', async (req, res) => {
   try {
+    const cacheKey = 'settings:public';
+    const cachedSettings = cache.get(cacheKey);
+    
+    if (cachedSettings) {
+      return res.json({
+        success: true,
+        settings: cachedSettings,
+        fromCache: true
+      });
+    }
+
     const settings = await SystemSettings.getPublicSettings();
     
     // Convert to key-value object
@@ -229,9 +241,13 @@ router.get('/public', async (req, res) => {
     // Merge defaults with database values (database takes priority)
     const mergedSettings = { ...defaults, ...settingsObject };
     
+    // Cache for 5 minutes
+    cache.set(cacheKey, mergedSettings, 300);
+    
     res.json({
       success: true,
-      settings: mergedSettings
+      settings: mergedSettings,
+      fromCache: false
     });
   } catch (error) {
     console.error('Get public settings error:', error);

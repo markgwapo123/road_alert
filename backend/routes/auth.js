@@ -4,6 +4,9 @@ const jwt = require('jsonwebtoken');
 const { OAuth2Client } = require('google-auth-library');
 const User = require('../models/User');
 const Admin = require('../models/Admin');
+const Report = require('../models/Report');
+const Notification = require('../models/Notification');
+const cache = require('../services/cache');
 const { auth } = require('../middleware/roleAuth');
 const NotificationService = require('../services/NotificationService');
 const { 
@@ -133,6 +136,39 @@ router.post('/login', checkLoginAttempts, async (req, res) => {
         process.env.JWT_SECRET || 'your_jwt_secret',
         { expiresIn }
       );
+
+      // ⚡ Fire-and-forget: Preload dashboard data into cache
+      const userId = user._id;
+      Promise.all([
+        User.findById(userId).select('-password').lean(),
+        Report.find({ 'reportedBy.id': userId }).select('-images.data -evidencePhoto.data').sort({ createdAt: -1 }).limit(5).lean(),
+        Notification.find({ userId: userId }).populate('reportId', 'type description status').sort({ createdAt: -1 }).limit(5).lean(),
+        Notification.countDocuments({ userId: userId, isRead: false }),
+        Notification.find({ isBroadcast: true, $or: [{ expiresAt: null }, { expiresAt: { $gt: new Date() } }] }).sort({ createdAt: -1 }).limit(3).lean(),
+        Promise.all([
+          Report.countDocuments({ 'reportedBy.id': userId }),
+          Report.countDocuments({ 'reportedBy.id': userId, status: 'pending' }),
+          Report.countDocuments({ 'reportedBy.id': userId, status: 'verified' }),
+          Report.countDocuments({ 'reportedBy.id': userId, status: 'resolved' })
+        ])
+      ]).then(([u, reports, notifications, userUnreadCount, broadcasts, stats]) => {
+        const processedBroadcasts = broadcasts.map(b => ({
+          ...b,
+          isRead: !!b.readBy?.some(r => r.userId.toString() === userId.toString())
+        }));
+        const broadcastUnreadCount = processedBroadcasts.filter(b => !b.isRead).length;
+        const dashboardData = {
+          success: true,
+          data: {
+            profile: { id: u?._id, username: u?.username, email: u?.email, profile: u?.profile, lastLogin: u?.lastLogin },
+            stats: { totalReports: stats[0], pendingReports: stats[1], verifiedReports: stats[2], resolvedReports: stats[3] },
+            notifications: { items: [...notifications, ...processedBroadcasts].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 5), unreadCount: userUnreadCount + broadcastUnreadCount },
+            reports: { items: reports }
+          },
+          timestamp: new Date().toISOString()
+        };
+        cache.set(`dashboard:${userId}`, dashboardData, 30); // 30s cache for preload
+      }).catch(err => console.error('Dashboard preload failed:', err));
 
       return res.json({
         success: true,

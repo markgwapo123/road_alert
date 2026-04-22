@@ -602,24 +602,28 @@ router.get('/:id/image/:imageIndex', async (req, res) => {
   try {
     const { id, imageIndex } = req.params;
     const index = parseInt(imageIndex);
+    const etag = `"${id}-img-${index}"`;
 
-    // Fetch only the specific image data we need with lean() for faster query
-    const report = await Report.findById(id)
-      .select('images')
-      .lean()
-      .maxTimeMS(30000);
-
-    if (!report) {
-      return res.status(404).json({ error: 'Report not found' });
+    // ⚡ Check ETag for 304 Not Modified instantly without hitting DB
+    if (req.headers['if-none-match'] === etag) {
+      return res.status(304).end();
     }
 
-    if (!report.images || !report.images[index]) {
+    // ⚡ Fetch ONLY the specific image requested, not the entire array of images
+    // Using $slice to get exactly 1 element starting at the requested index
+    const report = await Report.findById(id)
+      .select({ images: { $slice: [index, 1] } })
+      .lean()
+      .maxTimeMS(10000);
+
+    if (!report || !report.images || report.images.length === 0) {
       return res.status(404).json({ error: 'Image not found' });
     }
 
-    const image = report.images[index];
+    // Because of $slice, the requested image is always at index 0 of the returned array
+    const image = report.images[0];
 
-    if (!image.data) {
+    if (!image || !image.data) {
       return res.status(404).json({ error: 'Image data not available' });
     }
 
@@ -629,8 +633,9 @@ router.get('/:id/image/:imageIndex', async (req, res) => {
     res.set({
       'Content-Type': image.mimetype || 'image/jpeg',
       'Content-Length': imageBuffer.length,
-      'Cache-Control': 'public, max-age=604800', // Cache for 7 days
-      'ETag': `"${id}-img-${index}"`,
+      // ⚡ Cache aggressively for 1 year since these images never change
+      'Cache-Control': 'public, max-age=31536000, immutable',
+      'ETag': etag,
       'Connection': 'keep-alive',
       'Access-Control-Allow-Origin': '*',
       'Cross-Origin-Resource-Policy': 'cross-origin'

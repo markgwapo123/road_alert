@@ -283,6 +283,7 @@ app.use('*', (req, res) => {
 const connectDB = require('./config/database');
 const SystemSettings = require('./models/SystemSettings');
 const { clearSettingsCache } = require('./middleware/settingsEnforcement');
+const cache = require('./services/cache');
 
 // Initialize database and settings
 const initializeDatabase = async () => {
@@ -294,6 +295,43 @@ const initializeDatabase = async () => {
     try {
       await SystemSettings.initializeDefaults();
       console.log('⚙️ System settings initialized');
+      
+      // ⚡ WARMUP: Pre-fetch and cache public settings so the first user request is instant
+      const settings = await SystemSettings.getPublicSettings();
+      const settingsObject = {};
+      settings.forEach(s => settingsObject[s.key] = s.value);
+      
+      const defaults = {
+        site_name: 'BantayDalan',
+        site_description: 'Community Road Alert System',
+        site_tagline: 'Report. Alert. Protect.',
+        contact_email: 'support@bantaydalan.com',
+        contact_phone: '',
+        timezone: 'Asia/Manila',
+        date_format: 'MMM DD, YYYY',
+        language: 'en',
+        map_default_center_lat: 10.1617,
+        map_default_center_lng: 122.9747,
+        map_default_zoom: 10,
+        map_style: 'streets',
+        max_reports_per_day: 10,
+        require_image: true,
+        require_location: true,
+        allow_anonymous_reports: false,
+        allow_user_registration: true,
+        min_password_length: 8,
+        require_strong_passwords: true,
+        two_factor_auth: false,
+        report_expiry_days: 30,
+        notifications_enabled: true,
+        email_notifications: true,
+        push_notifications: true
+      };
+      
+      const mergedSettings = { ...defaults, ...settingsObject };
+      cache.set('settings:public', mergedSettings, 300);
+      console.log('🔥 Settings cache warmed up');
+      
     } catch (settingsError) {
       console.log('⚠️ Settings initialization warning:', settingsError.message);
     }

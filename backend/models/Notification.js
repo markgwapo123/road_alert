@@ -103,6 +103,7 @@ const notificationSchema = new mongoose.Schema({
 // Index for efficient querying
 notificationSchema.index({ userId: 1, createdAt: -1 });
 notificationSchema.index({ userId: 1, isRead: 1 });
+notificationSchema.index({ userId: 1, isRead: 1, createdAt: -1 }); // ⚡ Critical for dashboard queries
 notificationSchema.index({ isBroadcast: 1, createdAt: -1 });
 notificationSchema.index({ type: 1, createdAt: -1 });
 notificationSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
