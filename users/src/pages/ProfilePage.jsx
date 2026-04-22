@@ -334,7 +334,12 @@ const ProfilePage = ({ token, prefetchedUser, onBack, onLogout, onUserUpdate }) 
                 )}
                 {user?.profile?.address && (
                   <span className="profile-user-detail">
-                    <span className="profile-user-detail__icon">📍</span>
+                    <span className="profile-user-detail__icon" style={{ display: 'flex', alignItems: 'center' }}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                        <circle cx="12" cy="10" r="3"></circle>
+                      </svg>
+                    </span>
                     {user.profile.address}
                   </span>
                 )}
