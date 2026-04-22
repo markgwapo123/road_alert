@@ -290,9 +290,24 @@ const ProfilePage = ({ token, prefetchedUser, onBack, onLogout, onUserUpdate }) 
         )}
 
         {/* ==================== PROFILE CARD ==================== */}
-        <div className="profile-card">
+        <div className="profile-card profile-card--main">
+          {/* Header Mesh Background Decoration */}
+          <div className="profile-card-mesh"></div>
+          
+          {/* Floating Edit Button */}
+          <button 
+            className="profile-edit-fab"
+            onClick={() => setActiveSection('edit')}
+            title="Edit Profile"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+            </svg>
+          </button>
+
           {/* Avatar Section */}
-          <div className="profile-avatar-section">
+          <div className="profile-header-section">
             <div className="profile-avatar-wrapper">
               <div className="profile-avatar">
                 {profileImage ? (
@@ -311,59 +326,90 @@ const ProfilePage = ({ token, prefetchedUser, onBack, onLogout, onUserUpdate }) 
             </div>
             
             {/* User Info */}
-            <div className="profile-user-info">
+            <div className="profile-main-info">
               <h1 className="profile-user-name">
                 {user?.profile?.fullName || user?.username || 'User'}
               </h1>
-              <p className="profile-user-email">{user?.email}</p>
-              
-              <div className="profile-user-details">
-                {user?.profile?.phone && (
-                  <span className="profile-user-detail">
-                    <span className="profile-user-detail__icon">📱</span>
-                    {user.profile.phone}
-                  </span>
-                )}
-                {user?.profile?.gender && (
-                  <span className="profile-user-detail">
-                    <span className="profile-user-detail__icon">
-                      {user.profile.gender === 'male' ? '👨' : user.profile.gender === 'female' ? '👩' : '🧑'}
-                    </span>
-                    {user.profile.gender.charAt(0).toUpperCase() + user.profile.gender.slice(1).replace('-', ' ')}
-                  </span>
-                )}
-                {user?.profile?.address && (
-                  <span className="profile-user-detail">
-                    <span className="profile-user-detail__icon" style={{ display: 'flex', alignItems: 'center' }}>
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-                        <circle cx="12" cy="10" r="3"></circle>
-                      </svg>
-                    </span>
-                    {user.profile.address}
-                  </span>
-                )}
+              <div className="profile-email-badge">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                  <polyline points="22,6 12,13 2,6"></polyline>
+                </svg>
+                <span>{user?.email}</span>
               </div>
-              
-              <p className="profile-join-date">
-                📅 Joined {user?.createdAt ? new Date(user.createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : 'Unknown'}
-              </p>
             </div>
           </div>
 
-          {/* Stats Section */}
-          <div className="profile-stats">
-            <div className="profile-stat">
-              <span className="profile-stat__number">{stats.totalReports}</span>
-              <span className="profile-stat__label">Total Reports</span>
+          {/* Detailed Info Rows */}
+          <div className="profile-info-grid">
+            {/* Phone Row */}
+            <div className="profile-info-row">
+              <div className="profile-info-icon profile-info-icon--green">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect>
+                  <line x1="12" y1="18" x2="12.01" y2="18"></line>
+                </svg>
+              </div>
+              <div className="profile-info-content">
+                <span className="profile-info-label">Phone</span>
+                <span className="profile-info-value">{user?.profile?.phone || 'Not set'}</span>
+              </div>
             </div>
-            <div className="profile-stat profile-stat--pending">
-              <span className="profile-stat__number">{stats.pendingReports}</span>
-              <span className="profile-stat__label">Pending</span>
+
+            {/* Gender Row */}
+            <div className="profile-info-row">
+              <div className="profile-info-icon profile-info-icon--yellow">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="8" r="5"></circle>
+                  <path d="M3 21v-2a7 7 0 0 1 7-7h4a7 7 0 0 1 7 7v2"></path>
+                </svg>
+              </div>
+              <div className="profile-info-content">
+                <span className="profile-info-label">Gender</span>
+                <span className="profile-info-value">
+                  {user?.profile?.gender 
+                    ? user.profile.gender.charAt(0).toUpperCase() + user.profile.gender.slice(1).replace('-', ' ') 
+                    : 'Not set'}
+                </span>
+              </div>
             </div>
-            <div className="profile-stat profile-stat--resolved">
-              <span className="profile-stat__number">{stats.resolvedReports}</span>
-              <span className="profile-stat__label">Resolved</span>
+
+            {/* Location Row */}
+            <div className="profile-info-row">
+              <div className="profile-info-icon profile-info-icon--red">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                  <circle cx="12" cy="10" r="3"></circle>
+                </svg>
+              </div>
+              <div className="profile-info-content">
+                <span className="profile-info-label">Location</span>
+                <span className="profile-info-value">{user?.profile?.address || 'Not set'}</span>
+              </div>
+            </div>
+
+            {/* Joined Row */}
+            <div className="profile-info-row">
+              <div className="profile-info-icon profile-info-icon--purple">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                  <line x1="16" y1="2" x2="16" y2="6"></line>
+                  <line x1="8" y1="2" x2="8" y2="6"></line>
+                  <line x1="3" y1="10" x2="21" y2="10"></line>
+                  <path d="M8 14h.01"></path>
+                  <path d="M12 14h.01"></path>
+                  <path d="M16 14h.01"></path>
+                  <path d="M8 18h.01"></path>
+                  <path d="M12 18h.01"></path>
+                  <path d="M16 18h.01"></path>
+                </svg>
+              </div>
+              <div className="profile-info-content">
+                <span className="profile-info-label">Joined</span>
+                <span className="profile-info-value">
+                  {user?.createdAt ? new Date(user.createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : 'Unknown'}
+                </span>
+              </div>
             </div>
           </div>
         </div>
