@@ -10434,6 +10434,10 @@ main h1 {
   border-bottom: 2px solid #e2e8f0;
 }
 
+.mvp-instructions-icon-container {
+  background: #ecfdf5;
+}
+
 /* Instructions Content */
 .mvp-instructions-content {
   flex: 1;
