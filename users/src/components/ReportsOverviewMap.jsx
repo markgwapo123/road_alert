@@ -260,7 +260,7 @@ const ReportsOverviewMap = ({ searchQuery = '', statusFilter = 'reports' }) => {
           const singleLat = Number(reportsWithLocation[0]?.location?.lat);
           const singleLng = Number(reportsWithLocation[0]?.location?.lng);
           if (!Number.isNaN(singleLat) && !Number.isNaN(singleLng)) {
-            mapInstanceRef.current.setView([singleLat, singleLng], 14, { animate: true });
+            mapInstanceRef.current.setView([singleLat, singleLng], 16, { animate: true });
           }
         } else {
           const bounds = L.latLngBounds(
@@ -268,7 +268,7 @@ const ReportsOverviewMap = ({ searchQuery = '', statusFilter = 'reports' }) => {
           );
           mapInstanceRef.current.fitBounds(bounds, {
             padding: [30, 30],
-            maxZoom: 13,
+            maxZoom: 15,
             animate: true
           });
         }
@@ -399,7 +399,7 @@ const ReportsOverviewMap = ({ searchQuery = '', statusFilter = 'reports' }) => {
           // Center on single marker
           mapInstanceRef.current.setView(
             [reportsWithLocation[0].location.lat, reportsWithLocation[0].location.lng],
-            14,
+            16,
             { animate: true }
           );
         } else {
@@ -409,7 +409,7 @@ const ReportsOverviewMap = ({ searchQuery = '', statusFilter = 'reports' }) => {
           );
           mapInstanceRef.current.fitBounds(bounds, { 
             padding: [30, 30], 
-            maxZoom: 13,
+            maxZoom: 15,
             animate: true
           });
         }

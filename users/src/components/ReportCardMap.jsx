@@ -19,7 +19,7 @@ const ReportCardMap = ({ lat, lng }) => {
       // Initialize map
       mapInstanceRef.current = L.map(mapRef.current, {
         center: [lat, lng],
-        zoom: 15,
+        zoom: 17,
         scrollWheelZoom: false,
         dragging: false,
         zoomControl: false,
