@@ -37,10 +37,16 @@ export const findProvinceMatch = (geocodedProvince) => {
 
   const normalized = geocodedProvince.toLowerCase();
 
+  // Special case for regions
+  if (normalized.includes('western visayas')) return 'negros-occidental';
+  if (normalized.includes('central visayas')) return 'negros-oriental';
+  if (normalized === 'negros') return 'negros-occidental'; // Default to Occidental for ambiguous "Negros"
+
   // Direct match
   const directMatch = NEGROS_PROVINCES.find(p =>
     p.value === normalized ||
-    p.label.toLowerCase() === normalized
+    p.label.toLowerCase() === normalized ||
+    normalized.includes(p.value)
   );
 
   if (directMatch) {
@@ -74,6 +80,8 @@ export const findCityMatch = (geocodedCity, province) => {
   }
 
   const normalized = geocodedCity.toLowerCase()
+    .replace(/^city\s+of\s+/i, '')
+    .replace(/^municipality\s+of\s+/i, '')
     .replace(/\s+city$/i, '')
     .replace(/\s+municipality$/i, '');
 
@@ -174,6 +182,25 @@ export const findBarangayMatch = (geocodedBarangay, city) => {
     return bestMatch.value;
   }
 
+  // 4. Numbered barangay matching (e.g., "17" -> "poblacion-17" or "barangay-17")
+  const numMatch = normalized.match(/\d+/);
+  if (numMatch) {
+    const num = numMatch[0];
+    const match = barangays.find(b => {
+      const bVal = b.value.toLowerCase();
+      const bLab = b.label.toLowerCase();
+      return bVal.endsWith(`-${num}`) || 
+             bVal === num || 
+             bLab.includes(` ${num} `) || 
+             bLab.includes(` ${num}(`) ||
+             bLab.endsWith(` ${num}`);
+    });
+    if (match) {
+      console.log('✅ Barangay matched via number:', match.value);
+      return match.value;
+    }
+  }
+
   console.warn('❌ No barangay match for:', geocodedBarangay, 'in city:', city);
   return '';
 };
@@ -261,6 +288,22 @@ export const processGeocodedAddress = (addressData) => {
     result.city = findCityMatch(addressData.city, result.province) ||
       findCityMatch(addressData.cityLabel, result.province) ||
       '';
+  }
+
+  // FALLBACK: If province match failed, try to find the city in ALL Negros provinces
+  if (!result.city && (addressData.city || addressData.cityLabel)) {
+    console.log('🔍 Province match failed or weak. Searching for city across all Negros provinces...');
+    const cityToFind = addressData.city || addressData.cityLabel;
+    
+    for (const p of NEGROS_PROVINCES) {
+      const cityMatch = findCityMatch(cityToFind, p.value);
+      if (cityMatch) {
+        console.log(`✅ City "${cityMatch}" found in province "${p.value}". Inferring province.`);
+        result.city = cityMatch;
+        result.province = p.value;
+        break;
+      }
+    }
   }
 
   // 3. Find barangay match — multi-strategy approach

@@ -131,4 +131,10 @@ reportSchema.index({ type: 1, province: 1, city: 1, barangay: 1 });
 reportSchema.index({ province: 1, city: 1, barangay: 1 });
 reportSchema.index({ 'reportedBy.id': 1, createdAt: -1 });
 
+// *** CRITICAL PERFORMANCE INDEXES ***
+// reportedBy.id is the most-queried field (my-reports, daily-limit, stats)
+// Without this index, every query does a full collection scan
+reportSchema.index({ 'reportedBy.id': 1, createdAt: -1 });
+reportSchema.index({ 'reportedBy.id': 1, status: 1 });
+
 module.exports = mongoose.model('Report', reportSchema);

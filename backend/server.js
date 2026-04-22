@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
+const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 const path = require('path');
 require('dotenv').config();
@@ -16,6 +17,9 @@ process.on('uncaughtException', (error) => {
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+
+// Enable gzip/brotli compression for all responses
+app.use(compression());
 
 // Security middleware with proper CSP for images and CORS
 app.use(helmet({
@@ -182,6 +186,7 @@ app.use('/api/users', require('./routes/users'));
 app.use('/api/notifications', require('./routes/notifications'));
 app.use('/api/news', require('./routes/news'));
 app.use('/api/settings', require('./routes/settings'));
+app.use('/api/dashboard', require('./routes/dashboard'));
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

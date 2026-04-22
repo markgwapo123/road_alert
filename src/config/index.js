@@ -1,11 +1,11 @@
 // Centralized configuration for admin frontend
 // Use local backend for development, production backend for builds
-const BACKEND_URL = import.meta.env.DEV 
-  ? 'http://localhost:3010'
+const BACKEND_URL = import.meta.env.DEV
+  ? 'http://localhost:3011'
   : 'https://roadalert-backend-xze4.onrender.com';
 
-const API_BASE_URL = import.meta.env.DEV 
-  ? 'http://localhost:3010/api'
+const API_BASE_URL = import.meta.env.DEV
+  ? 'http://localhost:3011/api'
   : 'https://roadalert-backend-xze4.onrender.com/api';
 
 // Lightweight logger (only in development)

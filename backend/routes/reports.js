@@ -2,6 +2,7 @@ const express = require('express');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const cache = require('../services/cache');
 const { body, validationResult } = require('express-validator');
 const Report = require('../models/Report');
 const User = require('../models/User');
@@ -150,8 +151,15 @@ router.get('/my-reports', require('../middleware/userAuth'), async (req, res) =>
       sortOrder = 'desc'
     } = req.query;
 
+    const userId = req.user.id;
+    const cacheKey = `reports:${userId}:${page}:${limit}:${status}:${type}:${severity}:${sortBy}:${sortOrder}`;
+    
+    // ⚡ Check cache first (15s TTL)
+    const cached = cache.get(cacheKey);
+    if (cached) return res.json({ ...cached, fromCache: true });
+
     // Build filter object for user's reports
-    const filter = { 'reportedBy.id': req.user.id };
+    const filter = { 'reportedBy.id': userId };
     if (status) filter.status = status;
     if (type) filter.type = type;
     if (severity) filter.severity = severity;
@@ -160,21 +168,22 @@ router.get('/my-reports', require('../middleware/userAuth'), async (req, res) =>
     const sort = {};
     sort[sortBy] = sortOrder === 'desc' ? -1 : 1;
 
-    // Execute query with pagination - optimized for speed
-    const reports = await Report.find(filter)
-      .select('-images.data -evidencePhoto.data') // Exclude heavy image data
-      .sort(sort)
-      .limit(parseInt(limit))
-      .skip((parseInt(page) - 1) * parseInt(limit))
-      .lean()
-      .maxTimeMS(30000)
-      .exec();
+    // ⚡ Run find and count in parallel
+    const [reports, totalReports] = await Promise.all([
+      Report.find(filter)
+        .select('-images.data -evidencePhoto.data') // Exclude heavy image data
+        .sort(sort)
+        .limit(parseInt(limit))
+        .skip((parseInt(page) - 1) * parseInt(limit))
+        .lean()
+        .maxTimeMS(30000)
+        .exec(),
+      Report.countDocuments(filter)
+    ]);
 
-    // Get total count for pagination
-    const totalReports = await Report.countDocuments(filter);
-    const totalPages = Math.ceil(totalReports / limit);
+    const totalPages = Math.ceil(totalReports / parseInt(limit));
 
-    res.json({
+    const response = {
       success: true,
       reports: reports,
       pagination: {
@@ -184,7 +193,12 @@ router.get('/my-reports', require('../middleware/userAuth'), async (req, res) =>
         hasNextPage: parseInt(page) < totalPages,
         hasPrevPage: parseInt(page) > 1
       }
-    });
+    };
+
+    // ⚡ Cache for 15 seconds
+    cache.set(cacheKey, response, 15);
+
+    res.json({ ...response, fromCache: false });
 
   } catch (error) {
     console.error('Get user reports error:', error);
@@ -239,6 +253,9 @@ router.delete('/my-reports/:id', require('../middleware/userAuth'), async (req, 
     // Delete the report
     await Report.findByIdAndDelete(reportId);
 
+    // ⚡ Invalidate cache for the user
+    cache.invalidatePrefix(`reports:${userId}`);
+
     res.json({
       success: true,
       message: 'Report deleted successfully'
@@ -258,50 +275,52 @@ router.delete('/my-reports/:id', require('../middleware/userAuth'), async (req, 
 // @access  Public
 router.get('/stats', async (req, res) => {
   try {
-    const totalReports = await Report.countDocuments();
-    const pendingReports = await Report.countDocuments({ status: 'pending' });
-    const verifiedReports = await Report.countDocuments({ status: 'verified' });
-    const rejectedReports = await Report.countDocuments({ status: 'rejected' });
-    const resolvedReports = await Report.countDocuments({ status: 'resolved' });
+    const cacheKey = 'reports:stats';
+    const cached = cache.get(cacheKey);
+    if (cached) return res.json({ ...cached, fromCache: true });
 
-    // Get reports by type
-    const reportsByType = await Report.aggregate([
-      {
-        $group: {
-          _id: '$type',
-          count: { $sum: 1 }
-        }
-      }
+    // Parallelize all basic counts
+    const [totalReports, pendingReports, verifiedReports, rejectedReports, resolvedReports] = await Promise.all([
+      Report.countDocuments(),
+      Report.countDocuments({ status: 'pending' }),
+      Report.countDocuments({ status: 'verified' }),
+      Report.countDocuments({ status: 'rejected' }),
+      Report.countDocuments({ status: 'resolved' })
     ]);
 
-    // Get reports by severity
-    const reportsBySeverity = await Report.aggregate([
-      {
-        $group: {
-          _id: '$severity',
-          count: { $sum: 1 }
+    // Parallelize heavy aggregations
+    const [reportsByType, reportsBySeverity, recentActivity] = await Promise.all([
+      Report.aggregate([
+        {
+          $group: {
+            _id: '$type',
+            count: { $sum: 1 }
+          }
         }
-      }
+      ]),
+      Report.aggregate([
+        {
+          $group: {
+            _id: '$severity',
+            count: { $sum: 1 }
+          }
+        }
+      ]),
+      Report.aggregate([
+        {
+          $match: { createdAt: { $gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } }
+        },
+        {
+          $group: {
+            _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
+            count: { $sum: 1 }
+          }
+        },
+        { $sort: { _id: 1 } }
+      ])
     ]);
 
-    // Get recent activity (last 7 days)
-    const weekAgo = new Date();
-    weekAgo.setDate(weekAgo.getDate() - 7);
-
-    const recentActivity = await Report.aggregate([
-      {
-        $match: { createdAt: { $gte: weekAgo } }
-      },
-      {
-        $group: {
-          _id: {
-            $dateToString: { format: '%Y-%m-%d', date: '$createdAt' }
-          },
-          count: { $sum: 1 }
-        }
-      },
-      { $sort: { _id: 1 } }
-    ]); res.json({
+    const response = {
       success: true,
       totalReports,
       pending: pendingReports,
@@ -311,7 +330,11 @@ router.get('/stats', async (req, res) => {
       reportsByType,
       reportsBySeverity,
       recentActivity
-    });
+    };
+
+    cache.set(cacheKey, response, 60); // Cache for 60 seconds
+
+    res.json({ ...response, fromCache: false });
 
   } catch (error) {
     console.error('Get stats error:', error);
@@ -449,6 +472,11 @@ router.post('/', upload.array('images', 5), reportValidation, async (req, res) =
 
     const report = new Report(reportData);
     await report.save();
+
+    // ⚡ Invalidate cache for the user
+    if (report.reportedBy && report.reportedBy.id) {
+      cache.invalidatePrefix(`reports:${report.reportedBy.id}`);
+    }
 
     // Send notification to user about report submission
     if (report.reportedBy && report.reportedBy.id) {
@@ -716,6 +744,11 @@ router.put('/:id', auth, async (req, res) => {
     // Save the updated report
     await report.save();
 
+    // ⚡ Invalidate cache for the owner
+    if (report.reportedBy && report.reportedBy.id) {
+      cache.invalidatePrefix(`reports:${report.reportedBy.id}`);
+    }
+
     console.log('✅ Report updated successfully:', report._id);
 
     // Send notification if status changed to verified
@@ -846,6 +879,11 @@ router.patch('/:id/status', auth, async (req, res) => {
       data: report
     });
 
+    // ⚡ Invalidate cache for the reporter
+    if (report.reportedBy && report.reportedBy.id) {
+      cache.invalidatePrefix(`reports:${report.reportedBy.id}`);
+    }
+
   } catch (error) {
     console.error('Update status error:', error);
     res.status(500).json({
@@ -959,6 +997,11 @@ router.post('/:id/resolve', auth, upload.single('evidencePhoto'), async (req, re
       data: report
     });
 
+    // ⚡ Invalidate cache for the reporter
+    if (report.reportedBy && report.reportedBy.id) {
+      cache.invalidatePrefix(`reports:${report.reportedBy.id}`);
+    }
+
   } catch (error) {
     console.error('❌ Resolve report error:', error);
     console.error('❌ Error stack:', error.stack);
@@ -1016,6 +1059,11 @@ router.delete('/:id', auth, canDeleteReports, async (req, res) => {
       success: true,
       message: 'Report deleted successfully'
     });
+
+    // ⚡ Invalidate cache for the reporter
+    if (report.reportedBy && report.reportedBy.id) {
+      cache.invalidatePrefix(`reports:${report.reportedBy.id}`);
+    }
 
   } catch (error) {
     console.error('Delete report error:', error);
@@ -1137,6 +1185,9 @@ router.post('/user', require('../middleware/userAuth'), upload.array('images', 5
         submittedAt: report.submittedAt
       }
     });
+
+    // ⚡ Invalidate cache for the user
+    cache.invalidatePrefix(`reports:${req.user.id}`);
 
   } catch (error) {
     console.error('User report submission error:', error);

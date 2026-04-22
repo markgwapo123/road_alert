@@ -89,42 +89,51 @@ router.post('/login', checkLoginAttempts, async (req, res) => {
       });
     }
 
-    // Try user login (by email or username)
+    // ⚡ Try user and admin lookups in parallel if it's a username login
     let user = null;
+    let admin = null;
+
     if (email) {
-      user = await User.findOne({ email });
+      user = await User.findOne({ email }).lean();
       console.log('👤 User lookup by email:', email, '- Found:', !!user);
-    } else if (username) {
-      user = await User.findOne({ username });
-    }    if (user) {
-      const isMatch = await user.comparePassword(password);
+    } else {
+      // It's a username login, check both in parallel
+      const [foundUser, foundAdmin] = await Promise.all([
+        User.findOne({ username }).lean(),
+        Admin.findOne({ username }).lean()
+      ]);
+      user = foundUser;
+      admin = foundAdmin;
+      console.log('👤 Username lookup:', username, '- User:', !!user, '- Admin:', !!admin);
+    }
+
+    if (user) {
+      // ⚡ Fetch settings in parallel with password verification
+      const [isMatch, sessionTimeout] = await Promise.all([
+        bcrypt.compare(password, user.password), // User model comparison or bcrypt directly
+        getSetting('session_timeout_minutes', 1440)
+      ]);
+
       console.log('🔑 Password check for', user.email, '- Match:', isMatch);
+      
       if (!isMatch) {
-        // Record failed login attempt
-        if (req.loginAttempts) {
-          req.loginAttempts.recordFailure();
-        }
+        if (req.loginAttempts) req.loginAttempts.recordFailure();
         return res.status(401).json({ error: 'Invalid credentials' });
       }
       
-      // Clear login attempts on successful login
-      if (req.loginAttempts) {
-        req.loginAttempts.recordSuccess();
-      }
+      if (req.loginAttempts) req.loginAttempts.recordSuccess();
       
-      // Update last login for user tracking
-      await user.updateLastLogin();
+      // ⚡ Update last login asynchronously (fire-and-forget)
+      User.findByIdAndUpdate(user._id, { lastLogin: new Date() }).exec().catch(err => console.error('Last login update failed:', err));
       
-      // Get session timeout from settings for token expiry
-      const sessionTimeout = await getSetting('session_timeout_minutes', 1440);
       const expiresIn = sessionTimeout > 0 ? `${sessionTimeout}m` : '7d';
       
-      // Create a JWT for the user
       const token = jwt.sign(
         { id: user._id, username: user.username, email: user.email },
         process.env.JWT_SECRET || 'your_jwt_secret',
         { expiresIn }
       );
+
       return res.json({
         success: true,
         token,
@@ -132,39 +141,26 @@ router.post('/login', checkLoginAttempts, async (req, res) => {
           id: user._id,
           username: user.username,
           email: user.email,
-          lastLogin: user.lastLogin
+          lastLogin: new Date() // Use current date as it's being updated
         }
       });
     }
 
-    // Check if the user is an admin
-    let admin = await Admin.findOne({ username });
     if (admin) {
-      // Check if admin is active
       if (!admin.isActive) {
-        return res.status(401).json({
-          error: 'Account is deactivated'
-        });
+        return res.status(401).json({ error: 'Account is deactivated' });
       }
 
-      // Check password
-      const isMatch = await admin.comparePassword(password);
+      const isMatch = await bcrypt.compare(password, admin.password);
       if (!isMatch) {
-        return res.status(401).json({
-          error: 'Invalid credentials'
-        });
+        return res.status(401).json({ error: 'Invalid credentials' });
       }
 
-      // Update last login
-      await admin.updateLastLogin();
+      // ⚡ Async update
+      Admin.findByIdAndUpdate(admin._id, { lastLogin: new Date() }).exec().catch(err => console.error('Admin last login update failed:', err));
 
-      // Create JWT token
       const token = jwt.sign(
-        { 
-          id: admin._id, 
-          username: admin.username,
-          role: admin.role 
-        },
+        { id: admin._id, username: admin.username, role: admin.role },
         process.env.JWT_SECRET || 'your_jwt_secret',
         { expiresIn: process.env.JWT_EXPIRE || '7d' }
       );
@@ -177,20 +173,16 @@ router.post('/login', checkLoginAttempts, async (req, res) => {
           username: admin.username,
           role: admin.role,
           email: admin.email,
-          lastLogin: admin.lastLogin
+          lastLogin: new Date()
         }
       });
     }
 
-    return res.status(401).json({
-      error: 'Invalid credentials'
-    });
+    return res.status(401).json({ error: 'Invalid credentials' });
 
   } catch (error) {
     console.error('Login error:', error);
-    res.status(500).json({
-      error: 'Server error during login'
-    });
+    res.status(500).json({ error: 'Server error during login' });
   }
 });
 

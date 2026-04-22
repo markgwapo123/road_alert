@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const cache = require('../services/cache');
 const User = require('../models/User');
 const Report = require('../models/Report');
 const userAuth = require('../middleware/userAuth');
@@ -32,7 +33,14 @@ const upload = multer({
 // @access  Private
 router.get('/me', userAuth, async (req, res) => {
   try {
-    const user = await User.findById(req.user.id)
+    const userId = req.user.id;
+    const cacheKey = `profile:${userId}:me`;
+    
+    // ⚡ Check cache first (30s TTL)
+    const cached = cache.get(cacheKey);
+    if (cached) return res.json(cached);
+
+    const user = await User.findById(userId)
       .select('-password')
       .lean()
       .maxTimeMS(30000);
@@ -44,7 +52,7 @@ router.get('/me', userAuth, async (req, res) => {
       });
     }
 
-    res.json({
+    const response = {
       success: true,
       data: {
         id: user._id,
@@ -58,7 +66,12 @@ router.get('/me', userAuth, async (req, res) => {
         createdAt: user.createdAt,
         updatedAt: user.updatedAt
       }
-    });
+    };
+
+    // ⚡ Cache for 30 seconds
+    cache.set(cacheKey, response, 30);
+
+    res.json(response);
 
   } catch (error) {
     console.error('Get user profile error:', error);
@@ -75,6 +88,11 @@ router.get('/me', userAuth, async (req, res) => {
 router.get('/me/stats', userAuth, async (req, res) => {
   try {
     const userId = req.user.id;
+    const cacheKey = `profile:${userId}:stats`;
+    
+    // ⚡ Check cache first (30s TTL)
+    const cached = cache.get(cacheKey);
+    if (cached) return res.json(cached);
     
     // Get report counts by status
     const [totalReports, pendingReports, verifiedReports, resolvedReports, rejectedReports] = await Promise.all([
@@ -85,7 +103,7 @@ router.get('/me/stats', userAuth, async (req, res) => {
       Report.countDocuments({ 'reportedBy.id': userId, status: 'rejected' })
     ]);
 
-    res.json({
+    const response = {
       success: true,
       data: {
         totalReports,
@@ -94,7 +112,12 @@ router.get('/me/stats', userAuth, async (req, res) => {
         resolvedReports,
         rejectedReports
       }
-    });
+    };
+
+    // ⚡ Cache for 30 seconds
+    cache.set(cacheKey, response, 30);
+
+    res.json(response);
 
   } catch (error) {
     console.error('Get user stats error:', error);
@@ -154,6 +177,9 @@ router.put('/me', userAuth, async (req, res) => {
     }
 
     await user.save();
+
+    // ⚡ Invalidate cache
+    cache.invalidatePrefix(`profile:${req.user.id}`);
 
     res.json({
       success: true,
@@ -294,6 +320,9 @@ router.post('/profile-image', userAuth, upload.single('image'), async (req, res)
 
     await user.save();
 
+    // ⚡ Invalidate cache
+    cache.invalidatePrefix(`profile:${req.user.id}`);
+
     res.json({
       success: true,
       message: 'Profile image uploaded successfully',
@@ -347,6 +376,9 @@ router.delete('/profile-image', userAuth, async (req, res) => {
     // Remove profile image from user record (but keep in gallery)
     user.profile.profileImage = null;
     await user.save();
+
+    // ⚡ Invalidate cache
+    cache.invalidatePrefix(`profile:${req.user.id}`);
 
     res.json({
       success: true,
@@ -442,6 +474,9 @@ router.post('/profile-gallery/set-current', userAuth, async (req, res) => {
 
     await user.save();
 
+    // ⚡ Invalidate cache
+    cache.invalidatePrefix(`profile:${req.user.id}`);
+
     res.json({
       success: true,
       message: 'Profile picture updated successfully'
@@ -500,6 +535,9 @@ router.delete('/profile-gallery/:imageUrl(*)', userAuth, async (req, res) => {
     }
 
     await user.save();
+
+    // ⚡ Invalidate cache
+    cache.invalidatePrefix(`profile:${req.user.id}`);
 
     res.json({
       success: true,

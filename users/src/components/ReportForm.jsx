@@ -226,8 +226,13 @@ const ReportForm = ({ onReport, onClose }) => {
                   addressData.barangayLabel
                 ].filter(Boolean).join(', ');
                 
+                // Check if we are in Negros based on processed results or raw labels
+                const isInNegros = processedAddress.province || 
+                                 detectedLocation.toLowerCase().includes('negros') ||
+                                 detectedLocation.toLowerCase().includes('visayas');
+                
                 setSuccess(`✅ Location detected: ${detectedLocation}. ${
-                  detectedLocation.toLowerCase().includes('negros') 
+                  isInNegros 
                     ? 'Please select the exact match from dropdowns below.' 
                     : '⚠️ You are outside Negros region. Please manually select your address or move to Negros area.'
                 }`);

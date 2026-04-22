@@ -1,6 +1,7 @@
 const express = require('express');
 const Notification = require('../models/Notification');
 const userAuth = require('../middleware/userAuth');
+const cache = require('../services/cache');
 
 const router = express.Router();
 
@@ -11,6 +12,17 @@ router.get('/', userAuth, async (req, res) => {
   try {
     const { page = 1, limit = 20, unread_only = false, type = 'all' } = req.query;
     const userId = req.user.id;
+
+    // ⚡ Check cache first (15s TTL) – only cache page 1 with default filters
+    const isDefaultRequest = page == 1 && unread_only === 'false' && type === 'all';
+    const cacheKey = `notifs:${userId}:${page}:${unread_only}:${type}`;
+    if (isDefaultRequest) {
+      const cached = cache.get(cacheKey);
+      if (cached) {
+        console.log(`⚡ Cache HIT: notifications for user ${userId}`);
+        return res.json({ ...cached, fromCache: true });
+      }
+    }
     
     // Build filter for user-specific notifications
     const userFilter = { userId: userId };
@@ -21,14 +33,7 @@ router.get('/', userAuth, async (req, res) => {
       userFilter.type = type;
     }
 
-    // Get user-specific notifications
-    const userNotifications = await Notification.find(userFilter)
-      .populate('reportId', 'type description status')
-      .sort({ createdAt: -1 })
-      .limit(limit * 1)
-      .skip((page - 1) * limit);
-
-    // Get broadcast announcements (not expired)
+    // Build broadcast filter
     const broadcastFilter = { 
       isBroadcast: true,
       $or: [
@@ -36,38 +41,50 @@ router.get('/', userAuth, async (req, res) => {
         { expiresAt: { $gt: new Date() } }
       ]
     };
-    
-    const broadcastNotifications = await Notification.find(broadcastFilter)
-      .sort({ createdAt: -1 })
-      .limit(10); // Limit broadcasts to 10 most recent
+
+    // ⚡ Run ALL queries in parallel instead of sequentially
+    const [userNotifications, broadcastNotifications, userUnreadCount, userTotalCount] = await Promise.all([
+      // 1) User-specific notifications
+      Notification.find(userFilter)
+        .populate('reportId', 'type description status')
+        .sort({ createdAt: -1 })
+        .limit(limit * 1)
+        .skip((page - 1) * limit)
+        .lean(),
+
+      // 2) Broadcast announcements
+      Notification.find(broadcastFilter)
+        .sort({ createdAt: -1 })
+        .limit(10)
+        .lean(),
+
+      // 3) Unread count
+      Notification.countDocuments({ userId: userId, isRead: false }),
+
+      // 4) Total count for pagination
+      Notification.countDocuments(userFilter)
+    ]);
 
     // Mark broadcasts as read/unread based on user's read status
     const processedBroadcasts = broadcastNotifications.map(broadcast => {
-      const readEntry = broadcast.readBy.find(r => r.userId.toString() === userId.toString());
+      const readEntry = broadcast.readBy?.find(r => r.userId.toString() === userId.toString());
       return {
-        ...broadcast.toObject(),
+        ...broadcast,
         isRead: !!readEntry,
         readAt: readEntry?.readAt || null
       };
     });
 
     // Combine and sort all notifications
-    const allNotifications = [...userNotifications.map(n => n.toObject()), ...processedBroadcasts]
+    const allNotifications = [...userNotifications, ...processedBroadcasts]
       .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
       .slice(0, limit);
 
-    // Calculate counts
-    const userUnreadCount = await Notification.countDocuments({
-      userId: userId,
-      isRead: false
-    });
-
     const broadcastUnreadCount = processedBroadcasts.filter(b => !b.isRead).length;
     const totalUnreadCount = userUnreadCount + broadcastUnreadCount;
+    const total = userTotalCount + broadcastNotifications.length;
 
-    const total = await Notification.countDocuments(userFilter) + broadcastNotifications.length;
-
-    res.json({
+    const response = {
       success: true,
       notifications: allNotifications,
       pagination: {
@@ -84,7 +101,14 @@ router.get('/', userAuth, async (req, res) => {
         statusUpdates: allNotifications.filter(n => n.type === 'status_update').length,
         announcements: allNotifications.filter(n => n.type === 'announcement').length
       }
-    });
+    };
+
+    // ⚡ Cache the result for 15 seconds
+    if (isDefaultRequest) {
+      cache.set(cacheKey, response, 15);
+    }
+
+    res.json({ ...response, fromCache: false });
 
   } catch (error) {
     console.error('Get notifications error:', error);
@@ -101,30 +125,37 @@ router.get('/', userAuth, async (req, res) => {
 router.get('/unread-count', userAuth, async (req, res) => {
   try {
     const userId = req.user.id;
+    const cacheKey = `notifs:${userId}:unread-count`;
+    
+    // ⚡ Check cache first (10s TTL)
+    const cached = cache.get(cacheKey);
+    if (cached) return res.json(cached);
     
     // Count user-specific unread notifications
-    const userUnreadCount = await Notification.countDocuments({
-      userId: userId,
-      isRead: false
-    });
-
-    // Count unread broadcasts
-    const broadcasts = await Notification.find({
-      isBroadcast: true,
-      $or: [
-        { expiresAt: null },
-        { expiresAt: { $gt: new Date() } }
-      ]
-    });
+    const [userUnreadCount, broadcasts] = await Promise.all([
+      Notification.countDocuments({ userId: userId, isRead: false }),
+      Notification.find({
+        isBroadcast: true,
+        $or: [
+          { expiresAt: null },
+          { expiresAt: { $gt: new Date() } }
+        ]
+      }).lean()
+    ]);
 
     const broadcastUnreadCount = broadcasts.filter(b => 
-      !b.readBy.some(r => r.userId.toString() === userId.toString())
+      !b.readBy?.some(r => r.userId.toString() === userId.toString())
     ).length;
 
-    res.json({
+    const response = {
       success: true,
       unreadCount: userUnreadCount + broadcastUnreadCount
-    });
+    };
+
+    // ⚡ Cache for 10 seconds
+    cache.set(cacheKey, response, 10);
+
+    res.json(response);
 
   } catch (error) {
     console.error('Get unread count error:', error);
@@ -155,6 +186,8 @@ router.put('/:id/read', userAuth, async (req, res) => {
       if (!alreadyRead) {
         broadcast.readBy.push({ userId, readAt: new Date() });
         await broadcast.save();
+        // ⚡ Invalidate cache
+        cache.invalidatePrefix(`notifs:${userId}`);
       }
 
       return res.json({
@@ -184,6 +217,9 @@ router.put('/:id/read', userAuth, async (req, res) => {
         error: 'Notification not found'
       });
     }
+
+    // ⚡ Invalidate cache
+    cache.invalidatePrefix(`notifs:${userId}`);
 
     res.json({
       success: true,
@@ -241,6 +277,9 @@ router.put('/read-all', userAuth, async (req, res) => {
       modifiedCount: result.modifiedCount + broadcastsMarked
     });
 
+    // ⚡ Invalidate cache
+    cache.invalidatePrefix(`notifs:${userId}`);
+
   } catch (error) {
     console.error('Mark all notifications as read error:', error);
     res.status(500).json({
@@ -291,6 +330,9 @@ router.post('/mark-all-read', userAuth, async (req, res) => {
       modifiedCount: result.modifiedCount + broadcastsMarked
     });
 
+    // ⚡ Invalidate cache
+    cache.invalidatePrefix(`notifs:${userId}`);
+
   } catch (error) {
     console.error('Mark all notifications as read error:', error);
     res.status(500).json({
@@ -316,6 +358,9 @@ router.delete('/:id', userAuth, async (req, res) => {
         error: 'Notification not found'
       });
     }
+
+    // ⚡ Invalidate cache
+    cache.invalidatePrefix(`notifs:${req.user.id}`);
 
     res.json({
       success: true,

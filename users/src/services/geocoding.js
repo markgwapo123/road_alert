@@ -8,6 +8,10 @@
 const provinceMapping = {
   'negros occidental': 'negros-occidental',
   'negros oriental': 'negros-oriental',
+  'province of negros occidental': 'negros-occidental',
+  'province of negros oriental': 'negros-oriental',
+  'negros occidental (province)': 'negros-occidental',
+  'negros oriental (province)': 'negros-oriental',
 };
 
 // Mapping for city names to match dropdown values (lowercase, hyphenated)
@@ -15,6 +19,8 @@ const normalizeCityName = (cityName) => {
   if (!cityName) return '';
   return cityName
     .toLowerCase()
+    .replace(/^city\s+of\s+/i, '')
+    .replace(/^municipality\s+of\s+/i, '')
     .replace(/\s+city$/i, '')
     .replace(/\s+municipality$/i, '')
     .replace(/\s+/g, '-')
@@ -55,6 +61,8 @@ const extractBarangayCandidates = (address) => {
     address.village,          // Small barangays sometimes here
     address.residential,      // Residential areas
     address.city_district,    // District-level (rare but happens)
+    address.road,             // Sometimes used for smaller roads/areas
+    address.address29,        // Specific Nominatim field sometimes used in PH
   ];
 
   // Return deduplicated, non-empty candidates
