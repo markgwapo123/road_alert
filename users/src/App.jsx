@@ -82,8 +82,8 @@ function AppContent() {
   };
   useEffect(() => {
     if (token) {
-      fetchNotifications();
-      fetchUser();
+      // ⚡ Fetch notifications and user data in PARALLEL instead of sequentially
+      Promise.all([fetchNotifications(), fetchUser()]);
       const notificationInterval = setInterval(fetchNotifications, 30000);
       return () => clearInterval(notificationInterval);
     } else {
@@ -234,23 +234,8 @@ function AppContent() {
   // Get site name from settings
   const siteName = getSetting('site_name', 'BANTAY DALAN');
 
-  // Show loading while settings are loading
-  if (settingsLoading) {
-    return (
-      <div style={{ 
-        minHeight: '100vh', 
-        display: 'flex', 
-        alignItems: 'center', 
-        justifyContent: 'center',
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
-      }}>
-        <div style={{ textAlign: 'center', color: 'white' }}>
-          <div style={{ fontSize: '40px', marginBottom: '20px' }}>🚧</div>
-          <p>Loading...</p>
-        </div>
-      </div>
-    );
-  }
+  // ⚡ Don't block the entire app waiting for settings - render immediately with defaults
+  // Settings will update silently in the background
 
   // Show maintenance page if maintenance mode is enabled
   if (isMaintenanceMode()) {
