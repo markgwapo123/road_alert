@@ -10614,9 +10614,11 @@ main h1 {
 /* Responsive Instructions */
 @media (max-width: 640px) {
   .mvp-instructions-modal {
-    max-width: 100%;
-    max-height: 95vh;
-    border-radius: 20px 20px 0 0;
+    max-width: 90%;
+    max-height: 85vh;
+    border-radius: 20px;
+    align-self: center;
+    margin: auto;
   }
 
   .mvp-instructions-content {
