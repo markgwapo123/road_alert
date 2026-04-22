@@ -153,7 +153,7 @@ router.get('/my-reports', require('../middleware/userAuth'), async (req, res) =>
 
     const userId = req.user.id;
     const cacheKey = `reports:${userId}:${page}:${limit}:${status}:${type}:${severity}:${sortBy}:${sortOrder}`;
-    
+
     // ⚡ Check cache first (15s TTL)
     const cached = cache.get(cacheKey);
     if (cached) return res.json({ ...cached, fromCache: true });

@@ -229,6 +229,8 @@ const MyReports = ({ token }) => {
                     <img 
                       className="report-image"
                       style={{ cursor: 'pointer' }}
+                      loading="lazy"
+                      fetchpriority="low"
                       src={(() => {
                         const imageData = report.images[0];
                         // If it's a Base64 data URL, use it directly
