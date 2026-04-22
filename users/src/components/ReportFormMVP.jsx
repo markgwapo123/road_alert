@@ -68,7 +68,9 @@ const ReportFormMVP = ({ onReport, onClose }) => {
 
   // Processing steps state for UI feedback
   const [processingStep, setProcessingStep] = useState('');
-
+  
+  // AI Loading state to show overlay instead of freezing
+  const [isAILoading, setIsAILoading] = useState(false);
 
   // Check daily limit on component mount
   useEffect(() => {
@@ -108,9 +110,13 @@ const ReportFormMVP = ({ onReport, onClose }) => {
   useEffect(() => {
     if (!showInstructions) {
       // User clicked "Got it, Continue" — start loading models in background
+      setIsAILoading(true);
       const timer = setTimeout(() => {
-        preloadModel().catch(err => {
+        preloadModel().then(() => {
+          setIsAILoading(false);
+        }).catch(err => {
           console.warn('⚠️ Failed to preload face detection model:', err);
+          setIsAILoading(false);
         });
       }, 300); // Small delay so UI renders first
       return () => clearTimeout(timer);
@@ -790,6 +796,14 @@ const ReportFormMVP = ({ onReport, onClose }) => {
 
   return (
     <div className="mvp-report-overlay">
+      {isAILoading && (
+        <div className="mvp-report-modal mvp-ai-loading-modal" style={{ zIndex: 9999, position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(255, 255, 255, 0.95)', borderRadius: '24px' }}>
+          <div className="mvp-spinner" style={{ width: '50px', height: '50px', border: '4px solid #f3f3f3', borderTop: '4px solid #1a73e8', borderRadius: '50%', animation: 'spin 1s linear infinite', marginBottom: '20px' }}></div>
+          <h2 style={{ color: '#1a73e8', margin: '0 0 10px 0', fontSize: '20px', fontWeight: 'bold' }}>Initializing AI Privacy Shield</h2>
+          <p style={{ color: '#5f6368', textAlign: 'center', maxWidth: '80%', margin: '0' }}>Loading privacy models to automatically detect and blur faces and license plates...</p>
+        </div>
+      )}
+
       <div className="mvp-report-modal">
         {/* ==================== HEADER ==================== */}
         <header className="mvp-report-header">
