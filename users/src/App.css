@@ -9262,16 +9262,16 @@ main h1 {
 }
 
 .mvp-report-title {
-  font-size: clamp(18px, 5vw, 22px);
+  font-size: clamp(15px, 4.5vw, 20px);
   font-weight: 700;
   color: #0f172a;
-  margin: 0 0 6px 0;
-  letter-spacing: -0.02em;
+  margin: 0 0 4px 0;
+  letter-spacing: -0.01em;
   line-height: 1.2;
 }
 
 .mvp-report-subtitle {
-  font-size: clamp(13px, 3.5vw, 14px);
+  font-size: clamp(11px, 3vw, 13px);
   color: #64748b;
   margin: 0;
   font-weight: 400;
@@ -9288,7 +9288,7 @@ main h1 {
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
   transition: all 0.2s ease;
   flex-shrink: 0;
   margin-left: 16px;
@@ -10630,7 +10630,7 @@ main h1 {
   .mvp-instructions-modal {
     max-width: 95%;
     max-height: 90vh;
-    border-radius: 20px;
+    x` border-radius: 20px;
     align-self: center;
     margin: auto;
   }
