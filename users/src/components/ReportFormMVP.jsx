@@ -811,7 +811,7 @@ const ReportFormMVP = ({ onReport, onClose }) => {
   return (
     <div className="mvp-report-overlay">
       {isAILoading && (
-        <div style={{ zIndex: 9999, position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(226, 232, 240, 0.7)', display: 'flex', justifyContent: 'center', alignItems: 'center', backdropFilter: 'blur(3px)' }}>
+        <div style={{ zIndex: 9999, position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(226, 232, 240, 0.4)', display: 'flex', justifyContent: 'center', alignItems: 'center', backdropFilter: 'blur(2px)' }}>
           <div style={{ backgroundColor: 'white', padding: '24px 20px', borderRadius: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', width: '85%', maxWidth: '320px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)' }}>
             <div className="mvp-spinner" style={{ width: '40px', height: '40px', border: '4px solid #f3f3f3', borderTop: '4px solid #1a73e8', borderRadius: '50%', animation: 'spin 1s linear infinite', marginBottom: '16px' }}></div>
             <h2 style={{ color: '#1a73e8', margin: '0 0 8px 0', fontSize: '18px', fontWeight: 'bold', textAlign: 'center' }}>Initializing AI Shield</h2>
