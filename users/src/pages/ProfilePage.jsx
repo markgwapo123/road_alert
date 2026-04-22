@@ -328,6 +328,22 @@ const ProfilePage = ({ token, prefetchedUser, onBack, onLogout, onUserUpdate }) 
             </div>
           </div>
 
+          {/* Stats Section */}
+          <div className="profile-stats-container">
+            <div className="profile-stat-box profile-stat-box--total">
+              <span className="profile-stat-number">{stats.totalReports}</span>
+              <span className="profile-stat-label">Total Reports</span>
+            </div>
+            <div className="profile-stat-box profile-stat-box--pending">
+              <span className="profile-stat-number">{stats.pendingReports}</span>
+              <span className="profile-stat-label">Pending</span>
+            </div>
+            <div className="profile-stat-box profile-stat-box--resolved">
+              <span className="profile-stat-number">{stats.resolvedReports}</span>
+              <span className="profile-stat-label">Resolved</span>
+            </div>
+          </div>
+
           {/* Detailed Info Rows */}
           <div className="profile-info-grid">
             {/* Phone Row */}

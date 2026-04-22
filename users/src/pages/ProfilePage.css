@@ -67,6 +67,7 @@
     opacity: 0;
     transform: translateX(-50%) translateY(-20px);
   }
+
   to {
     opacity: 1;
     transform: translateX(-50%) translateY(0);
@@ -101,7 +102,7 @@
   content: '';
   position: absolute;
   inset: 0;
-  background: 
+  background:
     radial-gradient(at 0% 0%, rgba(59, 130, 246, 0.05) 0px, transparent 50%),
     radial-gradient(at 100% 0%, rgba(16, 185, 129, 0.05) 0px, transparent 50%);
   opacity: 0.8;
@@ -138,7 +139,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  margin-top: -50px;
+  margin-top: -85px;
   position: relative;
   z-index: 2;
   margin-bottom: 8px;
@@ -198,6 +199,46 @@
   font-weight: 500;
 }
 
+/* ==================== STATS SECTION ==================== */
+.profile-stats-container {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-top: 8px;
+  margin-bottom: 12px;
+}
+
+.profile-stat-box {
+  padding: 12px 4px;
+  border-radius: 16px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.profile-stat-box--total { background: #f8fafc; }
+.profile-stat-box--pending { background: #fffbeb; }
+.profile-stat-box--resolved { background: #ecfdf5; }
+
+.profile-stat-number {
+  font-size: 22px;
+  font-weight: 700;
+  color: #1e293b;
+  line-height: 1.2;
+}
+
+.profile-stat-box--pending .profile-stat-number { color: #b45309; }
+.profile-stat-box--resolved .profile-stat-number { color: #10b981; }
+
+.profile-stat-label {
+  font-size: 9px;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
 /* ==================== INFO GRID ==================== */
 .profile-info-grid {
   display: flex;
@@ -232,10 +273,25 @@
   flex-shrink: 0;
 }
 
-.profile-info-icon--green { background: #ecfdf5; color: #10b981; }
-.profile-info-icon--yellow { background: #fffbeb; color: #f59e0b; }
-.profile-info-icon--red { background: #fef2f2; color: #ef4444; }
-.profile-info-icon--purple { background: #f5f3ff; color: #8b5cf6; }
+.profile-info-icon--green {
+  background: #ecfdf5;
+  color: #10b981;
+}
+
+.profile-info-icon--yellow {
+  background: #fffbeb;
+  color: #f59e0b;
+}
+
+.profile-info-icon--red {
+  background: #fef2f2;
+  color: #ef4444;
+}
+
+.profile-info-icon--purple {
+  background: #f5f3ff;
+  color: #8b5cf6;
+}
 
 .profile-info-content {
   display: flex;
@@ -438,11 +494,11 @@
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-.profile-toggle input:checked + .profile-toggle-slider {
+.profile-toggle input:checked+.profile-toggle-slider {
   background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
 }
 
-.profile-toggle input:checked + .profile-toggle-slider::before {
+.profile-toggle input:checked+.profile-toggle-slider::before {
   transform: translateX(24px);
 }
 
