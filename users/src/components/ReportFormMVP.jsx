@@ -797,10 +797,12 @@ const ReportFormMVP = ({ onReport, onClose }) => {
   return (
     <div className="mvp-report-overlay">
       {isAILoading && (
-        <div className="mvp-report-modal mvp-ai-loading-modal" style={{ zIndex: 9999, position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(255, 255, 255, 0.95)', borderRadius: '24px' }}>
-          <div className="mvp-spinner" style={{ width: '50px', height: '50px', border: '4px solid #f3f3f3', borderTop: '4px solid #1a73e8', borderRadius: '50%', animation: 'spin 1s linear infinite', marginBottom: '20px' }}></div>
-          <h2 style={{ color: '#1a73e8', margin: '0 0 10px 0', fontSize: '20px', fontWeight: 'bold' }}>Initializing AI Privacy Shield</h2>
-          <p style={{ color: '#5f6368', textAlign: 'center', maxWidth: '80%', margin: '0' }}>Loading privacy models to automatically detect and blur faces and license plates...</p>
+        <div style={{ zIndex: 9999, position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0, 0, 0, 0.4)', display: 'flex', justifyContent: 'center', alignItems: 'center', backdropFilter: 'blur(3px)' }}>
+          <div style={{ backgroundColor: 'white', padding: '24px 20px', borderRadius: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', width: '85%', maxWidth: '320px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)' }}>
+            <div className="mvp-spinner" style={{ width: '40px', height: '40px', border: '4px solid #f3f3f3', borderTop: '4px solid #1a73e8', borderRadius: '50%', animation: 'spin 1s linear infinite', marginBottom: '16px' }}></div>
+            <h2 style={{ color: '#1a73e8', margin: '0 0 8px 0', fontSize: '18px', fontWeight: 'bold', textAlign: 'center' }}>Initializing AI Shield</h2>
+            <p style={{ color: '#5f6368', textAlign: 'center', margin: '0', fontSize: '14px', lineHeight: '1.4' }}>Loading privacy models to protect faces and license plates...</p>
+          </div>
         </div>
       )}
 
