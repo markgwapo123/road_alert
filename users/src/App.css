@@ -7851,10 +7851,11 @@ main h1 {
     margin-left: 0;
     width: 100%;
     padding: 0;
-    padding-bottom: 70px;
+    padding-bottom: 0;
     max-height: calc(100vh - 134px);
     overflow-y: auto;
     box-sizing: border-box;
+    background: #f1f5f9;
   }
 
   .navbar {
@@ -7886,7 +7887,7 @@ main h1 {
 @media (max-width: 480px) {
   .main-content {
     padding: 0;
-    padding-bottom: 70px;
+    padding-bottom: 0;
   }
 
   .mobile-bottom-nav {
