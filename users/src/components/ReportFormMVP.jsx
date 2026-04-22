@@ -580,7 +580,7 @@ const ReportFormMVP = ({ onReport, onClose }) => {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
         },
-        timeout: 15000,
+        timeout: 60000, // Increased to 60s to allow Cloudinary uploads to finish without frontend dropping connection
         onUploadProgress: (progressEvent) => {
           const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
           console.log(`📤 Upload progress: ${percentCompleted}%`);

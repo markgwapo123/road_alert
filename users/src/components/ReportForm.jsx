@@ -616,7 +616,7 @@ const ReportForm = ({ onReport, onClose }) => {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
           // Don't set Content-Type for FormData, let browser set it with boundary
         },
-        timeout: 15000, // 15 second timeout (Render free tier can be slow)
+        timeout: 60000, // 60 second timeout (Render free tier can be slow)
         onUploadProgress: (progressEvent) => {
           const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
           console.log(`📤 Upload progress: ${percentCompleted}%`);
