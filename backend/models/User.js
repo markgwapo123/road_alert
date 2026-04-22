@@ -139,4 +139,8 @@ userSchema.methods.canSubmitReports = function() {
     return !this.isFrozen && this.isActive;
 };
 
+// Add indexes for faster queries
+userSchema.index({ username: 1 });
+userSchema.index({ email: 1 });
+
 module.exports = mongoose.model('User', userSchema);

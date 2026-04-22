@@ -7,13 +7,17 @@ const MyReports = ({ token }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [enlargedImage, setEnlargedImage] = useState(null);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [totalReports, setTotalReports] = useState(0);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   console.log('MyReports component rendered with token:', token ? 'present' : 'missing');
 
   useEffect(() => {
     console.log('MyReports useEffect - token:', token ? 'present' : 'missing');
     if (token) {
-      fetchMyReports();
+      fetchMyReports(1);
     } else {
       console.error('No authentication token provided to MyReports');
       setError('Authentication token is missing');
@@ -21,15 +25,19 @@ const MyReports = ({ token }) => {
     }
   }, [token]);
 
-  const fetchMyReports = async () => {
-    try {
+  const fetchMyReports = async (pageNum) => {
+    if (pageNum === 1) {
       setLoading(true);
-      setError(null);
+    } else {
+      setLoadingMore(true);
+    }
+    setError(null);
+    
+    try {
+      console.log(`Fetching reports page ${pageNum} with token:`, token ? 'Token present' : 'No token');
+      console.log('Making request to:', `${config.API_BASE_URL}/reports/my-reports?page=${pageNum}&limit=10`);
       
-      console.log('Fetching reports with token:', token ? 'Token present' : 'No token');
-      console.log('Making request to:', `${config.API_BASE_URL}/reports/my-reports`);
-      
-      const res = await axios.get(`${config.API_BASE_URL}/reports/my-reports`, {
+      const res = await axios.get(`${config.API_BASE_URL}/reports/my-reports?page=${pageNum}&limit=10`, {
         headers: { 
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -39,13 +47,18 @@ const MyReports = ({ token }) => {
       console.log('Reports response status:', res.status);
       console.log('Reports response data:', res.data);
       
-      if (res.data && res.data.success && res.data.reports) {
-        console.log('Setting reports:', res.data.reports);
-        const validReports = Array.isArray(res.data.reports) ? res.data.reports : [];
-        setReports(validReports);
+      if (res.data && res.data.success) {
+        const newReports = res.data.reports || [];
+        const pagination = res.data.pagination || {};
+        
+        setReports(prev => pageNum === 1 ? newReports : [...prev, ...newReports]);
+        setTotalReports(pagination.totalReports || 0);
+        setHasMore(pagination.hasNextPage || false);
+        setPage(pageNum);
       } else {
         console.log('Response not successful or no reports field, setting empty reports');
         setReports([]);
+        setHasMore(false);
       }
       
     } catch (err) {
@@ -61,6 +74,13 @@ const MyReports = ({ token }) => {
       }
     } finally {
       setLoading(false);
+      setLoadingMore(false);
+    }
+  };
+
+  const handleLoadMore = () => {
+    if (!loadingMore && hasMore) {
+      fetchMyReports(page + 1);
     }
   };
 
@@ -125,7 +145,7 @@ const MyReports = ({ token }) => {
         <div className="error">
           <span className="error-icon">⚠️</span>
           <p>{error}</p>
-          <button onClick={fetchMyReports} className="retry-btn">
+          <button onClick={() => fetchMyReports(1)} className="retry-btn">
             Try Again
           </button>
         </div>
@@ -142,10 +162,10 @@ const MyReports = ({ token }) => {
     <div className="my-reports">
       <div className="my-reports-header">
         <h2>My Reports</h2>
-        <p>Total Reports: {validReports.length}</p>
+        <p>Total Reports: {totalReports}</p>
       </div>
       
-      {validReports.length === 0 ? (
+      {validReports.length === 0 && !loading ? (
         <div className="no-reports">
           <p>You haven't submitted any reports yet.</p>
           <p>Start reporting road issues to help keep our roads safe!</p>
@@ -240,6 +260,21 @@ const MyReports = ({ token }) => {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {loadingMore && (
+        <div className="loading-more">
+          <div className="loading-spinner"></div>
+          <p>Loading more reports...</p>
+        </div>
+      )}
+
+      {!loadingMore && hasMore && validReports.length > 0 && (
+        <div className="load-more-container">
+          <button onClick={handleLoadMore} className="load-more-btn">
+            Load More
+          </button>
         </div>
       )}
 

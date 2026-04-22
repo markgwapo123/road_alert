@@ -129,5 +129,6 @@ reportSchema.index({ 'location.coordinates': '2d' });
 reportSchema.index({ status: 1, createdAt: -1 });
 reportSchema.index({ type: 1, province: 1, city: 1, barangay: 1 });
 reportSchema.index({ province: 1, city: 1, barangay: 1 });
+reportSchema.index({ 'reportedBy.id': 1, createdAt: -1 });
 
 module.exports = mongoose.model('Report', reportSchema);

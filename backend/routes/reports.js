@@ -136,7 +136,7 @@ router.get('/', async (req, res) => {
 });
 
 // @route   GET /api/reports/my-reports
-// @desc    Get current user's reports
+// @desc    Get current user's reports with pagination
 // @access  Private
 router.get('/my-reports', require('../middleware/userAuth'), async (req, res) => {
   try {
@@ -164,24 +164,25 @@ router.get('/my-reports', require('../middleware/userAuth'), async (req, res) =>
     const reports = await Report.find(filter)
       .select('-images.data -evidencePhoto.data') // Exclude heavy image data
       .sort(sort)
-      .limit(limit * 1)
-      .skip((page - 1) * limit)
+      .limit(parseInt(limit))
+      .skip((parseInt(page) - 1) * parseInt(limit))
       .lean()
       .maxTimeMS(30000)
       .exec();
 
     // Get total count for pagination
     const totalReports = await Report.countDocuments(filter);
+    const totalPages = Math.ceil(totalReports / limit);
 
     res.json({
       success: true,
       reports: reports,
       pagination: {
         currentPage: parseInt(page),
-        totalPages: Math.ceil(totalReports / limit),
+        totalPages: totalPages,
         totalReports,
-        hasNextPage: page < Math.ceil(totalReports / limit),
-        hasPrevPage: page > 1
+        hasNextPage: parseInt(page) < totalPages,
+        hasPrevPage: parseInt(page) > 1
       }
     });
 
@@ -189,7 +190,7 @@ router.get('/my-reports', require('../middleware/userAuth'), async (req, res) =>
     console.error('Get user reports error:', error);
     res.status(500).json({
       success: false,
-      error: 'Server error while fetching report'
+      error: 'Server error while fetching reports'
     });
   }
 });
@@ -394,7 +395,7 @@ router.get('/map', async (req, res) => {
       .maxTimeMS(30000)
       .exec();
 
-    console.log(`📍 Found ${reports.length} reports for map display`);
+    console.log(` Found ${reports.length} reports for map display`);
 
     res.json({
       success: true,
