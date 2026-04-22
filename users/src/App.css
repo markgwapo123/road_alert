@@ -1601,7 +1601,7 @@ main h1 {
 .news-feed {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 6px;
   width: 100%;
   max-width: none;
   margin: 0;
@@ -1633,7 +1633,7 @@ main h1 {
 /* Search Container */
 .search-container {
   padding: 0 8px;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
   max-width: none;
   width: 100%;
   margin-left: 0;

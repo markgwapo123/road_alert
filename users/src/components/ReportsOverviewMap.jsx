@@ -32,7 +32,7 @@ const MAP_TILES = {
 const ReportsOverviewMap = ({ searchQuery = '', statusFilter = 'reports' }) => {
   const { getMapConfig } = useSettings();
   const mapConfig = getMapConfig();
-  
+
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const markersLayerRef = useRef(null);
@@ -50,10 +50,10 @@ const ReportsOverviewMap = ({ searchQuery = '', statusFilter = 'reports' }) => {
         setIsLoading(true);
         const token = localStorage.getItem('token');
         const statusParam = statusFilter === 'resolved' ? 'resolved' : 'verified';
-        
+
         console.log('🗺️ ReportsOverviewMap: Fetching reports...');
         console.log('🗺️ API URL:', `${config.API_BASE_URL}/reports`);
-        
+
         const response = await fetch(`${config.API_BASE_URL}/reports?status=${statusParam}&limit=100`, {
           headers: {
             'Authorization': `Bearer ${token}`
@@ -66,12 +66,12 @@ const ReportsOverviewMap = ({ searchQuery = '', statusFilter = 'reports' }) => {
 
         const responseData = await response.json();
         console.log('📍 API Response:', responseData);
-        
+
         // Extract the reports array from the response
         const data = responseData.data || responseData.reports || [];
         console.log('📍 Fetched reports for overview map:', data);
         console.log('📍 Number of reports:', Array.isArray(data) ? data.length : 'Not an array!');
-        
+
         // Ensure data is an array before filtering
         if (!Array.isArray(data)) {
           console.error('❌ Data is not an array:', typeof data, data);
@@ -79,24 +79,24 @@ const ReportsOverviewMap = ({ searchQuery = '', statusFilter = 'reports' }) => {
           setLoading(false);
           return;
         }
-        
+
         // Filter reports that have valid location data
         const validReports = data.filter(report => {
           // Check both possible location structures
           const hasNewFormat = report.location?.lat && report.location?.lng;
           const hasOldFormat = report.location?.coordinates?.latitude && report.location?.coordinates?.longitude;
-          
+
           console.log('🔍 Checking report:', {
             id: report._id,
             location: report.location,
             hasNewFormat,
             hasOldFormat
           });
-          
+
           return (hasNewFormat && !isNaN(report.location.lat) && !isNaN(report.location.lng)) ||
-                 (hasOldFormat && !isNaN(report.location.coordinates.latitude) && !isNaN(report.location.coordinates.longitude));
+            (hasOldFormat && !isNaN(report.location.coordinates.latitude) && !isNaN(report.location.coordinates.longitude));
         });
-        
+
         // Normalize location format
         const normalizedReports = validReports.map(report => ({
           ...report,
@@ -106,10 +106,10 @@ const ReportsOverviewMap = ({ searchQuery = '', statusFilter = 'reports' }) => {
             lng: report.location.lng || report.location.coordinates?.longitude
           }
         }));
-        
+
         console.log('📍 Valid reports with location:', normalizedReports.length);
         console.log('📍 Valid reports details:', normalizedReports);
-        
+
         console.log(`✅ ${normalizedReports.length} reports with valid locations`);
         setReports(normalizedReports);
         setError(null);
@@ -129,7 +129,7 @@ const ReportsOverviewMap = ({ searchQuery = '', statusFilter = 'reports' }) => {
     if (!mapInstanceRef.current && mapRef.current) {
       // Use settings for map center and zoom
       const { center, zoom, style } = mapConfig;
-      
+
       mapInstanceRef.current = L.map(mapRef.current, {
         scrollWheelZoom: false,
         dragging: true,
@@ -164,10 +164,10 @@ const ReportsOverviewMap = ({ searchQuery = '', statusFilter = 'reports' }) => {
       updateLabelVisibilityRef.current = updateLabelVisibility;
       mapInstanceRef.current.on('zoomend', updateLabelVisibility);
       updateLabelVisibility();
-      
+
       mapInstanceRef.current.on('popupopen', () => setIsPopupOpen(true));
       mapInstanceRef.current.on('popupclose', () => setIsPopupOpen(false));
-      
+
       setIsLoading(false);
     }
 
@@ -219,7 +219,7 @@ const ReportsOverviewMap = ({ searchQuery = '', statusFilter = 'reports' }) => {
           const matchesProvince = report.province?.toLowerCase().includes(query);
           const matchesDescription = report.description?.toLowerCase().includes(query);
           const matchesAlertType = report.alertType?.toLowerCase().includes(query);
-          
+
           return matchesCity || matchesBarangay || matchesProvince || matchesDescription || matchesAlertType;
         });
       }
@@ -260,7 +260,7 @@ const ReportsOverviewMap = ({ searchQuery = '', statusFilter = 'reports' }) => {
           const singleLat = Number(reportsWithLocation[0]?.location?.lat);
           const singleLng = Number(reportsWithLocation[0]?.location?.lng);
           if (!Number.isNaN(singleLat) && !Number.isNaN(singleLng)) {
-            mapInstanceRef.current.setView([singleLat, singleLng], 16, { animate: true });
+            mapInstanceRef.current.setView([singleLat, singleLng], 14, { animate: true });
           }
         } else {
           const bounds = L.latLngBounds(
@@ -268,7 +268,7 @@ const ReportsOverviewMap = ({ searchQuery = '', statusFilter = 'reports' }) => {
           );
           mapInstanceRef.current.fitBounds(bounds, {
             padding: [30, 30],
-            maxZoom: 15,
+            maxZoom: 13,
             animate: true
           });
         }
@@ -324,7 +324,7 @@ const ReportsOverviewMap = ({ searchQuery = '', statusFilter = 'reports' }) => {
         };
 
         const imageUrl = getImageUrl(report);
-        
+
         const popupContent = `
           <div class="report-popup-content-root">
             ${imageUrl ? `
@@ -351,12 +351,12 @@ const ReportsOverviewMap = ({ searchQuery = '', statusFilter = 'reports' }) => {
               </p>
             ` : ''}
             <p style="margin: 6px 0 0 0; color: #9ca3af; font-size: 11px;">
-              ${new Date(report.createdAt).toLocaleDateString('en-US', { 
-                month: 'short', 
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-              })}
+              ${new Date(report.createdAt).toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        })}
             </p>
             </div>
           </div>
@@ -377,7 +377,7 @@ const ReportsOverviewMap = ({ searchQuery = '', statusFilter = 'reports' }) => {
         marker.on('popupclose', () => {
           setTimeout(recenterToVisibleReports, 120);
         });
-        
+
         markersLayerRef.current.addLayer(marker);
       });
 
@@ -399,7 +399,7 @@ const ReportsOverviewMap = ({ searchQuery = '', statusFilter = 'reports' }) => {
           // Center on single marker
           mapInstanceRef.current.setView(
             [reportsWithLocation[0].location.lat, reportsWithLocation[0].location.lng],
-            16,
+            14,
             { animate: true }
           );
         } else {
@@ -407,9 +407,9 @@ const ReportsOverviewMap = ({ searchQuery = '', statusFilter = 'reports' }) => {
           const bounds = L.latLngBounds(
             reportsWithLocation.map(r => [r.location.lat, r.location.lng])
           );
-          mapInstanceRef.current.fitBounds(bounds, { 
-            padding: [30, 30], 
-            maxZoom: 15,
+          mapInstanceRef.current.fitBounds(bounds, {
+            padding: [30, 30],
+            maxZoom: 13,
             animate: true
           });
         }
@@ -463,10 +463,10 @@ const ReportsOverviewMap = ({ searchQuery = '', statusFilter = 'reports' }) => {
           )}
         </div>
       </div>
-      
+
       <div className="map-wrapper">
-        <div 
-          ref={mapRef} 
+        <div
+          ref={mapRef}
           className="reports-overview-map"
           style={{ height: '400px', width: '100%' }}
         >
