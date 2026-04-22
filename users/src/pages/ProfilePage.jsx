@@ -294,18 +294,6 @@ const ProfilePage = ({ token, prefetchedUser, onBack, onLogout, onUserUpdate }) 
           {/* Header Mesh Background Decoration */}
           <div className="profile-card-mesh"></div>
           
-          {/* Floating Edit Button */}
-          <button 
-            className="profile-edit-fab"
-            onClick={() => setActiveSection('edit')}
-            title="Edit Profile"
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-            </svg>
-          </button>
-
           {/* Avatar Section */}
           <div className="profile-header-section">
             <div className="profile-avatar-wrapper">
