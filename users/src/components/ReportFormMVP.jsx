@@ -729,7 +729,12 @@ const ReportFormMVP = ({ onReport, onClose }) => {
               </div>
 
               <div className="mvp-step">
-                <div className="mvp-step-icon">📍</div>
+                <div className="mvp-step-icon">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                    <circle cx="12" cy="10" r="3"></circle>
+                  </svg>
+                </div>
                 <div className="mvp-step-content">
                   <h3 className="mvp-step-title">Step 3: Set Location</h3>
                   <p className="mvp-step-desc">Use GPS or select your location from the dropdown.</p>
@@ -911,7 +916,12 @@ const ReportFormMVP = ({ onReport, onClose }) => {
             {/* ==================== SECTION 2: LOCATION ==================== */}
             <section className="mvp-form-section">
               <div className="mvp-section-header">
-                <span className="mvp-section-icon">📍</span>
+                <span className="mvp-section-icon" style={{ display: 'flex', alignItems: 'center' }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                    <circle cx="12" cy="10" r="3"></circle>
+                  </svg>
+                </span>
                 <h2 className="mvp-section-title">Location</h2>
               </div>
 
