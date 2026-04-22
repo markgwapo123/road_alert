@@ -422,194 +422,90 @@ const ProfilePage = ({ token, prefetchedUser, onBack, onLogout, onUserUpdate }) 
           </div>
         </div>
 
-        {/* ==================== EDIT PROFILE CARD ==================== */}
-        <div className="profile-card">
-          <div className="profile-section-header">
-            <h2 className="profile-section-title">
-              <span className="profile-section-title__icon">✏️</span>
-              Edit Profile
-            </h2>
-            {activeSection === 'edit' && (
-              <button 
-                onClick={() => setActiveSection('view')} 
-                className="profile-btn profile-btn--text"
-              >
-                Cancel
-              </button>
-            )}
+        {/* ==================== SETTINGS SECTIONS ==================== */}
+        <div className="profile-settings-group">
+          {/* Edit Profile Section */}
+          <div className="profile-settings-card">
+            <div className="profile-settings-header">
+              <div className="profile-settings-icon-bg profile-settings-icon-bg--blue">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                </svg>
+              </div>
+              <div className="profile-settings-title-group">
+                <h2 className="profile-settings-title">Edit Profile</h2>
+                <p className="profile-settings-subtitle">Update your personal details</p>
+              </div>
+            </div>
+            
+            <button className="profile-action-button profile-action-button--blue" onClick={() => setActiveSection('edit')}>
+              <div className="profile-action-left">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 20h9"></path>
+                  <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+                </svg>
+                <span>Edit Profile Information</span>
+              </div>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="9 18 15 12 9 6"></polyline>
+              </svg>
+            </button>
           </div>
 
-          {activeSection === 'view' ? (
-            <button 
-              onClick={() => setActiveSection('edit')} 
-              className="profile-btn profile-btn--primary profile-btn--block"
-            >
-              ✏️ Edit Profile Information
-            </button>
-          ) : (
-            <div className="profile-form">
-              {/* Profile Picture Upload */}
-              <div className="profile-form-group">
-                <label className="profile-form-label">Profile Picture</label>
-                <div className="profile-image-upload">
-                  <div className="profile-image-preview">
-                    {previewImage ? (
-                      <img src={previewImage} alt="Preview" />
-                    ) : profileImage ? (
-                      <img src={profileImage} alt="Current" />
-                    ) : (
-                      <span className="profile-image-preview__placeholder">👤</span>
-                    )}
+          {/* Account Settings Section */}
+          <div className="profile-settings-card">
+            <div className="profile-settings-header">
+              <div className="profile-settings-icon-bg profile-settings-icon-bg--purple">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="3"></circle>
+                  <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                </svg>
+              </div>
+              <div className="profile-settings-title-group">
+                <h2 className="profile-settings-title">Account</h2>
+                <p className="profile-settings-subtitle">Manage your account settings</p>
+              </div>
+            </div>
+
+            <div className="profile-action-rows">
+              <button className="profile-action-row" onClick={() => setActiveSection('changePassword')}>
+                <div className="profile-action-row-left">
+                  <div className="profile-row-icon-bg profile-row-icon-bg--yellow">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                      <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                    </svg>
                   </div>
-                  <div className="profile-image-actions">
-                    {previewImage ? (
-                      <>
-                        <button 
-                          onClick={handleUploadImage} 
-                          className="profile-btn profile-btn--success profile-btn--sm"
-                          disabled={uploadingImage}
-                        >
-                          {uploadingImage ? 'Uploading...' : '✓ Save'}
-                        </button>
-                        <button 
-                          onClick={handleCancelImage} 
-                          className="profile-btn profile-btn--secondary profile-btn--sm"
-                        >
-                          Cancel
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        <label className="profile-btn profile-btn--secondary profile-btn--sm">
-                          📷 Change
-                          <input 
-                            type="file" 
-                            accept="image/jpeg,image/png,image/gif,image/webp" 
-                            onChange={handleImageChange}
-                            style={{ display: 'none' }}
-                          />
-                        </label>
-                        {profileImage && (
-                          <button 
-                            onClick={handleRemoveImage} 
-                            className="profile-btn profile-btn--danger profile-btn--sm"
-                          >
-                            🗑️ Remove
-                          </button>
-                        )}
-                      </>
-                    )}
+                  <div className="profile-row-text">
+                    <span className="profile-row-title">Change Password</span>
+                    <span className="profile-row-subtitle">Update your password to keep your account secure</span>
                   </div>
-                  <p className="profile-file-hint">Max: 5MB • JPG, PNG, GIF</p>
                 </div>
-              </div>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="9 18 15 12 9 6"></polyline>
+                </svg>
+              </button>
 
-              {/* Full Name */}
-              <div className="profile-form-group">
-                <label className="profile-form-label">Full Name</label>
-                <input
-                  type="text"
-                  name="fullName"
-                  value={formData.fullName}
-                  onChange={handleInputChange}
-                  className="profile-form-input"
-                  placeholder="Enter your full name"
-                />
-              </div>
-
-              {/* Contact Number */}
-              <div className="profile-form-group">
-                <label className="profile-form-label">Contact Number</label>
-                <input
-                  type="tel"
-                  name="phone"
-                  value={formData.phone}
-                  onChange={handleInputChange}
-                  className="profile-form-input"
-                  placeholder="e.g. +63 912 345 6789"
-                />
-              </div>
-
-              {/* Gender Selection */}
-              <div className="profile-form-group">
-                <label className="profile-form-label">Gender</label>
-                <select
-                  name="gender"
-                  value={formData.gender}
-                  onChange={handleInputChange}
-                  className="profile-form-input profile-form-select"
-                >
-                  <option value="">Select Gender</option>
-                  <option value="male">Male</option>
-                  <option value="female">Female</option>
-                  <option value="other">Other</option>
-                  <option value="prefer-not-to-say">Prefer not to say</option>
-                </select>
-              </div>
-
-              {/* Address */}
-              <div className="profile-form-group">
-                <label className="profile-form-label">Address</label>
-                <textarea
-                  name="address"
-                  value={formData.address}
-                  onChange={handleInputChange}
-                  className="profile-form-input profile-form-textarea"
-                  placeholder="Enter your address"
-                  rows="3"
-                />
-              </div>
-
-              {/* Notification Toggle */}
-              <div className="profile-form-group profile-toggle-group">
-                <div className="profile-toggle-info">
-                  <label className="profile-form-label">
-                    <span>🔔</span> Notifications
-                  </label>
-                  <span className="profile-toggle-desc">Receive alerts about your reports</span>
+              <button className="profile-action-row profile-action-row--logout" onClick={onLogout}>
+                <div className="profile-action-row-left">
+                  <div className="profile-row-icon-bg profile-row-icon-bg--red">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                      <polyline points="16 17 21 12 16 7"></polyline>
+                      <line x1="21" y1="12" x2="9" y2="12"></line>
+                    </svg>
+                  </div>
+                  <div className="profile-row-text">
+                    <span className="profile-row-title">Logout</span>
+                    <span className="profile-row-subtitle">Sign out from your account</span>
+                  </div>
                 </div>
-                <label className="profile-toggle">
-                  <input
-                    type="checkbox"
-                    name="notificationsEnabled"
-                    checked={formData.notificationsEnabled}
-                    onChange={handleInputChange}
-                  />
-                  <span className="profile-toggle-slider"></span>
-                </label>
-              </div>
-
-              {/* Save Button */}
-              <button 
-                onClick={handleSaveProfile}
-                className="profile-btn profile-btn--primary profile-btn--block"
-                disabled={saving}
-              >
-                {saving ? 'Saving...' : '💾 Save Changes'}
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="9 18 15 12 9 6"></polyline>
+                </svg>
               </button>
             </div>
-          )}
-        </div>
-
-        {/* ==================== ACCOUNT ACTIONS CARD ==================== */}
-        <div className="profile-card">
-          <h2 className="profile-section-title">
-            <span className="profile-section-title__icon">⚙️</span>
-            Account
-          </h2>
-          <div className="profile-actions">
-            <button 
-              onClick={() => setShowChangePassword(true)}
-              className="profile-btn profile-btn--outline profile-btn--block"
-            >
-              🔒 Change Password
-            </button>
-            <button 
-              onClick={onLogout} 
-              className="profile-btn profile-btn--danger profile-btn--block"
-            >
-              🚪 Logout
-            </button>
           </div>
         </div>
 
