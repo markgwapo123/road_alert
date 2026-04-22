@@ -266,33 +266,23 @@
 }
 
 .profile-info-icon {
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  background: #f1f5f9;
+  color: #475569;
 }
 
-.profile-info-icon--green {
-  background: #ecfdf5;
-  color: #10b981;
-}
-
-.profile-info-icon--yellow {
-  background: #fffbeb;
-  color: #f59e0b;
-}
-
-.profile-info-icon--red {
-  background: #fef2f2;
-  color: #ef4444;
-}
-
+.profile-info-icon--green,
+.profile-info-icon--yellow,
+.profile-info-icon--red,
 .profile-info-icon--purple {
-  background: #f5f3ff;
-  color: #8b5cf6;
+  background: #f1f5f9;
+  color: #475569;
 }
 
 .profile-info-content {
@@ -631,8 +621,10 @@
   flex-shrink: 0;
 }
 
-.profile-settings-icon-bg--blue { background: #eff6ff; }
-.profile-settings-icon-bg--purple { background: #f5f3ff; }
+.profile-settings-icon-bg--blue,
+.profile-settings-icon-bg--purple {
+  background: #f1f5f9;
+}
 
 .profile-settings-title-group {
   display: flex;
@@ -735,10 +727,19 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  background: #f1f5f9;
+  color: #475569;
 }
 
-.profile-row-icon-bg--yellow { background: #fffbeb; }
-.profile-row-icon-bg--red { background: #fef2f2; }
+.profile-row-icon-bg--yellow,
+.profile-row-icon-bg--red {
+  background: #f1f5f9;
+}
+
+.profile-row-icon-bg--yellow svg,
+.profile-row-icon-bg--red svg {
+  stroke: #475569;
+}
 
 .profile-row-text {
   display: flex;
@@ -761,7 +762,11 @@
 }
 
 .profile-action-row--logout .profile-row-title {
-  color: #ef4444;
+  color: #475569;
+}
+
+.profile-action-row--logout svg {
+  stroke: #475569;
 }
 
 /* ==================== RESPONSIVE DESIGN ==================== */
