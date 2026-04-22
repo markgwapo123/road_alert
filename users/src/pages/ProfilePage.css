@@ -141,12 +141,12 @@
   margin-top: -50px;
   position: relative;
   z-index: 2;
-  margin-bottom: 24px;
+  margin-bottom: 12px;
 }
 
 .profile-avatar-wrapper {
   position: relative;
-  margin-bottom: 16px;
+  margin-bottom: 8px;
 }
 
 .profile-avatar {
@@ -179,10 +179,10 @@
 }
 
 .profile-user-name {
-  font-size: 26px;
+  font-size: 24px;
   font-weight: 800;
   color: #0f172a;
-  margin: 0 0 8px 0;
+  margin: 0 0 4px 0;
   letter-spacing: -0.02em;
 }
 
@@ -206,7 +206,7 @@
   background: #f1f5f9;
   border-radius: 16px;
   overflow: hidden;
-  margin-top: 24px;
+  margin-top: 16px;
 }
 
 .profile-info-row {
