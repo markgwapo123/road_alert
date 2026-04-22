@@ -9187,7 +9187,7 @@ main h1 {
 .mvp-report-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.3);
+  background: rgba(226, 232, 240, 0.7);
   backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
