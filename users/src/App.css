@@ -9235,9 +9235,10 @@ main h1 {
 
 /* ==================== HEADER ==================== */
 .mvp-report-header {
+  position: relative;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   padding: 24px;
   background: linear-gradient(135deg, #f8fafc 0%, #eff6ff 100%);
   border-bottom: 1px solid #e2e8f0;
@@ -9259,6 +9260,7 @@ main h1 {
 .mvp-header-content {
   flex: 1;
   min-width: 0;
+  padding-right: 28px; /* space for absolute close button */
 }
 
 .mvp-report-title {
@@ -9279,19 +9281,20 @@ main h1 {
 }
 
 .mvp-close-btn {
+  position: absolute;
+  top: 16px;
+  right: 16px;
   background: white;
   border: 1px solid #e2e8f0;
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
   transition: all 0.2s ease;
-  flex-shrink: 0;
-  margin-left: 16px;
 }
 
 .mvp-close-btn:hover {
@@ -10630,7 +10633,7 @@ main h1 {
   .mvp-instructions-modal {
     max-width: 95%;
     max-height: 90vh;
-    x` border-radius: 20px;
+    border-radius: 20px;
     align-self: center;
     margin: auto;
   }
