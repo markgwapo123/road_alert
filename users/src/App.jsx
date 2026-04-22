@@ -197,6 +197,7 @@ function AppContent() {
 
   const handleSuccessfulReport = () => {
     setShowReport(false);
+    fetchMyReports(); // Fetch the newly submitted report immediately
     setCurrentView('myreports');
   };
 
