@@ -332,11 +332,15 @@ const ProfilePage = ({ token, prefetchedUser, onBack, onLogout, onUserUpdate }) 
           <div className="profile-stats-container">
             <div className="profile-stat-box profile-stat-box--total">
               <span className="profile-stat-number">{stats.totalReports}</span>
-              <span className="profile-stat-label">Total Reports</span>
+              <span className="profile-stat-label">Total</span>
             </div>
             <div className="profile-stat-box profile-stat-box--pending">
               <span className="profile-stat-number">{stats.pendingReports}</span>
               <span className="profile-stat-label">Pending</span>
+            </div>
+            <div className="profile-stat-box profile-stat-box--review">
+              <span className="profile-stat-number">{stats.verifiedReports}</span>
+              <span className="profile-stat-label">In Review</span>
             </div>
             <div className="profile-stat-box profile-stat-box--resolved">
               <span className="profile-stat-number">{stats.resolvedReports}</span>

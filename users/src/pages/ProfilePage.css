@@ -202,15 +202,15 @@
 /* ==================== STATS SECTION ==================== */
 .profile-stats-container {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
   margin-top: 8px;
   margin-bottom: 12px;
 }
 
 .profile-stat-box {
-  padding: 12px 4px;
-  border-radius: 16px;
+  padding: 10px 2px;
+  border-radius: 12px;
   text-align: center;
   display: flex;
   flex-direction: column;
@@ -219,24 +219,26 @@
 
 .profile-stat-box--total { background: #f8fafc; }
 .profile-stat-box--pending { background: #fffbeb; }
+.profile-stat-box--review { background: #f5f3ff; }
 .profile-stat-box--resolved { background: #ecfdf5; }
 
 .profile-stat-number {
-  font-size: 22px;
+  font-size: 18px;
   font-weight: 700;
   color: #1e293b;
   line-height: 1.2;
 }
 
 .profile-stat-box--pending .profile-stat-number { color: #b45309; }
+.profile-stat-box--review .profile-stat-number { color: #8b5cf6; }
 .profile-stat-box--resolved .profile-stat-number { color: #10b981; }
 
 .profile-stat-label {
-  font-size: 9px;
+  font-size: 8px;
   font-weight: 700;
   color: #64748b;
   text-transform: uppercase;
-  letter-spacing: 0.02em;
+  letter-spacing: 0;
 }
 
 /* ==================== INFO GRID ==================== */
