@@ -8,6 +8,12 @@
   padding: 24px 16px 0 16px;
   overflow-y: auto;
   overflow-x: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.profile-page::-webkit-scrollbar {
+  display: none;
 }
 
 .profile-container {
