@@ -229,9 +229,11 @@
   line-height: 1.2;
 }
 
-.profile-stat-box--pending .profile-stat-number { color: #b45309; }
-.profile-stat-box--review .profile-stat-number { color: #8b5cf6; }
-.profile-stat-box--resolved .profile-stat-number { color: #10b981; }
+.profile-stat-box--pending .profile-stat-number,
+.profile-stat-box--review .profile-stat-number,
+.profile-stat-box--resolved .profile-stat-number { 
+  color: #1e293b; 
+}
 
 .profile-stat-label {
   font-size: 8px;
