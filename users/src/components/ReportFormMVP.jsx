@@ -675,6 +675,15 @@ const ReportFormMVP = ({ onReport, onClose }) => {
   // Get selected hazard type info
   const selectedHazard = ALERT_TYPES.find(t => t.value === form.type);
 
+  // Check if form is valid for submission
+  const isFormValid = 
+    form.type !== '' &&
+    form.province !== '' &&
+    form.city !== '' &&
+    form.barangay !== '' &&
+    (!reportConfig.requireLocation || form.location !== null) &&
+    (!reportConfig.requireImage || form.image !== null);
+
   // ==================== INSTRUCTION SCREEN ====================
   if (showInstructions) {
     return (
@@ -1192,8 +1201,8 @@ const ReportFormMVP = ({ onReport, onClose }) => {
             <button
               type="submit"
               onClick={handleSubmit}
-              className="mvp-btn mvp-btn-submit"
-              disabled={submitting || checkingLimit || (dailyLimit && !dailyLimit.canSubmit)}
+              className={`mvp-btn mvp-btn-submit ${!isFormValid ? 'mvp-btn-disabled' : ''}`}
+              disabled={!isFormValid || submitting || checkingLimit || (dailyLimit && !dailyLimit.canSubmit)}
             >
               {submitting ? (
                 <>
