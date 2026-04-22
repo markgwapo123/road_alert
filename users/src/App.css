@@ -9239,11 +9239,11 @@ main h1 {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 24px;
+  padding: 20px 24px;
   background: linear-gradient(135deg, #f8fafc 0%, #eff6ff 100%);
   border-bottom: 1px solid #e2e8f0;
   flex-shrink: 0;
-  gap: 16px;
+  gap: 12px;
 }
 
 .mvp-header-icon-container {
@@ -9258,9 +9258,7 @@ main h1 {
 }
 
 .mvp-header-content {
-  flex: 1;
-  min-width: 0;
-  text-align: center;
+  text-align: left;
 }
 
 .mvp-report-title {
