@@ -4,8 +4,8 @@
 .profile-page {
   width: 100%;
   min-height: calc(100vh - 80px);
-  background: linear-gradient(135deg, #f8fafc 0%, #eef2f7 100%);
-  padding: 24px 16px;
+  background: #f1f5f9;
+  padding: 24px 16px 0 16px;
   overflow-y: auto;
   overflow-x: hidden;
 }
