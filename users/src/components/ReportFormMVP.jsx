@@ -823,8 +823,17 @@ const ReportFormMVP = ({ onReport, onClose }) => {
       <div className="mvp-report-modal">
         {/* ==================== HEADER ==================== */}
         <header className="mvp-report-header">
+          <div className="mvp-header-icon-container">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M12 2V4" stroke="#ef4444" strokeWidth="2" strokeLinecap="round"/>
+              <path d="M6 5L7.5 7" stroke="#ef4444" strokeWidth="2" strokeLinecap="round"/>
+              <path d="M18 5L16.5 7" stroke="#ef4444" strokeWidth="2" strokeLinecap="round"/>
+              <path d="M12 7L2 21H22L12 7Z" fill="#ef4444"/>
+              <path d="M11 12H13V16H11V12ZM11 18H13V20H11V18Z" fill="white"/>
+            </svg>
+          </div>
           <div className="mvp-header-content">
-            <h1 className="mvp-report-title">🚨 Submit Road Hazard Report</h1>
+            <h1 className="mvp-report-title">Submit Road Hazard Report</h1>
             <p className="mvp-report-subtitle">Help keep roads safe by reporting hazards</p>
           </div>
           <button
@@ -833,7 +842,7 @@ const ReportFormMVP = ({ onReport, onClose }) => {
             onClick={onClose}
             aria-label="Close"
           >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1e293b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <line x1="18" y1="6" x2="6" y2="18"></line>
               <line x1="6" y1="6" x2="18" y2="18"></line>
             </svg>
