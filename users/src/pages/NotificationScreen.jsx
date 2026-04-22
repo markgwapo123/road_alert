@@ -99,7 +99,7 @@ const NotificationScreen = ({ prefetchedNotifications, onRefresh }) => {
         {/* Filter Tabs */}
         <div className="notif-filters-scroll-container">
           <div className="notif-filters-row">
-            {['All', 'Unread', 'Mentions', 'Reports', 'Archive'].map(filter => (
+            {['All', 'Unread', 'Reports'].map(filter => (
               <button 
                 key={filter}
                 className={`notif-filter ${activeFilter === filter ? 'active' : ''}`}
