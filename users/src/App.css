@@ -7850,10 +7850,8 @@ main h1 {
   .main-content {
     margin-left: 0;
     width: 100%;
-    padding: 16px;
+    padding: 0;
     padding-bottom: 70px;
-    min-height: calc(100vh - 134px);
-    /* Navbar (80px) + Mobile nav (54px) */
     max-height: calc(100vh - 134px);
     overflow-y: auto;
     box-sizing: border-box;
@@ -7887,7 +7885,7 @@ main h1 {
 /* Extra small devices */
 @media (max-width: 480px) {
   .main-content {
-    padding: 12px;
+    padding: 0;
     padding-bottom: 70px;
   }
 
