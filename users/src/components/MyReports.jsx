@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import config from '../config/index.js';
 
-const MyReports = ({ token }) => {
-  const [reports, setReports] = useState([]);
-  const [loading, setLoading] = useState(true);
+const MyReports = ({ token, prefetchedReports, onRefresh }) => {
+  const [reports, setReports] = useState(prefetchedReports || []);
+  const [loading, setLoading] = useState(!prefetchedReports || prefetchedReports.length === 0);
   const [error, setError] = useState(null);
   const [enlargedImage, setEnlargedImage] = useState(null);
   const [page, setPage] = useState(1);
@@ -15,15 +15,18 @@ const MyReports = ({ token }) => {
   console.log('MyReports component rendered with token:', token ? 'present' : 'missing');
 
   useEffect(() => {
-    console.log('MyReports useEffect - token:', token ? 'present' : 'missing');
-    if (token) {
+    console.log('MyReports useEffect - prefetched:', prefetchedReports?.length);
+    if (prefetchedReports && prefetchedReports.length > 0) {
+      setReports(prefetchedReports);
+      setLoading(false);
+    } else if (token && (!prefetchedReports || prefetchedReports.length === 0)) {
       fetchMyReports(1);
-    } else {
+    } else if (!token) {
       console.error('No authentication token provided to MyReports');
       setError('Authentication token is missing');
       setLoading(false);
     }
-  }, [token]);
+  }, [token, prefetchedReports]);
 
   const fetchMyReports = async (pageNum) => {
     if (pageNum === 1) {

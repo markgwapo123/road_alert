@@ -4,9 +4,9 @@ import config from '../config/index.js';
 import ChangePassword from './ChangePassword.jsx';
 import './ProfilePage.css';
 
-const ProfilePage = ({ onBack, onLogout, onUserUpdate }) => {
+const ProfilePage = ({ token, prefetchedUser, onBack, onLogout, onUserUpdate }) => {
   // User data states
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(prefetchedUser || null);
   const [stats, setStats] = useState({
     totalReports: 0,
     pendingReports: 0,
@@ -16,32 +16,39 @@ const ProfilePage = ({ onBack, onLogout, onUserUpdate }) => {
   });
   
   // UI states
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!prefetchedUser);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [activeSection, setActiveSection] = useState('view'); // 'view' or 'edit'
   const [showChangePassword, setShowChangePassword] = useState(false);
   
-  // Form states
   const [formData, setFormData] = useState({
-    fullName: '',
-    phone: '',
-    address: '',
-    gender: '',
-    notificationsEnabled: true
+    fullName: prefetchedUser?.profile?.fullName || prefetchedUser?.username || '',
+    phone: prefetchedUser?.profile?.phone || '',
+    address: prefetchedUser?.profile?.address || '',
+    gender: prefetchedUser?.profile?.gender || '',
+    notificationsEnabled: prefetchedUser?.profile?.notificationsEnabled !== false
   });
   
   // Profile image states
-  const [profileImage, setProfileImage] = useState(null);
+  const [profileImage, setProfileImage] = useState(() => {
+    if (prefetchedUser?.profileImage) {
+      return prefetchedUser.profileImage.startsWith('data:') 
+        ? prefetchedUser.profileImage 
+        : `${config.BACKEND_URL}${prefetchedUser.profileImage}`;
+    }
+    return null;
+  });
   const [selectedFile, setSelectedFile] = useState(null);
   const [previewImage, setPreviewImage] = useState(null);
   const [uploadingImage, setUploadingImage] = useState(false);
 
   // Fetch user profile and stats
   useEffect(() => {
+    // If we have prefetchedUser, sync the stats only, or skip profile fetch
     const fetchData = async () => {
-      setLoading(true);
+      if (!prefetchedUser) setLoading(true);
       setError('');
       try {
         const token = localStorage.getItem('token');
@@ -49,7 +56,7 @@ const ProfilePage = ({ onBack, onLogout, onUserUpdate }) => {
         
         // Fetch profile and stats in parallel
         const [profileRes, statsRes] = await Promise.all([
-          axios.get(`${config.API_BASE_URL}/users/me`, { headers }),
+          !prefetchedUser ? axios.get(`${config.API_BASE_URL}/users/me`, { headers }) : Promise.resolve({ data: { success: true, data: prefetchedUser } }),
           axios.get(`${config.API_BASE_URL}/users/me/stats`, { headers }).catch(() => ({ data: { success: false } }))
         ]);
         

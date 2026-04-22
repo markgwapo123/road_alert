@@ -3,48 +3,56 @@ import axios from 'axios';
 import config from '../config/index.js';
 import './NotificationScreen.css';
 
-const NotificationScreen = () => {
-  const [notifications, setNotifications] = useState([]);
-  const [loading, setLoading] = useState(true);
+const NotificationScreen = ({ prefetchedNotifications, onRefresh }) => {
+  const [notifications, setNotifications] = useState(prefetchedNotifications || []);
+  const [loading, setLoading] = useState(!prefetchedNotifications || prefetchedNotifications.length === 0);
   const [error, setError] = useState(null);
   const [activeFilter, setActiveFilter] = useState('All');
 
+  // Sync when prefetchedNotifications changes
   useEffect(() => {
-    const fetchNotifications = async () => {
-      try {
-        setLoading(true);
-        const token = localStorage.getItem('token');
-        if (!token) {
-          setError('Authentication token not found. Please log in.');
+    if (prefetchedNotifications && prefetchedNotifications.length > 0) {
+      setNotifications(prefetchedNotifications);
+      setLoading(false);
+      setError(null);
+    }
+  }, [prefetchedNotifications]);
+
+  useEffect(() => {
+    // If we don't have pre-fetched notifications, fetch them
+    if (!prefetchedNotifications || prefetchedNotifications.length === 0) {
+      const fetchNotifications = async () => {
+        try {
+          setLoading(true);
+          const token = localStorage.getItem('token');
+          if (!token) {
+            setError('Authentication token not found. Please log in.');
+            setLoading(false);
+            return;
+          }
+
+          const response = await axios.get(`${config.API_BASE_URL}/notifications`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          
+          const fetchedNotifications = response.data.notifications || response.data;
+          
+          if (Array.isArray(fetchedNotifications)) {
+              setNotifications(fetchedNotifications);
+          } else {
+              setNotifications([]);
+          }
+          
+          setError(null);
+        } catch (err) {
+          setError(err.response?.data?.message || 'Failed to fetch notifications.');
+        } finally {
           setLoading(false);
-          return;
         }
+      };
 
-        const response = await axios.get(`${config.API_BASE_URL}/notifications`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        
-        // The backend returns a complex object, let's ensure we get the array
-        const fetchedNotifications = response.data.notifications || response.data;
-        
-        if (Array.isArray(fetchedNotifications)) {
-            setNotifications(fetchedNotifications);
-        } else {
-            // Handle cases where the structure is not as expected
-            console.error("Fetched data is not an array:", fetchedNotifications);
-            setNotifications([]);
-        }
-        
-        setError(null);
-      } catch (err) {
-        setError(err.response?.data?.message || 'Failed to fetch notifications.');
-        console.error("Notification fetch error:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchNotifications();
+      fetchNotifications();
+    }
   }, []);
 
   const getNotificationIcon = (type) => {
@@ -111,7 +119,7 @@ const NotificationScreen = () => {
               <option>Newest First</option>
               <option>Oldest First</option>
             </select>
-            <button className="notif-refresh-icon-btn" aria-label="Refresh notifications">
+            <button className="notif-refresh-icon-btn" aria-label="Refresh notifications" onClick={onRefresh}>
                 <span role="img" aria-label="refresh">⟳</span>
             </button>
         </div>

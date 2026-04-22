@@ -32,6 +32,7 @@ function AppContent() {
   const [showReport, setShowReport] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [myReports, setMyReports] = useState([]);
   const [currentView, setCurrentView] = useState('home');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [user, setUser] = useState(null);
@@ -82,8 +83,8 @@ function AppContent() {
   };
   useEffect(() => {
     if (token) {
-      // ⚡ Fetch notifications and user data in PARALLEL instead of sequentially
-      Promise.all([fetchNotifications(), fetchUser()]);
+      // ⚡ Fetch EVERYTHING in PARALLEL so tabs are instant
+      Promise.all([fetchNotifications(), fetchUser(), fetchMyReports()]);
       const notificationInterval = setInterval(fetchNotifications, 30000);
       return () => clearInterval(notificationInterval);
     } else {
@@ -144,6 +145,20 @@ function AppContent() {
     } catch (err) {
       console.log('User data unavailable:', err.response?.status || err.message);
       setUser(null);
+    }
+  };
+
+  const fetchMyReports = async () => {
+    try {
+      if (!token) return;
+      const res = await axios.get(`${config.API_BASE_URL}/reports/my-reports?page=1&limit=50`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.data && res.data.success) {
+        setMyReports(res.data.reports || []);
+      }
+    } catch (err) {
+      console.log('My Reports unavailable:', err.message);
     }
   };
 
@@ -664,10 +679,11 @@ function AppContent() {
           {/* Main Content Area */}
           <div className="main-content">
             {currentView === 'home' && <NewsFeed user={user} />}
-            {currentView === 'myreports' && <MyReports token={token} />}
+            {currentView === 'myreports' && <MyReports token={token} prefetchedReports={myReports} onRefresh={fetchMyReports} />}
             {currentView === 'profile' && (
               <ProfilePage 
                 token={token} 
+                prefetchedUser={user}
                 onLogout={handleLogoutClick}
                 onUserUpdate={refreshUserData}
               />
