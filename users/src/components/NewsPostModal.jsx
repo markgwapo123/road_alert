@@ -6,52 +6,31 @@ const NewsPostModal = ({ post, isOpen, onClose }) => {
 
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString('en-US', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
+      month: 'short',
       day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
     });
   };
 
-  const getPriorityStyle = (priority) => {
-    switch (priority) {
+  const formatTime = (dateString) => {
+    return new Date(dateString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const getPriorityTheme = (priority) => {
+    switch (priority?.toLowerCase()) {
       case 'urgent':
-        return { backgroundColor: '#dc2626', color: '#ffffff' };
+        return { bg: '#fee2e2', text: '#991b1b', border: '#fecaca', icon: '🚨' };
       case 'high':
-        return { backgroundColor: '#ea580c', color: '#ffffff' };
+        return { bg: '#ffedd5', text: '#9a3412', border: '#fed7aa', icon: '🔥' };
       case 'normal':
-        return { backgroundColor: '#2563eb', color: '#ffffff' };
+        return { bg: '#eff6ff', text: '#1d4ed8', border: '#bfdbfe', icon: '📢' };
       case 'low':
-        return { backgroundColor: '#16a34a', color: '#ffffff' };
+        return { bg: '#f0fdf4', text: '#166534', border: '#bbf7d0', icon: '✅' };
       default:
-        return { backgroundColor: '#6b7280', color: '#ffffff' };
+        return { bg: '#f1f5f9', text: '#475569', border: '#e2e8f0', icon: '📰' };
     }
   };
 
-  const getTypeIcon = (type) => {
-    switch (type) {
-      case 'announcement':
-        return '📢';
-      case 'safety_tip':
-        return '🛡️';
-      case 'road_update':
-        return '🚧';
-      case 'general':
-        return 'ℹ️';
-      default:
-        return '📰';
-    }
-  };
-
-  const formatFileSize = (bytes) => {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-  };
+  const theme = getPriorityTheme(post.priority);
 
   return (
     <div 
@@ -61,224 +40,219 @@ const NewsPostModal = ({ post, isOpen, onClose }) => {
         left: 0,
         right: 0,
         bottom: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.8)',
-        zIndex: 1000,
+        backgroundColor: 'rgba(15, 23, 42, 0.75)',
+        backdropFilter: 'blur(8px)',
+        zIndex: 2000,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: '20px'
+        padding: '20px',
+        animation: 'fadeIn 0.2s ease-out'
       }}
       onClick={onClose}
     >
       <div 
         style={{
           backgroundColor: 'white',
-          borderRadius: '12px',
-          maxWidth: '800px',
-          maxHeight: '90vh',
+          borderRadius: '16px',
+          maxWidth: '550px',
           width: '100%',
-          overflow: 'auto',
-          position: 'relative'
+          maxHeight: '90vh',
+          overflow: 'hidden',
+          position: 'relative',
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.3)',
+          display: 'flex',
+          flexDirection: 'column',
+          animation: 'slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Close Button */}
-        <button
-          onClick={onClose}
-          style={{
-            position: 'absolute',
-            top: '15px',
-            right: '15px',
-            background: '#f1f5f9',
-            border: 'none',
-            borderRadius: '50%',
-            width: '35px',
-            height: '35px',
-            cursor: 'pointer',
-            fontSize: '18px',
-            color: '#64748b',
-            zIndex: 1001,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }}
-        >
-          ✕
-        </button>
-
-        {/* Header */}
+        {/* 1. Header Section */}
         <div style={{
-          padding: '25px 25px 0 25px'
+          padding: '20px 24px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          backgroundColor: '#ffffff'
         }}>
           <div style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '10px',
-            marginBottom: '15px'
+            gap: '8px'
           }}>
-            <span 
-              style={{
-                ...getPriorityStyle(post.priority),
-                padding: '6px 12px',
-                borderRadius: '20px',
-                fontSize: '12px',
-                fontWeight: 'bold',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '5px'
-              }}
-            >
-              {getTypeIcon(post.type)} {post.type.replace('_', ' ').toUpperCase()}
-            </span>
             <span style={{
-              color: '#6b7280',
-              fontSize: '14px'
+              backgroundColor: '#eff6ff',
+              color: '#1d4ed8',
+              padding: '4px 10px',
+              borderRadius: '6px',
+              fontSize: '11px',
+              fontWeight: '700',
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
             }}>
-              {formatDate(post.publishDate)}
+              📢 ANNOUNCEMENT
             </span>
           </div>
-
-          <h2 style={{
-            fontSize: '24px',
-            fontWeight: 'bold',
-            margin: '0 0 15px 0',
-            color: '#1f2937',
-            lineHeight: '1.3',
-            paddingRight: '30px'
-          }}>
-            {post.title}
-          </h2>
 
           <div style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '15px',
-            marginBottom: '20px',
-            fontSize: '14px',
-            color: '#6b7280'
+            gap: '12px'
           }}>
-            <div>
-              <strong>Author:</strong> {post.authorName}
-            </div>
-            <div>
-              <strong>Priority:</strong> 
-              <span 
-                style={{
-                  ...getPriorityStyle(post.priority),
-                  marginLeft: '5px',
-                  padding: '2px 8px',
-                  borderRadius: '10px',
-                  fontSize: '11px',
-                  fontWeight: 'bold'
-                }}
-              >
-                {post.priority.toUpperCase()}
-              </span>
-            </div>
-            <div>
-              <strong>Target:</strong> {post.targetAudience.replace('_', ' ')}
-            </div>
+            <span style={{
+              fontSize: '12px',
+              color: '#94a3b8',
+              fontWeight: '500'
+            }}>
+              {formatDate(post.publishDate)}, {formatTime(post.publishDate)}
+            </span>
+            <button
+              onClick={onClose}
+              style={{
+                background: '#f1f5f9',
+                border: 'none',
+                width: '28px',
+                height: '28px',
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#64748b',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                fontSize: '14px'
+              }}
+            >
+              ✕
+            </button>
           </div>
         </div>
 
-        {/* Content */}
+        {/* Scrollable Content Area */}
         <div style={{
-          padding: '0 25px'
+          padding: '0 24px 24px 24px',
+          overflowY: 'auto',
+          flex: 1
         }}>
+          
+          {/* 2. Metadata Badges (Secondary Focus) */}
           <div style={{
-            backgroundColor: '#f8fafc',
-            padding: '20px',
-            borderRadius: '10px',
-            marginBottom: '20px',
-            fontSize: '16px',
-            lineHeight: '1.6',
-            color: '#374151'
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: '6px',
+            marginBottom: '16px',
+            marginTop: '8px'
           }}>
-            {post.content}
+            <div style={{
+              background: '#f8fafc',
+              border: '1px solid #e2e8f0',
+              padding: '3px 10px',
+              borderRadius: '6px',
+              fontSize: '11px',
+              color: '#64748b',
+              fontWeight: '600'
+            }}>
+              admin
+            </div>
+            <div style={{
+              backgroundColor: theme.bg,
+              color: theme.text,
+              border: `1px solid ${theme.border}`,
+              padding: '3px 10px',
+              borderRadius: '6px',
+              fontSize: '11px',
+              fontWeight: '700',
+              textTransform: 'uppercase'
+            }}>
+              {post.priority}
+            </div>
+            <div style={{
+              background: '#f8fafc',
+              border: '1px solid #e2e8f0',
+              padding: '3px 10px',
+              borderRadius: '6px',
+              fontSize: '11px',
+              color: '#64748b',
+              fontWeight: '600'
+            }}>
+              target: {post.targetAudience?.replace('_', ' ') || 'all'}
+            </div>
           </div>
 
-          {/* Attachments */}
+          {/* 3. Title (Primary Focus) */}
+          <h1 style={{
+            fontSize: '22px',
+            fontWeight: '800',
+            color: '#0f172a',
+            margin: '0 0 16px 0',
+            lineHeight: '1.3',
+            letterSpacing: '-0.4px',
+            textAlign: 'left'
+          }}>
+            {post.title}
+          </h1>
+
+          {/* 4. Message Content (Subtle Container) */}
+          <div style={{
+            backgroundColor: '#f8fafc',
+            border: '1px solid #f1f5f9',
+            padding: '20px',
+            borderRadius: '12px',
+            marginBottom: '24px'
+          }}>
+            <p style={{
+              fontSize: '15px',
+              lineHeight: '1.6',
+              color: '#334155',
+              margin: 0,
+              whiteSpace: 'pre-wrap',
+              textAlign: 'left'
+            }}>
+              {post.content}
+            </p>
+          </div>
+
+          {/* Attachments Hint */}
           {post.attachments && post.attachments.length > 0 && (
-            <div style={{ marginBottom: '20px' }}>
-              <h3 style={{
-                fontSize: '18px',
-                fontWeight: 'bold',
-                marginBottom: '15px',
-                color: '#1f2937',
+            <div style={{ marginBottom: '24px' }}>
+              <div style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: '8px'
+                gap: '8px',
+                marginBottom: '12px',
+                color: '#94a3b8'
               }}>
-                📎 Attachments ({post.attachments.length})
-              </h3>
+                <span style={{ fontSize: '16px' }}>📎</span>
+                <span style={{ fontSize: '11px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  Attachments ({post.attachments.length})
+                </span>
+              </div>
               
               <div style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-                gap: '15px'
+                gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+                gap: '8px'
               }}>
                 {post.attachments.map((attachment, index) => (
-                  <div 
-                    key={index}
-                    style={{
-                      border: '1px solid #e5e7eb',
-                      borderRadius: '10px',
-                      overflow: 'hidden',
-                      backgroundColor: '#ffffff'
-                    }}
-                  >
+                  <div key={index} style={{
+                    borderRadius: '8px',
+                    overflow: 'hidden',
+                    border: '1px solid #e2e8f0',
+                    backgroundColor: '#f8fafc'
+                  }}>
                     {attachment.type === 'image' ? (
-                      <div>
-                        <img
-                          src={`${config.BACKEND_URL}/api/news/image/${post._id}/${index}`}
-                          alt={attachment.originalName}
-                          style={{
-                            width: '100%',
-                            height: 'auto',
-                            objectFit: 'contain',
-                            maxHeight: '400px',
-                            display: 'block',
-                            backgroundColor: '#f8f9fa'
-                          }}
-                          onError={(e) => {
-                            e.target.style.display = 'none';
-                            e.target.parentElement.innerHTML = `
-                              <div style="
-                                display: flex; 
-                                align-items: center; 
-                                justify-content: center; 
-                                min-height: 200px; 
-                                background: #f3f4f6; 
-                                color: #9ca3af;
-                                flex-direction: column;
-                                gap: 8px;
-                              ">
-                                <span style="font-size: 40px;">📷</span>
-                                <span>Image not available</span>
-                              </div>
-                            `;
-                          }}
-                        />
-
-                      </div>
+                      <img
+                        src={`${config.BACKEND_URL}/api/news/image/${post._id}/${index}`}
+                        alt="attachment"
+                        style={{ width: '100%', height: '100px', objectFit: 'cover' }}
+                      />
                     ) : (
-                      <div>
-                        <div style={{
-                          minHeight: '200px',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          background: '#f3f4f6',
-                          color: '#6b7280',
-                          padding: '20px'
-                        }}>
-                          <span style={{ fontSize: '60px', marginBottom: '10px' }}>🎥</span>
-                          <span style={{ fontSize: '14px', textAlign: 'center', fontWeight: 'medium' }}>
-                            Video File
-                          </span>
-                        </div>
-
+                      <div style={{ height: '100px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '4px', padding: '10px' }}>
+                        <span style={{ fontSize: '24px' }}>🎥</span>
+                        <span style={{ fontSize: '10px', textAlign: 'center', color: '#94a3b8' }}>Video</span>
                       </div>
                     )}
                   </div>
@@ -286,43 +260,47 @@ const NewsPostModal = ({ post, isOpen, onClose }) => {
               </div>
             </div>
           )}
+        </div>
 
-          {/* Tags */}
-          {post.tags && post.tags.length > 0 && (
-            <div style={{ marginBottom: '20px' }}>
-              <h3 style={{
-                fontSize: '16px',
-                fontWeight: 'bold',
-                marginBottom: '10px',
-                color: '#1f2937'
-              }}>
-                🏷️ Tags
-              </h3>
-              <div style={{
-                display: 'flex',
-                flexWrap: 'wrap',
-                gap: '8px'
-              }}>
-                {post.tags.map((tag, index) => (
-                  <span
-                    key={index}
-                    style={{
-                      background: '#e0f2fe',
-                      color: '#0369a1',
-                      padding: '6px 12px',
-                      borderRadius: '20px',
-                      fontSize: '13px',
-                      fontWeight: 'medium'
-                    }}
-                  >
-                    #{tag}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
+        {/* 5. Footer Action (CTA) */}
+        <div style={{
+          padding: '16px 24px',
+          borderTop: '1px solid #f1f5f9',
+          display: 'flex',
+          justifyContent: 'center', // Centered for CTA emphasis
+          backgroundColor: '#ffffff'
+        }}>
+          <button 
+            onClick={onClose}
+            style={{
+              width: '100%',
+              padding: '12px 24px',
+              backgroundColor: '#0f172a',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              fontSize: '14px',
+              fontWeight: '600',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+            }}
+          >
+            Close Announcement
+          </button>
         </div>
       </div>
+
+      <style>{`
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        @keyframes slideUp {
+          from { opacity: 0; transform: translateY(20px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
     </div>
   );
 };

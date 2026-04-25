@@ -484,21 +484,21 @@ const NewsFeed = ({ user, unreadNewsCount, onNewsViewed }) => {
             alignItems: 'center',
             justifyContent: 'center',
             gap: '6px',
-            boxShadow: activeTab === 'news' 
-              ? `0 -2px 8px ${unreadNewsCount > 0 ? 'rgba(239,68,68,0.3)' : 'rgba(0,123,255,0.2)'}` 
+            boxShadow: activeTab === 'news'
+              ? `0 -2px 8px ${unreadNewsCount > 0 ? 'rgba(239,68,68,0.3)' : 'rgba(0,123,255,0.2)'}`
               : 'none',
-            borderTop: activeTab === 'news' 
-              ? `2px solid ${unreadNewsCount > 0 ? '#ef4444' : '#007bff'}` 
+            borderTop: activeTab === 'news'
+              ? `2px solid ${unreadNewsCount > 0 ? '#ef4444' : '#007bff'}`
               : '2px solid transparent',
-            borderLeft: activeTab === 'news' 
-              ? `2px solid ${unreadNewsCount > 0 ? '#ef4444' : '#007bff'}` 
+            borderLeft: activeTab === 'news'
+              ? `2px solid ${unreadNewsCount > 0 ? '#ef4444' : '#007bff'}`
               : '2px solid transparent',
-            borderRight: activeTab === 'news' 
-              ? `2px solid ${unreadNewsCount > 0 ? '#ef4444' : '#007bff'}` 
+            borderRight: activeTab === 'news'
+              ? `2px solid ${unreadNewsCount > 0 ? '#ef4444' : '#007bff'}`
               : '2px solid transparent',
             borderBottom: 'none',
-            background: activeTab === 'news' 
-              ? (unreadNewsCount > 0 ? '#ef4444' : '#007bff') 
+            background: activeTab === 'news'
+              ? (unreadNewsCount > 0 ? '#ef4444' : '#007bff')
               : '#f8f9fa',
             color: activeTab === 'news' ? 'white' : '#495057'
           }}
@@ -517,8 +517,8 @@ const NewsFeed = ({ user, unreadNewsCount, onNewsViewed }) => {
           <span style={{
             fontSize: '11px',
             fontWeight: '700',
-            backgroundColor: activeTab === 'news' 
-              ? 'rgba(255,255,255,0.2)' 
+            backgroundColor: activeTab === 'news'
+              ? 'rgba(255,255,255,0.2)'
               : (unreadNewsCount > 0 ? '#ef4444' : '#007bff'),
             color: 'white',
             padding: '2px 8px',

@@ -13,7 +13,13 @@ import {
   ExclamationTriangleIcon,
   ClockIcon,
   Bars3Icon,
-  XMarkIcon
+  XMarkIcon,
+  PhoneIcon,
+  ShieldExclamationIcon,
+  TrashIcon,
+  PlusIcon,
+  PencilSquareIcon,
+  CheckIcon
 } from '@heroicons/react/24/outline'
 import { useAuth, SuperAdminOnly } from '../context/AuthContext'
 import config from '../config/index.js'
@@ -28,6 +34,7 @@ const SystemSettings = () => {
   const [activeCategory, setActiveCategory] = useState('maintenance')
   const [changedSettings, setChangedSettings] = useState({})
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [editingCity, setEditingCity] = useState(null)
   
   // Maintenance mode state
   const [maintenanceEnabled, setMaintenanceEnabled] = useState(false)
@@ -41,7 +48,8 @@ const SystemSettings = () => {
     { id: 'general', name: 'General', icon: Cog6ToothIcon, description: 'Site name, tagline, and general configuration' },
     { id: 'map', name: 'Map Settings', icon: MapPinIcon, description: 'Default map center, zoom level, and clustering' },
     { id: 'reports', name: 'Reports', icon: DocumentTextIcon, description: 'Report submission and expiration settings' },
-    { id: 'security', name: 'Security', icon: ShieldCheckIcon, description: 'Session timeout and login security' }
+    { id: 'security', name: 'Security', icon: ShieldCheckIcon, description: 'Session timeout and login security' },
+    { id: 'emergency', name: 'Emergency', icon: ShieldExclamationIcon, description: 'Manage city-specific emergency hotlines' }
   ]
 
   useEffect(() => {
@@ -261,9 +269,144 @@ const SystemSettings = () => {
     return changedSettings.hasOwnProperty(key) ? changedSettings[key] : originalValue
   }
 
+  const renderEmergencyEditor = (setting) => {
+    const currentValue = getCurrentValue(setting.key, setting.value) || {}
+    const hasChanged = changedSettings.hasOwnProperty(setting.key)
+
+    const updateEmergencyContact = (city, agency, field, value) => {
+      const newContacts = JSON.parse(JSON.stringify(currentValue)) // deep clone
+      if (!newContacts[city]) newContacts[city] = { police: { number: '', label: '' }, fire: { number: '', label: '' }, medical: { number: '', label: '' } }
+      
+      if (typeof newContacts[city][agency] === 'string') {
+        newContacts[city][agency] = { number: newContacts[city][agency], label: '' }
+      }
+      
+      newContacts[city][agency][field] = value
+      handleSettingChange(setting.key, newContacts, 'object')
+    }
+
+    const removeCity = (city) => {
+      const newContacts = JSON.parse(JSON.stringify(currentValue))
+      delete newContacts[city]
+      handleSettingChange(setting.key, newContacts, 'object')
+    }
+
+    const addCity = () => {
+      const cityName = window.prompt('Enter new city/municipality name:')
+      if (cityName && !currentValue[cityName]) {
+        const newContacts = JSON.parse(JSON.stringify(currentValue))
+        newContacts[cityName] = {
+          police: { number: '', label: `${cityName} PNP` },
+          fire: { number: '', label: `BFP ${cityName}` },
+          medical: { number: '', label: `${cityName} DRRMO` }
+        }
+        handleSettingChange(setting.key, newContacts, 'object')
+      }
+    }
+
+    return (
+      <div className={`space-y-6 w-full ${hasChanged ? 'border-2 border-yellow-400 p-4 rounded-lg bg-yellow-50/30' : ''}`}>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white border border-gray-200 p-4 rounded-xl shadow-sm">
+          <div>
+            <h4 className="text-sm font-bold text-gray-900">City Hotline Directory</h4>
+            <p className="text-xs text-gray-500">Configure Police, Fire, and Medical contacts per location.</p>
+          </div>
+          <button
+            onClick={addCity}
+            className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white text-xs font-bold rounded-lg hover:bg-slate-800 transition-all shadow-md"
+          >
+            <PlusIcon className="h-4 w-4" /> Add New City
+          </button>
+        </div>
+
+          {Object.entries(currentValue).map(([city, contacts]) => (
+            <div key={city} className={`bg-white border ${editingCity === city ? 'border-slate-900 ring-1 ring-slate-900' : 'border-gray-200'} rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all`}>
+              <div className={`px-5 py-3 flex justify-between items-center border-b ${editingCity === city ? 'bg-slate-900 border-slate-900' : 'bg-slate-50 border-gray-200'}`}>
+                <span className={`font-bold flex items-center gap-2 ${editingCity === city ? 'text-white' : 'text-slate-700'}`}>
+                  <MapPinIcon className={`h-4 w-4 ${editingCity === city ? 'text-slate-300' : 'text-slate-400'}`} />
+                  {city}
+                  {editingCity === city && <span className="ml-2 text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded uppercase tracking-widest">Editing Mode</span>}
+                </span>
+                <div className="flex items-center gap-1">
+                  {editingCity === city ? (
+                    <button
+                      onClick={() => setEditingCity(null)}
+                      className="flex items-center gap-1.5 px-3 py-1 bg-white/10 hover:bg-white/20 text-white text-[10px] font-bold rounded-lg transition-all border border-white/20"
+                    >
+                      <CheckIcon className="h-3.5 w-3.5" /> Done
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => setEditingCity(city)}
+                      className="flex items-center gap-1.5 px-3 py-1 bg-white hover:bg-slate-100 text-slate-900 text-[10px] font-bold rounded-lg transition-all border border-slate-200"
+                    >
+                      <PencilSquareIcon className="h-3.5 w-3.5" /> Edit
+                    </button>
+                  )}
+                  <button
+                    onClick={() => removeCity(city)}
+                    className={`p-1.5 rounded-lg transition-all ${editingCity === city ? 'text-white/40 hover:text-red-400 hover:bg-white/10' : 'text-gray-400 hover:text-red-600 hover:bg-red-50'}`}
+                    title="Remove City"
+                  >
+                    <TrashIcon className="h-5 w-5" />
+                  </button>
+                </div>
+              </div>
+              <div className={`p-5 grid grid-cols-1 md:grid-cols-3 gap-6 transition-opacity ${editingCity !== city ? 'opacity-70 grayscale-[0.5]' : ''}`}>
+                {['police', 'fire', 'medical'].map((agency) => {
+                  const data = typeof contacts[agency] === 'string' 
+                    ? { number: contacts[agency], label: '' } 
+                    : contacts[agency] || { number: '', label: '' }
+
+                  const isEditable = editingCity === city
+
+                  return (
+                    <div key={agency} className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <div className={`w-2 h-2 rounded-full ${agency === 'police' ? 'bg-blue-500' : agency === 'fire' ? 'bg-orange-500' : 'bg-red-500'}`}></div>
+                        <span className="text-[10px] font-black uppercase tracking-wider text-gray-400">{agency}</span>
+                      </div>
+                      <div className="space-y-2">
+                        <div>
+                          <label className="text-[10px] text-gray-400 mb-1 block uppercase">Number</label>
+                          <input
+                            type="text"
+                            placeholder="Phone Number"
+                            disabled={!isEditable}
+                            value={data.number}
+                            onChange={(e) => updateEmergencyContact(city, agency, 'number', e.target.value)}
+                            className={`w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 transition-all ${isEditable ? 'border-slate-300 focus:ring-slate-900 focus:border-slate-900 text-slate-900 bg-white' : 'border-gray-100 text-gray-400 bg-gray-50 cursor-not-allowed'}`}
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] text-gray-400 mb-1 block uppercase">Department Label</label>
+                          <input
+                            type="text"
+                            placeholder="e.g. Bacolod PNP"
+                            disabled={!isEditable}
+                            value={data.label}
+                            onChange={(e) => updateEmergencyContact(city, agency, 'label', e.target.value)}
+                            className={`w-full px-3 py-2 text-[11px] border rounded-lg focus:ring-2 transition-all ${isEditable ? 'border-slate-200 focus:ring-slate-900 focus:border-slate-900 text-slate-600 bg-white' : 'border-gray-50 text-gray-300 bg-white cursor-not-allowed'}`}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          ))}
+      </div>
+    )
+  }
+
   const renderSettingInput = (setting) => {
     const currentValue = getCurrentValue(setting.key, setting.value)
     const hasChanged = changedSettings.hasOwnProperty(setting.key)
+
+    if (setting.key === 'emergency_contacts') {
+      return renderEmergencyEditor(setting)
+    }
 
     switch (setting.dataType) {
       case 'boolean':
@@ -645,18 +788,20 @@ const SystemSettings = () => {
                       {categorySettings.map((setting) => (
                         <div key={setting.key} className="border-b border-gray-100 pb-4 last:border-0 last:pb-0">
                           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2 sm:gap-4 mb-2">
-                            <div className="flex-1 min-w-0">
-                              <label className="block text-sm font-medium text-gray-700">
-                                {setting.key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                                {setting.isPublic && (
-                                  <span className="ml-2 px-2 py-0.5 text-xs bg-blue-100 text-blue-700 rounded">
-                                    Public
-                                  </span>
-                                )}
-                              </label>
-                              <p className="text-xs md:text-sm text-gray-500 mt-0.5">{setting.description}</p>
-                            </div>
-                            <div className="w-full sm:w-auto sm:min-w-[200px]">
+                            {setting.key !== 'emergency_contacts' && (
+                              <div className="flex-1 min-w-0">
+                                <label className="block text-sm font-medium text-gray-700">
+                                  {setting.key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                                  {setting.isPublic && (
+                                    <span className="ml-2 px-2 py-0.5 text-xs bg-blue-100 text-blue-700 rounded">
+                                      Public
+                                    </span>
+                                  )}
+                                </label>
+                                <p className="text-xs md:text-sm text-gray-500 mt-0.5">{setting.description}</p>
+                              </div>
+                            )}
+                            <div className={setting.key === 'emergency_contacts' ? 'w-full' : 'w-full sm:w-auto sm:min-w-[200px]'}>
                               {renderSettingInput(setting)}
                             </div>
                           </div>

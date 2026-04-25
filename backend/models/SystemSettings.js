@@ -17,7 +17,7 @@ const systemSettingsSchema = new mongoose.Schema({
   // Setting category
   category: {
     type: String,
-    enum: ['general', 'map', 'notifications', 'reports', 'users', 'security'],
+    enum: ['general', 'map', 'notifications', 'reports', 'users', 'security', 'emergency'],
     default: 'general'
   },
 
@@ -219,7 +219,7 @@ systemSettingsSchema.statics.initializeDefaults = async function () {
           medical: { number: '(034) 312-5573', label: 'San Carlos DRRMO' }
         }
       }, 
-      category: 'general', 
+      category: 'emergency', 
       description: 'Emergency contacts for Negros Occidental cities', 
       dataType: 'object', 
       isPublic: true 

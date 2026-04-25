@@ -376,7 +376,7 @@ router.get('/map-config', async (req, res) => {
 router.get('/category/:category', auth, canAccessSettings, async (req, res) => {
   try {
     const { category } = req.params;
-    const validCategories = ['general', 'map', 'notifications', 'reports', 'users', 'security'];
+    const validCategories = ['general', 'map', 'notifications', 'reports', 'users', 'security', 'emergency'];
     
     if (!validCategories.includes(category)) {
       return res.status(400).json({
