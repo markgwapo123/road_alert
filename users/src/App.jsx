@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
 import config from './config/index.js';
 import { SettingsProvider, useSettings } from './context/SettingsContext.jsx';
@@ -14,6 +14,8 @@ import NotificationPage from './pages/NotificationPage';
 import ConfirmationModal from './components/ConfirmationModal';
 import LogoutConfirmModal from './components/LogoutConfirmModal';
 import MaintenancePage from './pages/MaintenancePage';
+import { LocalNotifications } from '@capacitor/local-notifications';
+import EmergencySOS from './components/EmergencySOS';
 import './App.css';
 
 // Main App component wrapped with settings
@@ -36,11 +38,18 @@ function AppContent() {
   const [currentView, setCurrentView] = useState('home');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [user, setUser] = useState(null);
+  const [unreadNewsCount, setUnreadNewsCount] = useState(0);
+  const [lastNewsId, setLastNewsId] = useState(localStorage.getItem('lastSeenNewsId'));
+  const lastNewsIdRef = useRef(localStorage.getItem('lastSeenNewsId'));
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [confirmationMessage, setConfirmationMessage] = useState('');
   const [confirmationType, setConfirmationType] = useState('success');
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [lastActivity, setLastActivity] = useState(Date.now());
+  const [lastReportId, setLastReportId] = useState(localStorage.getItem('lastSeenReportId'));
+  const lastReportIdRef = useRef(localStorage.getItem('lastSeenReportId'));
+  const [showWarningModal, setShowWarningModal] = useState(false);
+  const [unreadWarnings, setUnreadWarnings] = useState([]);
 
   // Session timeout handling
   useEffect(() => {
@@ -84,9 +93,21 @@ function AppContent() {
   useEffect(() => {
     if (token) {
       // ⚡ Fetch EVERYTHING in PARALLEL so tabs are instant
-      Promise.all([fetchNotifications(), fetchUser(), fetchMyReports()]);
-      const notificationInterval = setInterval(fetchNotifications, 30000);
-      return () => clearInterval(notificationInterval);
+      Promise.all([
+        fetchNotifications(), 
+        fetchUser(), 
+        fetchMyReports(), 
+        fetchNewsUpdate(),
+        fetchNewReportsUpdate()
+      ]);
+      
+      const updateInterval = setInterval(() => {
+        fetchNotifications();
+        fetchNewsUpdate();
+        fetchNewReportsUpdate();
+      }, 10000); // ⚡ Updated to 10 seconds for faster notifications
+      
+      return () => clearInterval(updateInterval);
     } else {
       setUser(null);
     }
@@ -142,9 +163,176 @@ function AppContent() {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       setUser(res.data.data);
+      
+      // Check for unread warnings
+      const warnings = res.data.data.warnings || [];
+      const unread = warnings.filter(w => !w.isRead);
+      if (unread.length > 0) {
+        setUnreadWarnings(unread);
+        setShowWarningModal(true);
+      }
     } catch (err) {
       console.log('User data unavailable:', err.response?.status || err.message);
-      setUser(null);
+      // If token is invalid or expired, clear it to force re-login
+      if (err.response?.status === 401) {
+        console.log('🚫 Token expired or invalid - clearing session');
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        setToken(null);
+        setUser(null);
+      } else {
+        setUser(null);
+      }
+    }
+  };
+
+  const fetchNewsUpdate = async () => {
+    try {
+      const res = await axios.get(`${config.API_BASE_URL}/news/public/posts?limit=1`);
+      const latestPost = res.data.posts?.[0];
+      
+      if (latestPost) {
+        const storedLastId = localStorage.getItem('lastSeenNewsId');
+        
+        // Use Ref to check what we've already alerted for in this session
+        if (storedLastId && latestPost._id !== storedLastId && latestPost._id !== lastNewsIdRef.current) {
+          console.log('🔔 New news post detected:', latestPost.title);
+          setUnreadNewsCount(prev => prev + 1);
+          lastNewsIdRef.current = latestPost._id;
+          setLastNewsId(latestPost._id);
+          
+          // 📢 Trigger system pop-up for news
+          triggerNewsNotification(latestPost);
+        } else if (!storedLastId) {
+          // Initialize if empty
+          localStorage.setItem('lastSeenNewsId', latestPost._id);
+          lastNewsIdRef.current = latestPost._id;
+          setLastNewsId(latestPost._id);
+        }
+      }
+    } catch (err) {
+      console.log('News update check failed:', err.message);
+    }
+  };
+
+  const fetchNewReportsUpdate = async () => {
+    try {
+      // Fetch latest verified reports
+      const res = await axios.get(`${config.API_BASE_URL}/reports?limit=1&status=verified`);
+      const latestReport = res.data.data?.[0];
+      
+      if (latestReport) {
+        const storedLastId = localStorage.getItem('lastSeenReportId');
+        
+        // If we haven't seen this report before, and it's not by us
+        if (storedLastId && latestReport._id !== storedLastId && latestReport._id !== lastReportIdRef.current) {
+          if (latestReport.reportedBy?.id !== user?._id) {
+            console.log('🚨 New hazard detected:', latestReport.type);
+            triggerLocalNotification(latestReport);
+            lastReportIdRef.current = latestReport._id;
+            setLastReportId(latestReport._id);
+          }
+        } else if (!storedLastId) {
+          // Initialize if empty
+          localStorage.setItem('lastSeenReportId', latestReport._id);
+          lastReportIdRef.current = latestReport._id;
+          setLastReportId(latestReport._id);
+        }
+      }
+    } catch (err) {
+      console.log('Report update check failed:', err.message);
+    }
+  };
+
+  const triggerLocalNotification = async (report) => {
+    try {
+      const isNative = Capacitor.isNativePlatform();
+      
+      if (isNative) {
+        const perm = await LocalNotifications.checkPermissions();
+        if (perm.display !== 'granted') {
+          await LocalNotifications.requestPermissions();
+        }
+
+        await LocalNotifications.schedule({
+          notifications: [
+            {
+              title: `🚨 NEW HAZARD: ${report.type.toUpperCase()}`,
+              body: `Reported at ${report.barangay}, ${report.city}. Be careful!`,
+              id: Math.floor(Math.random() * 100000),
+              schedule: { at: new Date(Date.now() + 1000) },
+              sound: 'siren.wav', // Fallback to default if not found
+              attachments: [],
+              actionTypeId: "",
+              extra: { reportId: report._id }
+            }
+          ]
+        });
+      } else {
+        // Web notification fallback
+        if (Notification.permission === "granted") {
+          new Notification(`🚨 NEW HAZARD: ${report.type.toUpperCase()}`, {
+            body: `Reported at ${report.barangay}, ${report.city}.`,
+          });
+        } else if (Notification.permission !== "denied") {
+          Notification.requestPermission();
+        }
+      }
+      
+      // Also play the ding sound for consistent UI
+      playNotificationSound();
+    } catch (e) {
+      console.log('Error triggering notification:', e);
+    }
+  };
+
+  const triggerNewsNotification = async (newsPost) => {
+    try {
+      const isNative = Capacitor.isNativePlatform();
+      const title = newsPost.priority === 'urgent' ? `🚨 URGENT NEWS` : `📰 NEW UPDATE`;
+      
+      if (isNative) {
+        await LocalNotifications.schedule({
+          notifications: [
+            {
+              title: `${title}: ${newsPost.title}`,
+              body: newsPost.content.substring(0, 100) + (newsPost.content.length > 100 ? '...' : ''),
+              id: Math.floor(Math.random() * 100000) + 200000,
+              schedule: { at: new Date(Date.now() + 1000) },
+              sound: 'news.wav',
+              extra: { newsId: newsPost._id }
+            }
+          ]
+        });
+      } else {
+        if (Notification.permission === "granted") {
+          new Notification(`${title}: ${newsPost.title}`, {
+            body: newsPost.content.substring(0, 100),
+          });
+        }
+      }
+      playNotificationSound();
+    } catch (e) {
+      console.log('Error triggering news notification:', e);
+    }
+  };
+
+  const playNotificationSound = () => {
+    try {
+      const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+      audio.volume = 0.5;
+      audio.play().catch(e => console.log('Audio play blocked by browser:', e));
+    } catch (e) {
+      console.log('Error playing sound:', e);
+    }
+  };
+
+  const handleNewsViewed = (latestId) => {
+    setUnreadNewsCount(0);
+    if (latestId) {
+      setLastNewsId(latestId);
+      lastNewsIdRef.current = latestId;
+      localStorage.setItem('lastSeenNewsId', latestId);
     }
   };
 
@@ -226,6 +414,21 @@ function AppContent() {
 
   const handleLogoutCancel = () => {
     setShowLogoutConfirm(false);
+  };
+
+  const handleMarkWarningsRead = async () => {
+    try {
+      await axios.post(`${config.API_BASE_URL}/users/me/warnings/read`, {}, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      setShowWarningModal(false);
+      setUnreadWarnings([]);
+      // Update user data to reflect warnings are read
+      fetchUser();
+    } catch (err) {
+      console.error('Error marking warnings as read:', err);
+      setShowWarningModal(false);
+    }
   };
 
   const refreshUserData = () => {
@@ -332,11 +535,16 @@ function AppContent() {
           className={`nav-btn ${currentView === 'home' ? 'active' : ''}`}
           onClick={() => handleNavigation('home')}
         >
-          <span className="nav-icon">
+          <span className="nav-icon" style={{ position: 'relative' }}>
             <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round">
               <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
               <polyline points="9 22 9 12 15 12 15 22"></polyline>
             </svg>
+            {unreadNewsCount > 0 && (
+              <span className="notification-badge" style={{ backgroundColor: '#ef4444' }}>
+                {unreadNewsCount}
+              </span>
+            )}
           </span>
         </button>
         
@@ -679,7 +887,13 @@ function AppContent() {
 
           {/* Main Content Area */}
           <div className="main-content">
-            {currentView === 'home' && <NewsFeed user={user} />}
+            {currentView === 'home' && (
+              <NewsFeed 
+                user={user} 
+                unreadNewsCount={unreadNewsCount} 
+                onNewsViewed={handleNewsViewed} 
+              />
+            )}
             {currentView === 'myreports' && <MyReports token={token} prefetchedReports={myReports} onRefresh={fetchMyReports} />}
             {currentView === 'profile' && (
               <ProfilePage 
@@ -703,6 +917,37 @@ function AppContent() {
         </div>
       </main>
 
+      {/* User Warning Modal */}
+      {showWarningModal && unreadWarnings.length > 0 && (
+        <div className="modal-overlay" style={{ zIndex: 10000, position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="confirmation-modal" style={{ maxWidth: '400px', backgroundColor: 'white', padding: '24px', borderRadius: '16px', textAlign: 'center', boxShadow: '0 10px 25px rgba(0,0,0,0.2)' }}>
+            <div className="confirmation-icon" style={{ fontSize: '40px', marginBottom: '16px' }}>⚠️</div>
+            <h3 style={{ margin: '10px 0', color: '#f59e0b', fontSize: '20px' }}>Account Warning</h3>
+            <div style={{ textAlign: 'left', marginBottom: '20px' }}>
+              <p style={{ fontSize: '14px', color: '#666', marginBottom: '10px' }}>
+                You have received the following warnings from the system:
+              </p>
+              <div style={{ maxHeight: '200px', overflowY: 'auto', borderTop: '1px solid #eee', paddingTop: '10px' }}>
+                {unreadWarnings.map((warning, index) => (
+                  <div key={index} style={{ marginBottom: '12px', padding: '10px', backgroundColor: '#fffbeb', borderRadius: '8px', borderLeft: '4px solid #f59e0b' }}>
+                    <div style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '4px' }}>{warning.reason || 'General Warning'}</div>
+                    <div style={{ fontSize: '13px', color: '#444' }}>{warning.message}</div>
+                    <div style={{ fontSize: '11px', color: '#999', marginTop: '4px' }}>{new Date(warning.date).toLocaleString()}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <button 
+              className="mvp-btn mvp-btn-block" 
+              onClick={handleMarkWarningsRead}
+              style={{ width: '100%', backgroundColor: '#f59e0b', color: 'white', border: 'none', padding: '12px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}
+            >
+              I Understand
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Logout Confirmation Modal */}
       <LogoutConfirmModal
         isOpen={showLogoutConfirm}
@@ -718,6 +963,8 @@ function AppContent() {
         type={confirmationType}
         autoCloseDelay={2000}
       />
+      {/* Floating Emergency SOS Button */}
+      {token && <EmergencySOS />}
     </div>
   );
 }

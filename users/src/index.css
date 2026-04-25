@@ -10,6 +10,10 @@
   height: 100vh;
   min-height: 100vh;
   min-width: 100vw;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
 }
 
 :root {
@@ -47,6 +51,7 @@ body {
   color: var(--text-primary);
   font-family: inherit;
   min-height: 100vh;
+  min-height: -webkit-fill-available;
   overflow-x: hidden;
   width: 100vw;
   height: 100vh;
@@ -69,7 +74,10 @@ html {
   position: fixed;
   top: 0;
   left: 0;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
   z-index: 0;
+  box-sizing: border-box;
 }
 
 .auth-left, .auth-right {
@@ -99,8 +107,13 @@ html {
   display: flex;
   background-color: var(--bg-primary);
   min-height: 100vh;
-  width: 100%;
-  position: relative;
+  width: 100vw;
+  position: fixed;
+  top: 0;
+  left: 0;
+  overflow: hidden;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 .auth-left {
@@ -111,6 +124,8 @@ html {
   align-items: center;
   padding: 2rem;
   background-color: var(--bg-primary);
+  width: 100%;
+  height: 100%;
 }
 
 .auth-right {
@@ -494,23 +509,37 @@ html {
     flex-direction: column;
     width: 100vw;
     height: 100vh;
+    overflow: hidden;
   }
   
   .auth-left, .auth-right {
     width: 100vw;
-    height: 50vh;
-    min-height: 0;
+    height: 100vh;
+    min-height: 100vh;
     min-width: 0;
-    flex: none;
+    flex: 1;
   }
   
   .auth-right {
-    order: -1;
-    padding: 1rem;
+    display: none; /* Hide marketing side on small screens to focus on form */
   }
   
   .auth-left {
-    padding: 2rem 1rem;
+    padding: 1.5rem;
+    justify-content: center;
+  }
+
+  .mobile-mockup {
+    display: block;
+    margin-bottom: 1.5rem;
+    text-align: center;
+    width: 100%;
+  }
+
+  .mobile-mockup img {
+    max-height: 150px;
+    width: auto;
+    object-fit: contain;
   }
   
   .marketing-title {

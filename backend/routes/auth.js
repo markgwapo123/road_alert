@@ -690,4 +690,148 @@ router.post('/admin/clear-settings-cache', async (req, res) => {
   }
 });
 
+// @route   POST /api/auth/forgot-password
+// @desc    Request password reset OTP
+// @access  Public
+router.post('/forgot-password', async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+
+    const user = await User.findOne({ email });
+    if (!user) {
+      // For security, don't reveal if user exists, but the user requested "Forgot Password is update it"
+      // and in their previous code it was returning 404. I will follow that for now as it's a thesis.
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Generate 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    
+    // Save OTP to user (valid for 10 minutes)
+    user.resetPasswordOTP = otp;
+    user.resetPasswordExpires = Date.now() + 10 * 60 * 1000;
+    await user.save();
+
+    // Send email using nodemailer
+    const nodemailer = require('nodemailer');
+    
+    // Try to get credentials from env
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: process.env.EMAIL_USER || 'placeholder@gmail.com',
+        pass: process.env.EMAIL_PASS || 'placeholder_pass'
+      }
+    });
+
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to: user.email,
+      subject: 'Password Reset OTP - Road Alert',
+      text: `Your OTP for password reset is: ${otp}. It will expire in 10 minutes.`
+    };
+
+    // If credentials are placeholder, just log the OTP for the user (useful for local dev/testing)
+    if (!process.env.EMAIL_USER || process.env.EMAIL_USER.includes('placeholder')) {
+      console.log('------------------------------------------');
+      console.log(`🔑 PASSWORD RESET OTP FOR ${user.email}: ${otp}`);
+      console.log('------------------------------------------');
+      return res.json({ 
+        success: true, 
+        message: 'Reset OTP generated. (Development Mode: OTP logged to console)',
+        devMode: true 
+      });
+    }
+
+    await transporter.sendMail(mailOptions);
+
+    res.json({
+      success: true,
+      message: 'OTP sent to your email'
+    });
+
+  } catch (error) {
+    console.error('Forgot password error:', error);
+    res.status(500).json({ error: 'Server error during forgot password' });
+  }
+});
+
+// @route   POST /api/auth/verify-otp
+// @desc    Verify password reset OTP
+// @access  Public
+router.post('/verify-otp', async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+
+    if (!email || !otp) {
+      return res.status(400).json({ error: 'Email and OTP are required' });
+    }
+
+    const user = await User.findOne({ 
+      email,
+      resetPasswordOTP: otp,
+      resetPasswordExpires: { $gt: Date.now() }
+    });
+
+    if (!user) {
+      return res.status(400).json({ error: 'Invalid or expired OTP' });
+    }
+
+    res.json({
+      success: true,
+      message: 'OTP verified'
+    });
+
+  } catch (error) {
+    console.error('Verify OTP error:', error);
+    res.status(500).json({ error: 'Server error during OTP verification' });
+  }
+});
+
+// @route   POST /api/auth/reset-password
+// @desc    Reset password using OTP
+// @access  Public
+router.post('/reset-password', async (req, res) => {
+  try {
+    const { email, otp, newPassword } = req.body;
+
+    if (!email || !otp || !newPassword) {
+      return res.status(400).json({ error: 'All fields are required' });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters long' });
+    }
+
+    const user = await User.findOne({ 
+      email,
+      resetPasswordOTP: otp,
+      resetPasswordExpires: { $gt: Date.now() }
+    });
+
+    if (!user) {
+      return res.status(400).json({ error: 'Invalid or expired OTP' });
+    }
+
+    // Update password and clear OTP
+    user.password = newPassword;
+    user.resetPasswordOTP = null;
+    user.resetPasswordExpires = null;
+    await user.save();
+
+    res.json({
+      success: true,
+      message: 'Password reset successful. You can now login with your new password.'
+    });
+
+  } catch (error) {
+    console.error('Reset password error:', error);
+    res.status(500).json({ error: 'Server error during password reset' });
+  }
+});
+
 module.exports = router;

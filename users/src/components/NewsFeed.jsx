@@ -36,7 +36,7 @@ const ALERT_COLORS = {
   }
 };
 
-const NewsFeed = ({ user }) => {
+const NewsFeed = ({ user, unreadNewsCount, onNewsViewed }) => {
   const [reports, setReports] = useState([]);
   const [resolvedReports, setResolvedReports] = useState([]);
   const [newsPosts, setNewsPosts] = useState([]);
@@ -45,6 +45,7 @@ const NewsFeed = ({ user }) => {
   const [filteredResolvedReports, setFilteredResolvedReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [newsUnreadCount, setNewsUnreadCount] = useState(0);
   const [selectedReport, setSelectedReport] = useState(null);
   const [selectedReportUser, setSelectedReportUser] = useState(null);
   const [selectedNewsPost, setSelectedNewsPost] = useState(null);
@@ -131,6 +132,16 @@ const NewsFeed = ({ user }) => {
 
     fetchData();
   }, []);
+
+  // Update news viewed status when switching to news tab
+  useEffect(() => {
+    if (activeTab === 'news' && newsPosts.length > 0) {
+      const latestId = newsPosts[0]._id;
+      if (typeof onNewsViewed === 'function') {
+        onNewsViewed(latestId);
+      }
+    }
+  }, [activeTab, newsPosts, onNewsViewed]);
 
   // Filter content based on search query
   const filterContent = (query) => {
@@ -461,27 +472,35 @@ const NewsFeed = ({ user }) => {
             minWidth: 0,
             padding: '8px 6px',
             border: 'none',
-            background: activeTab === 'news' ? '#007bff' : '#f8f9fa',
-            color: activeTab === 'news' ? 'white' : '#495057',
-            borderRadius: '10px',
-            cursor: 'pointer',
             fontWeight: '600',
             fontSize: '12px',
             marginBottom: '-2px',
             userSelect: 'none',
             WebkitUserSelect: 'none',
             WebkitTapHighlightColor: 'transparent',
-            transition: 'all 0.2s ease',
+            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
             display: 'flex',
             flexDirection: 'row',
             alignItems: 'center',
             justifyContent: 'center',
             gap: '6px',
-            boxShadow: activeTab === 'news' ? '0 -2px 8px rgba(0,123,255,0.2)' : 'none',
-            borderTop: activeTab === 'news' ? '2px solid #007bff' : '2px solid transparent',
-            borderLeft: activeTab === 'news' ? '2px solid #007bff' : '2px solid transparent',
-            borderRight: activeTab === 'news' ? '2px solid #007bff' : '2px solid transparent',
-            borderBottom: 'none'
+            boxShadow: activeTab === 'news' 
+              ? `0 -2px 8px ${unreadNewsCount > 0 ? 'rgba(239,68,68,0.3)' : 'rgba(0,123,255,0.2)'}` 
+              : 'none',
+            borderTop: activeTab === 'news' 
+              ? `2px solid ${unreadNewsCount > 0 ? '#ef4444' : '#007bff'}` 
+              : '2px solid transparent',
+            borderLeft: activeTab === 'news' 
+              ? `2px solid ${unreadNewsCount > 0 ? '#ef4444' : '#007bff'}` 
+              : '2px solid transparent',
+            borderRight: activeTab === 'news' 
+              ? `2px solid ${unreadNewsCount > 0 ? '#ef4444' : '#007bff'}` 
+              : '2px solid transparent',
+            borderBottom: 'none',
+            background: activeTab === 'news' 
+              ? (unreadNewsCount > 0 ? '#ef4444' : '#007bff') 
+              : '#f8f9fa',
+            color: activeTab === 'news' ? 'white' : '#495057'
           }}
           onMouseOver={(e) => {
             if (activeTab !== 'news') {
@@ -498,14 +517,17 @@ const NewsFeed = ({ user }) => {
           <span style={{
             fontSize: '11px',
             fontWeight: '700',
-            backgroundColor: activeTab === 'news' ? 'rgba(255,255,255,0.2)' : '#007bff',
+            backgroundColor: activeTab === 'news' 
+              ? 'rgba(255,255,255,0.2)' 
+              : (unreadNewsCount > 0 ? '#ef4444' : '#007bff'),
             color: 'white',
             padding: '2px 8px',
             borderRadius: '10px',
             minWidth: '24px',
-            textAlign: 'center'
+            textAlign: 'center',
+            transition: 'background-color 0.3s ease'
           }}>
-            {filteredNews.length}
+            {unreadNewsCount > 0 ? unreadNewsCount : filteredNews.length}
           </span>
         </button>
       </div>

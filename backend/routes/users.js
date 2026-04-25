@@ -41,9 +41,7 @@ router.get('/me', userAuth, async (req, res) => {
     if (cached) return res.json(cached);
 
     const user = await User.findById(userId)
-      .select('-password')
-      .lean()
-      .maxTimeMS(30000);
+      .select('-password');
     
     if (!user) {
       return res.status(404).json({
@@ -51,6 +49,19 @@ router.get('/me', userAuth, async (req, res) => {
         error: 'User not found'
       });
     }
+
+    // ⚡ Auto-Login Tracking: Update lastLogin if it was more than 12 hours ago
+    // This makes sure "resuming" the app counts as a login for the day
+    const twelveHoursAgo = new Date(Date.now() - 12 * 60 * 60 * 1000);
+    const now = new Date();
+    
+    if (!user.lastLogin || user.lastLogin < twelveHoursAgo) {
+      user.lastLogin = now;
+    }
+    
+    // Always update last activity
+    user.lastActivity = now;
+    await user.save();
 
     const response = {
       success: true,
@@ -63,6 +74,8 @@ router.get('/me', userAuth, async (req, res) => {
         profileGallery: user.profile?.profilePictureGallery || [],
         isActive: user.isActive,
         lastLogin: user.lastLogin,
+        warnings: user.warnings || [],
+        spamScore: user.spamScore || 0,
         createdAt: user.createdAt,
         updatedAt: user.updatedAt
       }
@@ -550,6 +563,35 @@ router.delete('/profile-gallery/:imageUrl(*)', userAuth, async (req, res) => {
       success: false,
       error: 'Server error while deleting image'
     });
+  }
+});
+
+// @route   POST /api/users/me/warnings/read
+// @desc    Mark all warnings as read
+// @access  Private
+router.post('/me/warnings/read', userAuth, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ success: false, error: 'User not found' });
+    }
+
+    // Mark all warnings as read
+    if (user.warnings && user.warnings.length > 0) {
+      user.warnings.forEach(warning => {
+        warning.isRead = true;
+      });
+      await user.save();
+    }
+
+    res.json({
+      success: true,
+      message: 'Warnings marked as read'
+    });
+
+  } catch (error) {
+    console.error('Mark warnings read error:', error);
+    res.status(500).json({ success: false, error: 'Server error' });
   }
 });
 

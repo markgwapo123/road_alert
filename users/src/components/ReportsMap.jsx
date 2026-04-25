@@ -22,8 +22,10 @@ const ReportsMap = ({ reports }) => {
   const mapContainerRef = useRef(null);
   const mapRef = useRef(null);
   const tileLayerRef = useRef(null);
+  const heatLayerRef = useRef(null);
   const [markers, setMarkers] = useState([]);
   const [mapStyle, setMapStyle] = useState('streets');
+  const [showHeatmap, setShowHeatmap] = useState(false);
 
   // Center of Negros Occidental (approximate)
   const defaultCenter = { lat: 10.67, lng: 122.95 };
@@ -60,9 +62,24 @@ const ReportsMap = ({ reports }) => {
       const scriptElement = document.createElement('script');
       scriptElement.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
       scriptElement.onload = () => {
-        setTimeout(initializeMap, 100); // Small delay to ensure DOM is ready
+        // Load leaflet-heat after leaflet
+        const heatScript = document.createElement('script');
+        heatScript.src = 'https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js';
+        heatScript.onload = () => {
+          console.log('🔥 Heatmap plugin loaded');
+          setTimeout(initializeMap, 100);
+        };
+        document.head.appendChild(heatScript);
       };
       document.head.appendChild(scriptElement);
+    } else if (!window.L.heatLayer) {
+      const heatScript = document.createElement('script');
+      heatScript.src = 'https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js';
+      heatScript.onload = () => {
+        console.log('🔥 Heatmap plugin loaded');
+        setTimeout(initializeMap, 100);
+      };
+      document.head.appendChild(heatScript);
     } else {
       setTimeout(initializeMap, 100);
     }
@@ -124,91 +141,137 @@ const ReportsMap = ({ reports }) => {
 
     const L = window.L;
 
-    // Clear existing markers
+    // Clear existing markers and heatmap
     markers.forEach(marker => marker.remove());
-    setMarkers([]);
+    if (heatLayerRef.current) {
+      heatLayerRef.current.remove();
+      heatLayerRef.current = null;
+    }
 
-    // Add new markers for reports
-    const newMarkers = reports
-      .filter(report => report.location?.lat && report.location?.lng)
-      .map(report => {
-        // Custom icon based on alert type
-        const iconColor = 
-          report.alertType === 'Accident' ? '#dc3545' :
-          report.alertType === 'Under Construction' ? '#ffc107' :
-          report.alertType === 'Road Closure' ? '#dc3545' :
-          report.alertType === 'Heavy Traffic' ? '#fd7e14' :
-          '#007bff';
+    if (showHeatmap && window.L.heatLayer) {
+      // Create heatmap data [lat, lng, intensity]
+      const heatData = reports
+        .filter(report => report.location?.lat && report.location?.lng)
+        .map(report => [
+          report.location.lat, 
+          report.location.lng, 
+          0.8 // Standard intensity
+        ]);
 
-        const customIcon = L.divIcon({
-          className: 'custom-marker',
-          html: `<div style="
-            background-color: ${iconColor};
-            width: 30px;
-            height: 30px;
-            border-radius: 50% 50% 50% 0;
-            transform: rotate(-45deg);
-            border: 2px solid white;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-          ">
-            <span style="transform: rotate(45deg); font-size: 16px;">📍</span>
-          </div>`,
-          iconSize: [30, 30],
-          iconAnchor: [15, 30],
-          popupAnchor: [0, -30]
+      const heatLayer = window.L.heatLayer(heatData, {
+        radius: 25,
+        blur: 15,
+        maxZoom: 17,
+        gradient: {
+          0.4: '#3b82f6', // Blue
+          0.6: '#10b981', // Green
+          0.7: '#f59e0b', // Orange
+          0.8: '#ef4444', // Red
+          1.0: '#7f1d1d'  // Dark Red
+        }
+      }).addTo(mapRef.current);
+      
+      heatLayerRef.current = heatLayer;
+      setMarkers([]); // Markers are hidden in heatmap mode
+    } else {
+      // Add new markers for reports
+      const newMarkers = reports
+        .filter(report => report.location?.lat && report.location?.lng)
+        .map(report => {
+          // Custom icon based on alert type
+          const iconColor = 
+            report.alertType === 'Accident' ? '#dc3545' :
+            report.alertType === 'Under Construction' ? '#ffc107' :
+            report.alertType === 'Road Closure' ? '#dc3545' :
+            report.alertType === 'Heavy Traffic' ? '#fd7e14' :
+            '#007bff';
+
+          const customIcon = L.divIcon({
+            className: 'custom-marker',
+            html: `<div style="
+              background-color: ${iconColor};
+              width: 30px;
+              height: 30px;
+              border-radius: 50% 50% 50% 0;
+              transform: rotate(-45deg);
+              border: 2px solid white;
+              box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+              display: flex;
+              align-items: center;
+              justify-content: center;
+            ">
+              <span style="transform: rotate(45deg); font-size: 16px;">📍</span>
+            </div>`,
+            iconSize: [30, 30],
+            iconAnchor: [15, 30],
+            popupAnchor: [0, -30]
+          });
+
+          const marker = L.marker(
+            [report.location.lat, report.location.lng],
+            { icon: customIcon }
+          ).addTo(mapRef.current);
+
+          // Add popup with report details
+          const popupContent = `
+            <div style="min-width: 200px;">
+              <div style="font-weight: bold; color: ${iconColor}; margin-bottom: 5px;">
+                ${report.alertType}
+              </div>
+              <div style="font-size: 12px; color: #666; margin-bottom: 8px;">
+                ${report.barangay}, ${report.city}, ${report.province}
+              </div>
+              ${report.description ? `
+                <div style="font-size: 13px; margin-bottom: 8px; padding-top: 8px; border-top: 1px solid #eee;">
+                  ${report.description}
+                </div>
+              ` : ''}
+              ${report.image ? `
+                <img src="${report.image}" style="width: 100%; border-radius: 6px; margin-top: 8px;" />
+              ` : ''}
+              <div style="font-size: 11px; color: #999; margin-top: 8px; padding-top: 8px; border-top: 1px solid #eee;">
+                📅 ${new Date(report.timestamp).toLocaleDateString()}
+              </div>
+            </div>
+          `;
+
+          marker.bindPopup(popupContent);
+
+          return marker;
         });
 
-        const marker = L.marker(
-          [report.location.lat, report.location.lng],
-          { icon: customIcon }
-        ).addTo(mapRef.current);
+      setMarkers(newMarkers);
 
-        // Add popup with report details
-        const popupContent = `
-          <div style="min-width: 200px;">
-            <div style="font-weight: bold; color: ${iconColor}; margin-bottom: 5px;">
-              ${report.alertType}
-            </div>
-            <div style="font-size: 12px; color: #666; margin-bottom: 8px;">
-              ${report.barangay}, ${report.city}, ${report.province}
-            </div>
-            ${report.description ? `
-              <div style="font-size: 13px; margin-bottom: 8px; padding-top: 8px; border-top: 1px solid #eee;">
-                ${report.description}
-              </div>
-            ` : ''}
-            ${report.image ? `
-              <img src="${report.image}" style="width: 100%; border-radius: 6px; margin-top: 8px;" />
-            ` : ''}
-            <div style="font-size: 11px; color: #999; margin-top: 8px; padding-top: 8px; border-top: 1px solid #eee;">
-              📅 ${new Date(report.timestamp).toLocaleDateString()}
-            </div>
-          </div>
-        `;
-
-        marker.bindPopup(popupContent);
-
-        return marker;
-      });
-
-    setMarkers(newMarkers);
-
-    // Fit bounds to show all markers
-    if (newMarkers.length > 0) {
-      const group = L.featureGroup(newMarkers);
-      mapRef.current.fitBounds(group.getBounds().pad(0.1));
+      // Fit bounds to show all markers
+      if (newMarkers.length > 0) {
+        const group = L.featureGroup(newMarkers);
+        mapRef.current.fitBounds(group.getBounds().pad(0.1));
+      }
     }
-  }, [reports]);
+  }, [reports, showHeatmap]);
 
   return (
     <div className="reports-map-container">
       <div className="map-header">
-        <span className="map-icon">🗺️</span>
-        <h3>Reports Map</h3>
-        <span className="map-count">{reports.length} reports</span>
+        <div className="header-main">
+          <span className="map-icon">🗺️</span>
+          <h3>Reports Map</h3>
+        </div>
+        <div className="map-controls">
+          <button 
+            className={`map-mode-btn ${!showHeatmap ? 'active' : ''}`}
+            onClick={() => setShowHeatmap(false)}
+          >
+            Markers
+          </button>
+          <button 
+            className={`map-mode-btn ${showHeatmap ? 'active' : ''}`}
+            onClick={() => setShowHeatmap(true)}
+          >
+            Heatmap 🔥
+          </button>
+          <span className="map-count">{reports.length} reports</span>
+        </div>
       </div>
       <div 
         ref={mapContainerRef} 

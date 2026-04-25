@@ -7,6 +7,8 @@ import { applyAIPrivacyProtection, preloadModel } from '../utils/aiPrivacyProtec
 import { getReverseGeocode } from '../services/geocoding.js';
 import { processGeocodedAddress } from '../utils/addressMatcher.js';
 import { useSettings } from '../context/SettingsContext.jsx';
+import { Geolocation } from '@capacitor/geolocation';
+import { Capacitor } from '@capacitor/core';
 
 const ALERT_TYPES = [
   { value: 'emergency', label: 'Emergency Alert', icon: '🚨', example: 'ROAD CLOSED - Accident Ahead' },
@@ -59,9 +61,6 @@ const ReportFormMVP = ({ onReport, onClose }) => {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
 
-  // Daily limit state
-  const [dailyLimit, setDailyLimit] = useState(null);
-  const [checkingLimit, setCheckingLimit] = useState(true);
 
   // AI Privacy state for display
   const [aiStatus, setAiStatus] = useState({ faces: 0, people: 0, plates: 0, active: false });
@@ -72,38 +71,10 @@ const ReportFormMVP = ({ onReport, onClose }) => {
   // AI Loading state to show overlay instead of freezing
   const [isAILoading, setIsAILoading] = useState(false);
 
-  // Check daily limit on component mount
-  useEffect(() => {
-    checkDailyLimit();
-  }, []);
+  // UX states for camera
+  const [showFlash, setShowFlash] = useState(false);
 
-  const checkDailyLimit = async () => {
-    try {
-      setCheckingLimit(true);
-      const token = localStorage.getItem('token');
-      if (!token) {
-        setCheckingLimit(false);
-        return;
-      }
 
-      const res = await axios.get(`${config.API_BASE_URL}/reports/daily-limit`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-
-      if (res.data.success) {
-        setDailyLimit(res.data.dailyLimit);
-
-        // If user has reached limit, show error
-        if (!res.data.dailyLimit.canSubmit) {
-          setError(`You have reached your daily limit of ${res.data.dailyLimit.maxReports} reports. Please try again tomorrow.`);
-        }
-      }
-    } catch (err) {
-      console.error('Failed to check daily limit:', err);
-    } finally {
-      setCheckingLimit(false);
-    }
-  };
 
   // Preload AI models ONLY after user passes the instruction screen
   // This prevents lag/freeze when the modal first opens
@@ -140,15 +111,36 @@ const ReportFormMVP = ({ onReport, onClose }) => {
         return;
       }
 
-      const tryGetLocation = (enableHighAccuracy, timeoutDuration) => {
-        return new Promise((resolve, reject) => {
-          const options = {
-            enableHighAccuracy,
-            timeout: timeoutDuration,
-            maximumAge: 0
-          };
-          navigator.geolocation.getCurrentPosition(resolve, reject, options);
-        });
+      const tryGetLocation = async (enableHighAccuracy, timeoutDuration) => {
+        if (Capacitor.isNativePlatform()) {
+          try {
+            // Check and request permissions first on native
+            const permissions = await Geolocation.checkPermissions();
+            if (permissions.location !== 'granted') {
+              const request = await Geolocation.requestPermissions();
+              if (request.location !== 'granted') {
+                throw { code: 1, message: 'Location permission denied' };
+              }
+            }
+            
+            return await Geolocation.getCurrentPosition({
+              enableHighAccuracy,
+              timeout: timeoutDuration
+            });
+          } catch (e) {
+            throw e;
+          }
+        } else {
+          // Web fallback
+          return new Promise((resolve, reject) => {
+            const options = {
+              enableHighAccuracy,
+              timeout: timeoutDuration,
+              maximumAge: 0
+            };
+            navigator.geolocation.getCurrentPosition(resolve, reject, options);
+          });
+        }
       };
 
       try {
@@ -356,9 +348,13 @@ const ReportFormMVP = ({ onReport, onClose }) => {
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
 
-    // Draw the frame IMMEDIATELY — no delay to avoid stale/blurry frames
+    // CRITICAL: Draw the frame BEFORE pausing for maximum sharpness
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
-    console.log(`📸 Captured at ${canvas.width}x${canvas.height} (native resolution)`);
+    
+    // UX: Pause video and show flash effect
+    video.pause();
+    setShowFlash(true);
+    setTimeout(() => setShowFlash(false), 150);
 
     setProcessingStep('detecting');
 
@@ -595,18 +591,24 @@ const ReportFormMVP = ({ onReport, onClose }) => {
 
       console.log('Report submission response:', response.data);
 
-      setConfirmType('success');
-      setConfirmMessage('Report submitted successfully');
+      if (response.data.warning && response.data.warning.detected) {
+        setConfirmType('warning');
+        setConfirmMessage(response.data.warning.message);
+      } else {
+        setConfirmType('success');
+        setConfirmMessage('Report submitted successfully');
+      }
+      
       setShowConfirmModal(true);
 
-      checkDailyLimit();
-
       setTimeout(() => {
-        setShowConfirmModal(false);
-        if (onClose) {
-          onClose();
+        if (!response.data.warning) {
+          setShowConfirmModal(false);
+          if (onClose) {
+            onClose();
+          }
         }
-      }, 3000);
+      }, 4000);
 
       setForm({ type: '', province: '', city: '', barangay: '', description: '', image: null, location: null });
       setCapturedImage(null);
@@ -627,7 +629,6 @@ const ReportFormMVP = ({ onReport, onClose }) => {
       } else if (err.response?.status === 429) {
         const errorData = err.response.data;
         errorMessage = errorData?.error || 'Daily report limit reached. Please try again tomorrow.';
-        checkDailyLimit();
       } else if (err.response?.status === 400) {
         const errorData = err.response.data;
         if (errorData?.details && Array.isArray(errorData.details)) {
@@ -1050,6 +1051,9 @@ const ReportFormMVP = ({ onReport, onClose }) => {
                     />
                     <canvas ref={canvasRef} style={{ display: 'none' }} />
 
+                    {/* Flash Effect */}
+                    {showFlash && <div className="mvp-camera-flash"></div>}
+
                     {/* Processing Overlay */}
                     {processingImage && (
                       <div className="mvp-processing-overlay">
@@ -1089,8 +1093,7 @@ const ReportFormMVP = ({ onReport, onClose }) => {
                           className="mvp-capture-btn"
                           disabled={processingImage}
                         >
-                          <span className="mvp-capture-icon">📷</span>
-                          <span>Capture</span>
+                          Capture
                         </button>
                         <button
                           type="button"
@@ -1142,7 +1145,7 @@ const ReportFormMVP = ({ onReport, onClose }) => {
                       onClick={startCamera}
                       className="mvp-btn mvp-btn-primary"
                     >
-                      <span>📸</span> Open Camera
+                      Open Camera
                     </button>
                   </div>
                 )}
@@ -1164,22 +1167,6 @@ const ReportFormMVP = ({ onReport, onClose }) => {
               </div>
             </section>
 
-            {/* ==================== SECTION 5: SUBMISSION OPTIONS ==================== */}
-            <section className="mvp-form-section mvp-options-section">
-              {dailyLimit && (
-                <div className={`mvp-daily-limit ${dailyLimit.canSubmit ? '' : 'limit-reached'}`}>
-                  <span className="mvp-limit-icon">{dailyLimit.canSubmit ? '📊' : '⚠️'}</span>
-                  <div className="mvp-limit-info">
-                    <span className="mvp-limit-text">
-                      {dailyLimit.canSubmit
-                        ? `${dailyLimit.remaining} report${dailyLimit.remaining !== 1 ? 's' : ''} remaining today`
-                        : 'Daily limit reached'}
-                    </span>
-                    <span className="mvp-limit-count">{dailyLimit.usedToday}/{dailyLimit.maxReports}</span>
-                  </div>
-                </div>
-              )}
-            </section>
 
           </form>
         </div>
@@ -1207,25 +1194,15 @@ const ReportFormMVP = ({ onReport, onClose }) => {
               type="submit"
               onClick={handleSubmit}
               className={`mvp-btn mvp-btn-submit ${!isFormValid ? 'mvp-btn-disabled' : ''}`}
-              disabled={!isFormValid || submitting || checkingLimit || (dailyLimit && !dailyLimit.canSubmit)}
+              disabled={!isFormValid || submitting}
             >
               {submitting ? (
                 <>
                   <div className="mvp-spinner-small"></div>
                   <span>Submitting...</span>
                 </>
-              ) : checkingLimit ? (
-                <>
-                  <div className="mvp-spinner-small"></div>
-                  <span>Checking...</span>
-                </>
-              ) : dailyLimit && !dailyLimit.canSubmit ? (
-                <span>Limit Reached</span>
               ) : (
-                <>
-                  <span>🚀</span>
-                  <span>Submit Report</span>
-                </>
+                <span>Submit Report</span>
               )}
             </button>
           </div>
@@ -1236,10 +1213,16 @@ const ReportFormMVP = ({ onReport, onClose }) => {
           <div className="mvp-confirm-overlay">
             <div className="mvp-confirm-modal">
               <div className={`mvp-confirm-header ${confirmType}`}>
-                <div className="mvp-confirm-icon-wrap">
+                <div className={`mvp-confirm-icon-wrap ${confirmType === 'warning' ? 'warning' : ''}`}>
                   {confirmType === 'success' ? (
                     <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="3">
                       <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                  ) : confirmType === 'warning' ? (
+                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="3">
+                      <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                      <line x1="12" y1="9" x2="12" y2="13"></line>
+                      <line x1="12" y1="17" x2="12.01" y2="17"></line>
                     </svg>
                   ) : (
                     <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="3">
@@ -1249,25 +1232,28 @@ const ReportFormMVP = ({ onReport, onClose }) => {
                   )}
                 </div>
                 <h3 className="mvp-confirm-title">
-                  {confirmType === 'success' ? 'Report Submitted!' : 'Submission Failed'}
+                  {confirmType === 'success' ? 'Report Submitted!' : 
+                   confirmType === 'warning' ? 'Spam Warning' : 'Submission Failed'}
                 </h3>
               </div>
               <div className="mvp-confirm-body">
                 <p className="mvp-confirm-message">
                   {confirmType === 'success'
                     ? 'Your report has been submitted successfully. Our team will review it shortly.'
+                    : confirmType === 'warning'
+                    ? `${confirmMessage} Please avoid spamming to keep your account active.`
                     : confirmMessage}
                 </p>
                 <button
                   onClick={() => {
                     setShowConfirmModal(false);
-                    if (confirmType === 'success' && onClose) {
+                    if ((confirmType === 'success' || confirmType === 'warning') && onClose) {
                       onClose();
                     }
                   }}
-                  className={`mvp-btn mvp-btn-block ${confirmType === 'success' ? 'mvp-btn-success' : 'mvp-btn-danger'}`}
+                  className={`mvp-btn mvp-btn-block ${confirmType === 'success' ? 'mvp-btn-success' : confirmType === 'warning' ? 'mvp-btn-warning' : 'mvp-btn-danger'}`}
                 >
-                  {confirmType === 'success' ? 'Continue' : 'Try Again'}
+                  {confirmType === 'success' || confirmType === 'warning' ? 'Continue' : 'Try Again'}
                 </button>
               </div>
             </div>

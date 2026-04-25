@@ -4,6 +4,7 @@ const { auth, canCreateNews, requirePermission } = require('../middleware/roleAu
 const { handleNewsUpload, getFileType } = require('../middleware/newsUpload');
 const path = require('path');
 const fs = require('fs');
+const NotificationService = require('../services/NotificationService');
 
 const router = express.Router();
 
@@ -75,6 +76,13 @@ router.post('/create', auth, canCreateNews, handleNewsUpload, async (req, res) =
     });
 
     await newsPost.save();
+    
+    // 📢 Broadcast to ALL users
+    try {
+      await NotificationService.broadcastNewsNotification(newsPost);
+    } catch (notifError) {
+      console.error('Failed to broadcast news notification:', notifError);
+    }
     
     // Populate author details for response
     await newsPost.populate('author', 'username role');
@@ -238,6 +246,39 @@ router.delete('/admin/post/:id', auth, canCreateNews, async (req, res) => {
     res.status(500).json({
       error: 'Server error while deleting news post'
     });
+  }
+});
+
+// @route   DELETE /api/news/admin/bulk-delete
+// @desc    Delete multiple news posts
+// @access  Private (admin with create_news_posts permission)
+router.delete('/admin/bulk-delete', auth, canCreateNews, async (req, res) => {
+  try {
+    const { ids } = req.body;
+    if (!ids || !Array.isArray(ids)) {
+      return res.status(400).json({ error: 'Post IDs are required' });
+    }
+
+    // Filter posts to ensure admin only deletes their own unless they are super admin
+    const posts = await NewsPost.find({ _id: { $in: ids } });
+    
+    const postsToDelete = posts.filter(post => 
+      req.admin.role === 'super_admin' || post.author.toString() === req.admin.id
+    ).map(post => post._id);
+
+    if (postsToDelete.length === 0) {
+      return res.status(403).json({ error: 'You are not authorized to delete these posts' });
+    }
+
+    await NewsPost.deleteMany({ _id: { $in: postsToDelete } });
+
+    res.json({
+      message: `${postsToDelete.length} news posts deleted successfully`,
+      deletedCount: postsToDelete.length
+    });
+  } catch (error) {
+    console.error('Bulk delete news post error:', error);
+    res.status(500).json({ error: 'Server error while deleting news posts' });
   }
 });
 

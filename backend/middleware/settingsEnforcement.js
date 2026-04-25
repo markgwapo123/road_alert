@@ -132,48 +132,71 @@ const validatePasswordRequirements = async (req, res, next) => {
 };
 
 /**
- * Check daily report limit for user
+ * Check for spam behavior (rapid fire reporting or duplicate reports)
  */
-const checkDailyReportLimit = async (req, res, next) => {
+const checkSpamBehavior = async (req, res, next) => {
   try {
     if (!req.user) {
       return next();
     }
     
     const Report = require('../models/Report');
-    const maxReportsPerDay = await getSetting('max_reports_per_day', 10);
+    const User = require('../models/User');
     
-    // Count user's reports today
-    const startOfDay = new Date();
-    startOfDay.setHours(0, 0, 0, 0);
-    const endOfDay = new Date();
-    endOfDay.setHours(23, 59, 59, 999);
-    
-    const todayReportsCount = await Report.countDocuments({
+    // 1. Check for rapid-fire reporting (e.g., > 3 reports in 10 minutes)
+    const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
+    const recentReportsCount = await Report.countDocuments({
       'reportedBy.id': req.user.id,
-      createdAt: { $gte: startOfDay, $lte: endOfDay }
+      createdAt: { $gte: tenMinutesAgo }
     });
     
-    if (todayReportsCount >= maxReportsPerDay) {
-      return res.status(429).json({
-        success: false,
-        error: `Daily report limit reached. You can only submit ${maxReportsPerDay} reports per day.`,
-        limitReached: true,
-        maxReports: maxReportsPerDay,
-        currentCount: todayReportsCount
-      });
+    // 2. Check for identical duplicate reports in the last hour
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+    const duplicateReport = await Report.findOne({
+      'reportedBy.id': req.user.id,
+      type: req.body.type,
+      'location.address': req.body.location?.address,
+      createdAt: { $gte: oneHourAgo }
+    });
+    
+    let spamDetected = false;
+    let spamReason = '';
+    
+    if (recentReportsCount >= 5) {
+      spamDetected = true;
+      spamReason = 'Rapid-fire reporting detected (more than 5 reports in 10 minutes).';
+    } else if (duplicateReport) {
+      spamDetected = true;
+      spamReason = 'Duplicate report detected (you already reported this hazard recently).';
     }
     
-    // Attach limit info to request for later use
-    req.dailyLimit = {
-      maxReports: maxReportsPerDay,
-      usedToday: todayReportsCount,
-      remaining: maxReportsPerDay - todayReportsCount
-    };
+    if (spamDetected) {
+      // Increment user's spam score
+      const user = await User.findById(req.user.id);
+      user.spamScore = (user.spamScore || 0) + 1;
+      
+      // Auto-add a warning if they keep spamming
+      if (user.spamScore % 3 === 0) {
+        user.warnings.push({
+          message: `System Alert: Potential spamming behavior detected. ${spamReason}`,
+          reason: 'Automated Spam Detection',
+          date: new Date()
+        });
+      }
+      
+      await user.save();
+      
+      // Notify the frontend about the warning
+      req.spamWarning = {
+        detected: true,
+        message: spamReason,
+        score: user.spamScore
+      };
+    }
     
     next();
   } catch (error) {
-    console.error('Daily limit check error:', error);
+    console.error('Spam detection error:', error);
     next();
   }
 };
@@ -337,7 +360,7 @@ module.exports = {
   checkMaintenanceMode,
   checkRegistrationAllowed,
   validatePasswordRequirements,
-  checkDailyReportLimit,
+  checkSpamBehavior,
   validateReportRequirements,
   settingsBasedRateLimit,
   checkLoginAttempts

@@ -3,11 +3,12 @@ import axios from 'axios';
 import config from '../config/index.js';
 import './NotificationScreen.css';
 
-const NotificationScreen = ({ prefetchedNotifications, onRefresh }) => {
+const NotificationScreen = ({ notifications: prefetchedNotifications, onRefresh, onMarkAsRead, onMarkAllAsRead }) => {
   const [notifications, setNotifications] = useState(prefetchedNotifications || []);
   const [loading, setLoading] = useState(!prefetchedNotifications || prefetchedNotifications.length === 0);
   const [error, setError] = useState(null);
   const [activeFilter, setActiveFilter] = useState('All');
+  const [selectedNotif, setSelectedNotif] = useState(null);
 
   // Sync when prefetchedNotifications changes
   useEffect(() => {
@@ -84,6 +85,19 @@ const NotificationScreen = ({ prefetchedNotifications, onRefresh }) => {
     return notifDate.toLocaleDateString();
   };
 
+  const handleNotifClick = (notif) => {
+    setSelectedNotif(notif);
+    if (!notif.isRead && typeof onMarkAsRead === 'function') {
+      onMarkAsRead(notif._id);
+    }
+  };
+
+  const filteredNotifications = notifications.filter(n => {
+    if (activeFilter === 'Unread') return !n.isRead;
+    if (activeFilter === 'Reports') return n.type === 'new_report' || n.type === 'report_status_update' || n.type === 'report_resolved';
+    return true;
+  });
+
   return (
     <div className="notif-screen">
       {/* Fixed Header */}
@@ -106,11 +120,38 @@ const NotificationScreen = ({ prefetchedNotifications, onRefresh }) => {
                 onClick={() => setActiveFilter(filter)}
               >
                 {filter}
-                {filter === 'All' && notifications.length > 0 && <span className="notif-badge">{notifications.length}</span>}
+                {filter === 'All' && notifications.length > 0 && (
+                  <span className="notif-badge">{notifications.length}</span>
+                )}
+                {filter === 'Unread' && notifications.filter(n => !n.isRead).length > 0 && (
+                  <span className="notif-badge" style={{ backgroundColor: '#ef4444' }}>
+                    {notifications.filter(n => !n.isRead).length}
+                  </span>
+                )}
               </button>
             ))}
           </div>
         </div>
+        
+        {notifications.some(n => !n.isRead) && (
+          <div style={{ padding: '0 16px', marginBottom: '8px' }}>
+            <button 
+              onClick={onMarkAllAsRead}
+              style={{
+                width: '100%',
+                padding: '8px',
+                backgroundColor: '#f3f4f6',
+                border: '1px solid #e5e7eb',
+                borderRadius: '8px',
+                fontSize: '12px',
+                color: '#374151',
+                fontWeight: '600'
+              }}
+            >
+              Mark all as read
+            </button>
+          </div>
+        )}
 
         {/* Sort and Refresh Actions */}
         <div className="notif-actions-row">
@@ -129,12 +170,18 @@ const NotificationScreen = ({ prefetchedNotifications, onRefresh }) => {
             <div className="loading-state">Loading notifications...</div>
           ) : error ? (
             <div className="error-state">{error}</div>
-          ) : notifications.length > 0 ? (
-            notifications.map(n => (
-              <div className="notif-card" key={n._id}>
+          ) : filteredNotifications.length > 0 ? (
+            filteredNotifications.map(n => (
+              <div 
+                className={`notif-card ${!n.isRead ? 'unread' : ''}`} 
+                key={n._id}
+                onClick={() => handleNotifClick(n)}
+                style={{ cursor: 'pointer' }}
+              >
                 <div className="notif-card-row">
                   <span className="notif-card-icon" role="img" aria-label="icon">{getNotificationIcon(n.type)}</span>
                   <span className="notif-card-type">{n.type ? n.type.replace(/_/g, ' ').toUpperCase() : 'NOTIFICATION'}</span>
+                  {!n.isRead && <span className="unread-dot"></span>}
                   <span className="notif-card-date">{getRelativeTime(n.createdAt)}</span>
                 </div>
                 <div className="notif-card-title">{n.title}</div>
@@ -151,6 +198,31 @@ const NotificationScreen = ({ prefetchedNotifications, onRefresh }) => {
           )}
         </div>
       </main>
+
+      {/* Notification Details Modal */}
+      {selectedNotif && (
+        <div className="notif-modal-overlay" onClick={() => setSelectedNotif(null)}>
+          <div className="notif-modal-content" onClick={e => e.stopPropagation()}>
+            <div className="notif-modal-header">
+              <span className="notif-modal-icon">{getNotificationIcon(selectedNotif.type)}</span>
+              <button className="notif-modal-close" onClick={() => setSelectedNotif(null)}>×</button>
+            </div>
+            <div className="notif-modal-body">
+              <div className="notif-modal-type">{selectedNotif.type?.replace(/_/g, ' ').toUpperCase()}</div>
+              <h2 className="notif-modal-title">{selectedNotif.title}</h2>
+              <div className="notif-modal-date">{new Date(selectedNotif.createdAt).toLocaleString()}</div>
+              <p className="notif-modal-message">{selectedNotif.message}</p>
+              
+              {selectedNotif.status && (
+                <div className="notif-modal-status">
+                  <strong>Status:</strong> <span className="status-val">{selectedNotif.status}</span>
+                </div>
+              )}
+            </div>
+            <button className="notif-modal-btn" onClick={() => setSelectedNotif(null)}>Close</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

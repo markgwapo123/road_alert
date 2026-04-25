@@ -266,8 +266,150 @@ const ProfilePage = ({ token, prefetchedUser, onBack, onLogout, onUserUpdate }) 
   }
 
   // Change password view
-  if (showChangePassword) {
-    return <ChangePassword onBack={() => setShowChangePassword(false)} onLogout={onLogout} />;
+  if (activeSection === 'changePassword') {
+    return <ChangePassword onBack={() => setActiveSection('view')} onLogout={onLogout} />;
+  }
+
+  // Edit Profile View
+  if (activeSection === 'edit') {
+    return (
+      <div className="profile-page">
+        <div className="profile-container">
+          <div className="profile-card profile-card--edit">
+            <div className="profile-edit-header">
+              <button className="profile-back-btn" onClick={() => setActiveSection('view')}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="19" y1="12" x2="5" y2="12"></line>
+                  <polyline points="12 19 5 12 12 5"></polyline>
+                </svg>
+              </button>
+              <h2 className="profile-edit-title">Edit Profile</h2>
+            </div>
+
+            <div className="profile-edit-avatar-section">
+              <div className="profile-avatar profile-avatar--edit">
+                {previewImage || profileImage ? (
+                  <img src={previewImage || profileImage} alt="Profile" />
+                ) : (
+                  <span className="profile-avatar__default">👤</span>
+                )}
+                <label className="profile-avatar-edit-btn">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                    <circle cx="12" cy="13" r="4"></circle>
+                  </svg>
+                  <input type="file" accept="image/*" onChange={handleImageChange} hidden />
+                </label>
+              </div>
+              
+              {selectedFile && (
+                <div className="profile-image-actions">
+                  <button 
+                    className="profile-btn profile-btn--primary" 
+                    onClick={handleUploadImage}
+                    disabled={uploadingImage}
+                  >
+                    {uploadingImage ? 'Uploading...' : 'Save Photo'}
+                  </button>
+                  <button className="profile-btn profile-btn--text" onClick={handleCancelImage}>Cancel</button>
+                </div>
+              )}
+              {!selectedFile && profileImage && (
+                <button className="profile-remove-photo-btn" onClick={handleRemoveImage}>Remove Photo</button>
+              )}
+            </div>
+
+            <div className="profile-form">
+              <div className="profile-form-group">
+                <label className="profile-label">Full Name</label>
+                <input 
+                  type="text" 
+                  name="fullName"
+                  className="profile-input" 
+                  value={formData.fullName} 
+                  onChange={handleInputChange}
+                  placeholder="Enter your full name"
+                />
+              </div>
+
+              <div className="profile-form-group">
+                <label className="profile-label">Phone Number</label>
+                <input 
+                  type="tel" 
+                  name="phone"
+                  className="profile-input" 
+                  value={formData.phone} 
+                  onChange={handleInputChange}
+                  placeholder="e.g. 09123456789"
+                />
+              </div>
+
+              <div className="profile-form-group">
+                <label className="profile-label">Gender</label>
+                <div className="profile-gender-options">
+                  <label className={`profile-gender-chip ${formData.gender === 'male' ? 'active' : ''}`}>
+                    <input type="radio" name="gender" value="male" checked={formData.gender === 'male'} onChange={handleInputChange} hidden />
+                    Male
+                  </label>
+                  <label className={`profile-gender-chip ${formData.gender === 'female' ? 'active' : ''}`}>
+                    <input type="radio" name="gender" value="female" checked={formData.gender === 'female'} onChange={handleInputChange} hidden />
+                    Female
+                  </label>
+                  <label className={`profile-gender-chip ${formData.gender === 'other' ? 'active' : ''}`}>
+                    <input type="radio" name="gender" value="other" checked={formData.gender === 'other'} onChange={handleInputChange} hidden />
+                    Other
+                  </label>
+                </div>
+              </div>
+
+              <div className="profile-form-group">
+                <label className="profile-label">Address</label>
+                <textarea 
+                  name="address"
+                  className="profile-textarea" 
+                  value={formData.address} 
+                  onChange={handleInputChange}
+                  placeholder="Enter your address"
+                ></textarea>
+              </div>
+
+              <div className="profile-form-group profile-form-group--switch">
+                <div className="profile-switch-info">
+                  <span className="profile-label">Notifications</span>
+                  <span className="profile-switch-desc">Get alerts for new reports and news</span>
+                </div>
+                <label className="profile-switch">
+                  <input 
+                    type="checkbox" 
+                    name="notificationsEnabled"
+                    checked={formData.notificationsEnabled} 
+                    onChange={handleInputChange} 
+                  />
+                  <span className="profile-slider"></span>
+                </label>
+              </div>
+
+              <div className="profile-form-actions">
+                <button 
+                  className="profile-save-btn" 
+                  onClick={handleSaveProfile}
+                  disabled={saving}
+                >
+                  {saving ? 'Saving...' : 'Save Changes'}
+                </button>
+                <button 
+                  className="profile-cancel-btn" 
+                  onClick={() => setActiveSection('view')}
+                  disabled={saving}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -486,6 +628,7 @@ const ProfilePage = ({ token, prefetchedUser, onBack, onLogout, onUserUpdate }) 
                   <polyline points="9 18 15 12 9 6"></polyline>
                 </svg>
               </button>
+
 
               <button className="profile-action-row profile-action-row--logout" onClick={onLogout}>
                 <div className="profile-action-row-left">

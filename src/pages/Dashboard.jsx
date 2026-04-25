@@ -21,78 +21,52 @@ const Dashboard = () => {
     totalReports: 0,
     pendingReports: 0,
     verifiedReports: 0,
-    rejectedReports: 0
+    rejectedReports: 0,
+    resolvedReports: 0
   })
   const [recentReports, setRecentReports] = useState([])
   const [loading, setLoading] = useState(true)
+  const [activeFilter, setActiveFilter] = useState('all')
   const [selectedReport, setSelectedReport] = useState(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [selectedImage, setSelectedImage] = useState(null)
   const [isImageModalOpen, setIsImageModalOpen] = useState(false)
-  useEffect(() => {
-    const fetchDashboardData = async () => {
-      try {
-        // Try to fetch real stats
-        const statsResponse = await reportsAPI.getReportsStats()
-        console.log('Admin Dashboard Stats Response:', statsResponse.data)
-        
-        setStats({
-          totalReports: statsResponse.data.totalReports,
-          pendingReports: statsResponse.data.pending,
-          verifiedReports: statsResponse.data.verified,
-          rejectedReports: statsResponse.data.rejected
-        })
-
-        // Fetch recent reports
-        const reportsResponse = await reportsAPI.getAllReports({ limit: 5, sortBy: 'createdAt', sortOrder: 'desc' })
-        setRecentReports(reportsResponse.data.data)
-        
-      } catch (error) {
-        console.error('Failed to fetch dashboard data:', error)
-        // Use mock data if API is not available
-        console.log('API not available, using mock data')
-        setStats({
-          totalReports: 142,
-          pendingReports: 23,
-          verifiedReports: 98,
-          rejectedReports: 21
-        })
-
-        setRecentReports([
-          {
-            id: 1,
-            type: 'pothole',
-            location: { address: 'EDSA, Quezon City' },
-            status: 'pending',
-            createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), // 2 hours ago
-            severity: 'high',
-            reportedBy: { name: 'John Doe' }
-          },
-          {
-            id: 2,
-            type: 'debris',
-            location: { address: 'C5 Road, Makati' },
-            status: 'verified',
-            createdAt: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(), // 4 hours ago
-            severity: 'medium',
-            reportedBy: { name: 'Jane Smith' }
-          },
-          {
-            id: 3,
-            type: 'flooding',
-            location: { address: 'Roxas Boulevard, Manila' },
-            status: 'pending',
-            createdAt: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(), // 6 hours ago
-            severity: 'high',
-            reportedBy: { name: 'Mike Johnson' }
-          }
-        ])
-      } finally {
-        setLoading(false)
-      }
+  const fetchStats = async () => {
+    try {
+      const statsResponse = await reportsAPI.getReportsStats()
+      setStats({
+        totalReports: statsResponse.data.totalReports,
+        pendingReports: statsResponse.data.pending,
+        verifiedReports: statsResponse.data.verified,
+        rejectedReports: statsResponse.data.rejected,
+        resolvedReports: statsResponse.data.resolved || 0
+      })
+    } catch (error) {
+      console.error('Failed to fetch dashboard stats:', error)
+      setStats({ totalReports: 142, pendingReports: 23, verifiedReports: 98, rejectedReports: 21, resolvedReports: 45 })
     }
+  }
 
-    fetchDashboardData()
+  const fetchDashboardReports = async () => {
+    try {
+      setLoading(true)
+      const queryParams = { limit: 10, sortBy: 'createdAt', sortOrder: 'desc' }
+      if (activeFilter !== 'all') {
+        queryParams.status = activeFilter
+      }
+      const reportsResponse = await reportsAPI.getAllReports(queryParams)
+      setRecentReports(reportsResponse.data.data)
+    } catch (error) {
+      console.error('Failed to fetch dashboard reports:', error)
+      setRecentReports([])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Fetch stats once on mount
+  useEffect(() => {
+    fetchStats()
     
     // Debug: Check current admin token
     const token = localStorage.getItem('adminToken')
@@ -108,9 +82,14 @@ const Dashboard = () => {
     }
   }, [])
 
-  const StatCard = ({ title, value, icon: Icon, bgColor, iconColor, textColor, onClick }) => (
+  // Fetch dashboard reports when filter changes
+  useEffect(() => {
+    fetchDashboardReports()
+  }, [activeFilter])
+
+  const StatCard = ({ title, value, icon: Icon, bgColor, iconColor, textColor, onClick, isActive }) => (
     <div 
-      className="bg-white rounded-xl shadow-sm p-5 cursor-pointer transition-all duration-200 hover:shadow-lg hover:scale-105 transform"
+      className={`bg-white rounded-xl shadow-sm p-5 cursor-pointer transition-all duration-200 hover:shadow-lg hover:scale-105 transform ${isActive ? 'ring-2 ring-offset-2 ring-blue-500 scale-105 shadow-lg' : ''}`}
       onClick={onClick}
       role="button"
       tabIndex={0}
@@ -123,7 +102,7 @@ const Dashboard = () => {
       <div className="flex items-center justify-between">
         <div>
           <p className="text-sm text-gray-500">{title}</p>
-          <p className={`text-2xl font-bold ${textColor || 'text-gray-900'}`}>{loading ? '...' : value}</p>
+          <p className={`text-2xl font-bold ${textColor || 'text-gray-900'}`}>{value}</p>
         </div>
         <div className={`${bgColor} p-3 rounded-lg`}>
           <Icon className={`h-6 w-6 ${iconColor}`} />
@@ -198,21 +177,11 @@ const Dashboard = () => {
   }
 
   // Click handlers for statistics cards
-  const handleTotalReportsClick = () => {
-    navigate('/reports?filter=all')
-  }
-
-  const handlePendingReportsClick = () => {
-    navigate('/reports?filter=pending')
-  }
-
-  const handleVerifiedReportsClick = () => {
-    navigate('/reports?filter=verified')
-  }
-
-  const handleRejectedReportsClick = () => {
-    navigate('/reports?filter=rejected')
-  }
+  const handleTotalReportsClick = () => setActiveFilter('all')
+  const handlePendingReportsClick = () => setActiveFilter('pending')
+  const handleVerifiedReportsClick = () => setActiveFilter('verified')
+  const handleRejectedReportsClick = () => setActiveFilter('rejected')
+  const handleResolvedReportsClick = () => setActiveFilter('resolved')
 
   return (
     <div className="space-y-6">
@@ -223,7 +192,7 @@ const Dashboard = () => {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
         <StatCard
           title="Total Reports"
           value={stats.totalReports}
@@ -232,6 +201,7 @@ const Dashboard = () => {
           iconColor="text-blue-600"
           textColor="text-gray-900"
           onClick={handleTotalReportsClick}
+          isActive={activeFilter === 'all'}
         />
         <StatCard
           title="Pending Review"
@@ -241,6 +211,7 @@ const Dashboard = () => {
           iconColor="text-yellow-600"
           textColor="text-yellow-600"
           onClick={handlePendingReportsClick}
+          isActive={activeFilter === 'pending'}
         />
         <StatCard
           title="Verified"
@@ -250,6 +221,7 @@ const Dashboard = () => {
           iconColor="text-green-600"
           textColor="text-green-600"
           onClick={handleVerifiedReportsClick}
+          isActive={activeFilter === 'verified'}
         />
         <StatCard
           title="Rejected"
@@ -259,13 +231,34 @@ const Dashboard = () => {
           iconColor="text-red-600"
           textColor="text-red-600"
           onClick={handleRejectedReportsClick}
+          isActive={activeFilter === 'rejected'}
+        />
+        <StatCard
+          title="Resolved"
+          value={stats.resolvedReports}
+          icon={CheckBadgeIcon}
+          bgColor="bg-indigo-100"
+          iconColor="text-indigo-600"
+          textColor="text-indigo-600"
+          onClick={handleResolvedReportsClick}
+          isActive={activeFilter === 'resolved'}
         />
       </div>
 
       {/* Recent Reports */}
       <div className="bg-white rounded-lg shadow">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-900">Recent Reports</h2>
+        <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+          <h2 className="text-lg font-semibold text-gray-900 capitalize">
+            {activeFilter === 'all' ? 'Recent' : activeFilter} Reports
+          </h2>
+          {activeFilter !== 'all' && (
+            <button 
+              onClick={() => setActiveFilter('all')}
+              className="text-sm text-blue-600 hover:text-blue-800"
+            >
+              Clear Filter
+            </button>
+          )}
         </div>
         {loading ? (
           <div className="p-6 text-center">
@@ -575,8 +568,9 @@ const Dashboard = () => {
                           
                           // Update the report status in local state
                           setSelectedReport({ ...selectedReport, status: 'verified' })
-                          // Refresh the stats
+                          // Refresh the stats and reports list
                           fetchStats()
+                          fetchDashboardReports()
                           closeModal()
                         } catch (error) {
                           console.error('Failed to verify report:', error)
@@ -602,8 +596,9 @@ const Dashboard = () => {
                           
                           // Update the report status in local state
                           setSelectedReport({ ...selectedReport, status: 'rejected' })
-                          // Refresh the stats
+                          // Refresh the stats and reports list
                           fetchStats()
+                          fetchDashboardReports()
                           closeModal()
                         } catch (error) {
                           console.error('Failed to reject report:', error)

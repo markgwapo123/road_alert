@@ -21,6 +21,12 @@ const Users = () => {
   const [userToDelete, setUserToDelete] = useState(null)
   const [filterType, setFilterType] = useState('all')
   const [filteredUsers, setFilteredUsers] = useState([])
+  const [selectedImage, setSelectedImage] = useState(null)
+  const [isImageModalOpen, setIsImageModalOpen] = useState(false)
+  const [showWarningModal, setShowWarningModal] = useState(false)
+  const [warningMessage, setWarningMessage] = useState('')
+  const [warningReason, setWarningReason] = useState('Manual Warning')
+  const [isSendingWarning, setIsSendingWarning] = useState(false)
 
   useEffect(() => {
     fetchUsers()
@@ -204,6 +210,56 @@ const Users = () => {
     }
   }
 
+  const sendUserWarning = async () => {
+    if (!selectedUser || !warningMessage) return
+
+    try {
+      setIsSendingWarning(true)
+      const token = localStorage.getItem('adminToken')
+
+      const response = await fetch(`${config.API_BASE_URL}/admin/user-warning/${selectedUser._id}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          message: warningMessage,
+          reason: warningReason
+        })
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        
+        // Update the users list to reflect new spamScore
+        setUsers(prev => prev.map(user =>
+          user._id === selectedUser._id
+            ? { ...user, spamScore: data.data.spamScore, warnings: data.data.warnings }
+            : user
+        ))
+
+        // Update selected user
+        setSelectedUser(prev => ({
+          ...prev,
+          spamScore: data.data.spamScore,
+          warnings: data.data.warnings
+        }))
+
+        alert('Warning sent successfully!')
+        setShowWarningModal(false)
+        setWarningMessage('')
+      } else {
+        throw new Error('Failed to send warning')
+      }
+    } catch (err) {
+      console.error('Error sending warning:', err)
+      alert('Failed to send warning. Please try again.')
+    } finally {
+      setIsSendingWarning(false)
+    }
+  }
+
   // Delete user (Super Admin only)
   const deleteUser = async (userId) => {
     try {
@@ -295,10 +351,15 @@ const Users = () => {
   // Helper: resolve image source from any storage format (Base64 / URL / legacy filename)
   const getImageSrc = (image, report = null, imageIndex = 0) => {
     if (!image) return null
-    // 1. Base64 data stored in MongoDB
+    
+    // 1. Use image API endpoint if report ID is available (More reliable for thumbnails)
+    if (report && report._id) {
+      return `${config.BACKEND_URL}/api/reports/${report._id}/image/${imageIndex}`
+    }
+
+    // 2. Base64 data stored in MongoDB (Fallback)
     if (image.data) {
       const mime = image.mimetype || 'image/jpeg'
-      // If it already has the data URI prefix, use as-is
       if (image.data.startsWith('data:')) return image.data
       return `data:${mime};base64,${image.data}`
     }
@@ -514,6 +575,11 @@ const Users = () => {
                             🧊 Frozen
                           </span>
                         )}
+                        {user.spamScore > 0 && (
+                          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${user.spamScore >= 10 ? 'bg-orange-100 text-orange-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                            ⚠️ Spam Score: {user.spamScore}
+                          </span>
+                        )}
                         <button
                           onClick={() => viewUserProfile(user)}
                           className="inline-flex items-center px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
@@ -676,6 +742,23 @@ const Users = () => {
                             ⚠️ User cannot submit new reports while frozen
                           </p>
                         )}
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-gray-600">Spam Score & Warnings</label>
+                        <div className="flex items-center space-x-2">
+                          <span className={`inline-flex items-center px-2 py-1 rounded-full text-sm font-medium ${selectedUser.spamScore >= 10 ? 'bg-orange-100 text-orange-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                            Score: {selectedUser.spamScore || 0}
+                          </span>
+                          <span className="text-sm text-gray-600">
+                            ({selectedUser.warnings?.length || 0} warnings)
+                          </span>
+                          <button
+                            onClick={() => setShowWarningModal(true)}
+                            className="px-3 py-1 text-xs font-medium rounded-md bg-orange-600 text-white hover:bg-orange-700 transition-colors"
+                          >
+                            Send Warning
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -974,21 +1057,23 @@ const Users = () => {
                         const imgSrc = getImageSrc(image, selectedReport, index)
                         if (!imgSrc) return null
                         return (
-                          <div key={index} className="relative group">
+                          <div key={index} className="relative group bg-gray-100 rounded-lg border overflow-hidden">
                             <img
                               src={imgSrc}
                               alt={`Report attachment ${index + 1}`}
-                              className="w-full h-32 object-cover rounded-lg border hover:shadow-lg transition-shadow cursor-pointer"
-                              onClick={() => window.open(imgSrc, '_blank')}
+                              className="w-full h-32 object-cover hover:scale-105 transition-transform cursor-pointer relative z-10"
+                              onClick={() => {
+                                setSelectedImage(imgSrc)
+                                setIsImageModalOpen(true)
+                              }}
                               onError={handleImageError}
-                              loading="lazy"
                             />
-                            <div className="w-full h-32 rounded-lg border bg-gray-100 items-center justify-center text-gray-400" style={{ display: 'none' }}>
+                            <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-400 z-0" style={{ display: 'none' }}>
                               <span className="text-2xl">📷</span>
                               <span className="text-xs mt-1">Image unavailable</span>
                             </div>
-                            <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-opacity rounded-lg flex items-center justify-center">
-                              <EyeIcon className="h-6 w-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                            <div className="absolute inset-0 bg-transparent group-hover:bg-black group-hover:bg-opacity-20 transition-all flex items-center justify-center pointer-events-none z-20">
+                              <EyeIcon className="h-6 w-6 text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-md" />
                             </div>
                           </div>
                         )
@@ -1012,6 +1097,86 @@ const Users = () => {
                   className="px-4 py-2 text-gray-600 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
                 >
                   Close
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Full Screen Image Modal */}
+        {isImageModalOpen && selectedImage && (
+          <div 
+            className="fixed inset-0 z-[60] flex items-center justify-center bg-black bg-opacity-90 p-4"
+            onClick={() => setIsImageModalOpen(false)}
+          >
+            <button 
+              className="absolute top-4 right-4 text-white hover:text-gray-300 focus:outline-none"
+              onClick={() => setIsImageModalOpen(false)}
+            >
+              <XCircleIcon className="h-8 w-8" />
+            </button>
+            <img 
+              src={selectedImage} 
+              alt="Full size attachment" 
+              className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
+        )}
+        {/* Manual Warning Modal */}
+        {showWarningModal && selectedUser && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[70]">
+            <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+              <div className="flex items-center space-x-3 mb-4">
+                <ExclamationTriangleIcon className="h-6 w-6 text-orange-600" />
+                <h3 className="text-lg font-bold text-gray-900">Send Manual Warning</h3>
+              </div>
+              
+              <div className="mb-4">
+                <p className="text-sm text-gray-600 mb-2">
+                  Sending a warning to <strong>{selectedUser.name || selectedUser.email}</strong>. This will appear as a pop-up when they next open the app.
+                </p>
+                
+                <div className="mb-3">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Reason</label>
+                  <select 
+                    className="w-full border border-gray-300 rounded-md p-2 text-sm bg-white text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none"
+                    value={warningReason}
+                    onChange={(e) => setWarningReason(e.target.value)}
+                    style={{ appearance: 'auto' }}
+                  >
+                    <option value="Manual Warning">General Manual Warning</option>
+                    <option value="Spamming Reports">Spamming Reports</option>
+                    <option value="False Information">False Information</option>
+                    <option value="Inappropriate Content">Inappropriate Content</option>
+                    <option value="Harassment">Harassment</option>
+                  </select>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Message</label>
+                  <textarea
+                    className="w-full border border-gray-300 rounded-md p-2 text-sm h-24 bg-white text-gray-900 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none"
+                    placeholder="Enter warning message..."
+                    value={warningMessage}
+                    onChange={(e) => setWarningMessage(e.target.value)}
+                  ></textarea>
+                </div>
+              </div>
+              
+              <div className="flex justify-end space-x-3">
+                <button
+                  onClick={() => setShowWarningModal(false)}
+                  className="px-4 py-2 text-gray-600 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={sendUserWarning}
+                  disabled={isSendingWarning || !warningMessage}
+                  className="px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 disabled:opacity-50 transition-colors"
+                >
+                  {isSendingWarning ? 'Sending...' : 'Send Warning'}
                 </button>
               </div>
             </div>

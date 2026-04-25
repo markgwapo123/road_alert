@@ -152,7 +152,78 @@ systemSettingsSchema.statics.initializeDefaults = async function () {
     { key: 'require_strong_passwords', value: true, category: 'security', description: 'Require strong passwords', dataType: 'boolean', isPublic: true },
     { key: 'rate_limiting', value: true, category: 'security', description: 'Enable rate limiting for API requests', dataType: 'boolean', isPublic: false },
     { key: 'rate_limit_requests', value: 100, category: 'security', description: 'Max requests per rate limit window', dataType: 'number', isPublic: false },
-    { key: 'rate_limit_window_minutes', value: 15, category: 'security', description: 'Rate limit window in minutes', dataType: 'number', isPublic: false }
+    { key: 'rate_limit_window_minutes', value: 15, category: 'security', description: 'Rate limit window in minutes', dataType: 'number', isPublic: false },
+    
+    // ==================== EMERGENCY SETTINGS ====================
+    { 
+      key: 'emergency_contacts', 
+      value: {
+        'default': {
+          police: '911',
+          fire: '911',
+          medical: '911'
+        },
+        'Bacolod City': {
+          police: { number: '(034) 432-1865', label: 'Bacolod City Police Office HQ' },
+          fire: { number: '(034) 434-5022', label: 'BFP Bacolod Station' },
+          medical: { number: '(034) 432-3871', label: 'CDRRMO / DRRM Office' }
+        },
+        'Talisay City': {
+          police: { number: '(034) 495-4600', label: 'Talisay PNP' },
+          fire: { number: '(034) 495-4122', label: 'BFP Talisay' },
+          medical: { number: '(034) 495-4152', label: 'TCDRRMO Disaster/Rescue' }
+        },
+        'Silay City': {
+          police: { number: '(034) 495-2015', label: 'Silay PNP' },
+          fire: { number: '(034) 495-1616', label: 'BFP Silay' },
+          medical: { number: '(034) 495-1111', label: 'Silay City Health/DRRMO' }
+        },
+        'Bago City': {
+          police: { number: '(034) 461-0534', label: 'Bago City Police Station' },
+          fire: { number: '(034) 461-0268', label: 'BFP Bago City' },
+          medical: { number: '0933-693-6444', label: 'Bago City DRRMO' }
+        },
+        'Victorias City': {
+          police: { number: '(034) 399-2857', label: 'Victorias City Police' },
+          fire: { number: '(034) 399-3549', label: 'BFP Victorias' },
+          medical: { number: '(034) 399-3174', label: 'Victorias City DRRMO' }
+        },
+        'Kabankalan City': {
+          police: { number: '(034) 471-2292', label: 'Kabankalan Police' },
+          fire: { number: '(034) 471-2484', label: 'BFP Kabankalan' },
+          medical: { number: '(034) 471-3310', label: 'Kabankalan DRRMO' }
+        },
+        'La Carlota City': {
+          police: { number: '(034) 460-2441', label: 'La Carlota Police' },
+          fire: { number: '(034) 460-2917', label: 'BFP La Carlota' },
+          medical: { number: '0936-400-5848', label: 'La Carlota DRRMO' }
+        },
+        'Himamaylan City': {
+          police: { number: '(034) 388-3443', label: 'Himamaylan Police' },
+          fire: { number: '(034) 388-3404', label: 'BFP Himamaylan' },
+          medical: { number: '0947-890-6786', label: 'Himamaylan DRRMO' }
+        },
+        'Cadiz City': {
+          police: { number: '(034) 493-0133', label: 'Cadiz City Police' },
+          fire: { number: '(034) 493-0262', label: 'BFP Cadiz City' },
+          medical: { number: '(034) 493-0143', label: 'Cadiz City DRRMO' }
+        },
+        'Sagay City': {
+          police: { number: '(034) 488-0101', label: 'Sagay City Police' },
+          fire: { number: '(034) 488-0402', label: 'BFP Sagay City' },
+          medical: { number: '(034) 488-0118', label: 'Sagay City DRRMO' }
+        },
+        'San Carlos City': {
+          police: { number: '(034) 312-5124', label: 'San Carlos Police' },
+          fire: { number: '(034) 312-5114', label: 'BFP San Carlos' },
+          medical: { number: '(034) 312-5573', label: 'San Carlos DRRMO' }
+        }
+      }, 
+      category: 'general', 
+      description: 'Emergency contacts for Negros Occidental cities', 
+      dataType: 'object', 
+      isPublic: true 
+    }
   ];
 
   // Remove old/duplicate settings that are no longer needed

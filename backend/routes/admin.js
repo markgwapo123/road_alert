@@ -324,6 +324,8 @@ router.get('/app-users', auth, async (req, res) => {
         onlineStatus: isOnline ? 'Online' : 'Offline',
         isFrozen: user.isFrozen || false,
         frozenAt: user.frozenAt,
+        spamScore: user.spamScore || 0,
+        warnings: user.warnings || [],
         canSubmitReports: !user.isFrozen && user.isActive
       };
     });
@@ -460,7 +462,7 @@ router.patch('/user-freeze/:userId', auth, async (req, res) => {
       data: {
         user: {
           id: updatedUser._id,
-          name: updatedUser.name,
+          name: updatedUser.username || updatedUser.email,
           email: updatedUser.email,
           isFrozen: updatedUser.isFrozen,
           frozenAt: updatedUser.frozenAt
@@ -473,6 +475,71 @@ router.patch('/user-freeze/:userId', auth, async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Server error while updating user freeze status'
+    });
+  }
+});
+
+// @route   POST /api/admin/user-warning/:userId
+// @desc    Send a manual warning to a user
+// @access  Private (admin only)
+router.post('/user-warning/:userId', auth, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { message, reason } = req.body;
+
+    if (!message) {
+      return res.status(400).json({
+        success: false,
+        error: 'Warning message is required'
+      });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: 'User not found'
+      });
+    }
+
+    // Add warning to user
+    user.warnings.push({
+      message,
+      reason: reason || 'Manual Warning',
+      date: new Date(),
+      by: req.admin.id
+    });
+
+    // Also increment spam score as a penalty
+    user.spamScore = (user.spamScore || 0) + 1;
+
+    await user.save();
+
+    // Log the admin action
+    await createAuditLog(req, 'user_warning', 'users',
+      `Sent warning to user: ${user.username || user.email}`, {
+      targetType: 'user',
+      targetId: user._id,
+      targetName: user.username || user.email,
+      message,
+      reason
+    }
+    );
+
+    res.json({
+      success: true,
+      message: 'Warning sent successfully',
+      data: {
+        warnings: user.warnings,
+        spamScore: user.spamScore
+      }
+    });
+
+  } catch (error) {
+    console.error('Send warning error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Server error while sending warning'
     });
   }
 });

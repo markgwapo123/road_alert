@@ -283,6 +283,76 @@ class NotificationService {
       return 0;
     }
   }
+
+  /**
+   * Broadcast a notification to all users when a new report is submitted
+   * @param {Object} report - The new report object
+   */
+  static async broadcastNewReportNotification(report) {
+    try {
+      // Find all active users except the reporter
+      const User = require('../models/User');
+      const users = await User.find({ 
+        _id: { $ne: report.reportedBy?.id },
+        'profile.notificationsEnabled': true,
+        isActive: true 
+      }).select('_id');
+
+      if (users.length === 0) return;
+
+      const reportTypeDisplay = report.type.charAt(0).toUpperCase() + report.type.slice(1).replace('_', ' ');
+      const location = `${report.barangay}, ${report.city}`;
+
+      const notifications = users.map(user => ({
+        userId: user._id,
+        reportId: report._id,
+        type: 'system_alert',
+        title: `🚨 NEW HAZARD: ${reportTypeDisplay}`,
+        message: `A new ${report.type.replace('_', ' ')} has been reported at ${location}. Stay safe!`,
+        isRead: false
+      }));
+
+      // Insert all notifications at once for performance
+      await Notification.insertMany(notifications);
+      console.log(`📢 Broadcasted new report notification to ${users.length} users`);
+      
+    } catch (error) {
+      console.error('Failed to broadcast notification:', error);
+    }
+  }
+
+  /**
+   * Broadcast a notification to all users when a new news post is created
+   * @param {Object} newsPost - The new news post object
+   */
+  static async broadcastNewsNotification(newsPost) {
+    try {
+      const User = require('../models/User');
+      const users = await User.find({ 
+        isActive: true,
+        'profile.notificationsEnabled': true
+      }).select('_id');
+
+      if (users.length === 0) return;
+
+      const title = newsPost.priority === 'urgent' ? `🚨 URGENT NEWS: ${newsPost.title}` : `📰 NEW UPDATE: ${newsPost.title}`;
+
+      const notifications = users.map(user => ({
+        userId: user._id,
+        newsId: newsPost._id, // Add newsId support to model if needed, or use reportId placeholder
+        type: 'system_alert',
+        title: title,
+        message: newsPost.content.substring(0, 100) + (newsPost.content.length > 100 ? '...' : ''),
+        isRead: false
+      }));
+
+      await Notification.insertMany(notifications);
+      console.log(`📢 Broadcasted news notification to ${users.length} users`);
+      
+    } catch (error) {
+      console.error('Failed to broadcast news notification:', error);
+    }
+  }
 }
 
 module.exports = NotificationService;

@@ -16,6 +16,10 @@ const Login = ({ onLogin, switchToRegister }) => {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [forgotPasswordMode, setForgotPasswordMode] = useState(false);
+  const [resetStep, setResetStep] = useState(1); // 1: Email, 2: OTP, 3: New Password
+  const [otp, setOtp] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
   const [resetMessage, setResetMessage] = useState('');
   const [formKey, setFormKey] = useState(Date.now()); // Force form refresh
   
@@ -39,6 +43,10 @@ const Login = ({ onLogin, switchToRegister }) => {
     setPassword('');
     setError('');
     setResetMessage('');
+    setResetStep(1);
+    setOtp('');
+    setNewPassword('');
+    setConfirmNewPassword('');
     setFormKey(Date.now());
   }, [forgotPasswordMode]);
 
@@ -117,32 +125,68 @@ const Login = ({ onLogin, switchToRegister }) => {
     setResetMessage('');
     setLoading(true);
 
-    // Validate email format
-    if (!loginId || !loginId.includes('@gmail.com')) {
-      showError('Please enter a valid Gmail address.');
-      setLoading(false);
-      return;
-    }
-
     try {
-      const res = await axios.post(`${config.API_BASE_URL}/auth/forgot-password`, {
-        email: loginId.trim()
-      }, {
-        timeout: 30000 // 30 seconds for sleeping Render backend
-      });
-      
-      setResetMessage('Password reset instructions have been sent to your email.');
-      setForgotPasswordMode(false);
-    } catch (err) {
-      if (err.code === 'ECONNREFUSED' || (err.message && err.message.includes('Network Error'))) {
-        showError('Cannot connect to server. Please ensure the backend is running.');
-      } else if (err.response?.status === 404) {
-        showError('Email not found. Please check your email address or register first.');
-      } else {
-        showError(err.response?.data?.error || 'Failed to send reset email. Please try again.');
+      if (resetStep === 1) {
+        // Step 1: Send OTP
+        if (!loginId || !loginId.includes('@gmail.com')) {
+          showError('Please enter a valid Gmail address.');
+          setLoading(false);
+          return;
+        }
+
+        await axios.post(`${config.API_BASE_URL}/auth/forgot-password`, {
+          email: loginId.trim()
+        });
+        
+        setResetMessage('A 6-digit OTP has been generated. Please check your email (or console in dev mode).');
+        setResetStep(2);
+      } else if (resetStep === 2) {
+        // Step 2: Verify OTP
+        if (!otp || otp.length !== 6) {
+          showError('Please enter the 6-digit OTP.');
+          setLoading(false);
+          return;
+        }
+
+        await axios.post(`${config.API_BASE_URL}/auth/verify-otp`, {
+          email: loginId.trim(),
+          otp: otp.trim()
+        });
+
+        setResetMessage('OTP verified! Now set your new password.');
+        setResetStep(3);
+      } else if (resetStep === 3) {
+        // Step 3: Reset Password
+        if (newPassword.length < 6) {
+          showError('Password must be at least 6 characters.');
+          setLoading(false);
+          return;
+        }
+
+        if (newPassword !== confirmNewPassword) {
+          showError('Passwords do not match.');
+          setLoading(false);
+          return;
+        }
+
+        await axios.post(`${config.API_BASE_URL}/auth/reset-password`, {
+          email: loginId.trim(),
+          otp: otp.trim(),
+          newPassword
+        });
+
+        setResetMessage('Password reset successful! You can now sign in.');
+        setTimeout(() => {
+          setForgotPasswordMode(false);
+          setResetStep(1);
+        }, 2000);
       }
+    } catch (err) {
+      console.error('Forgot password error:', err);
+      showError(err.response?.data?.error || 'An error occurred. Please try again.');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const handleSubmit = async (e) => {
@@ -294,42 +338,108 @@ const Login = ({ onLogin, switchToRegister }) => {
         </div>
         
         <form onSubmit={forgotPasswordMode ? handleForgotPassword : handleSubmit} className="auth-form" key={formKey}>
-          <div className="input-group">
-            <div className="input-wrapper">
-              <input
-                id="loginId"
-                type="email"
-                placeholder="Email address"
-                value={loginId}
-                onChange={e => setLoginId(e.target.value)}
-                autocomplete="off"
-                required
-              />
-            </div>
-          </div>
+          {forgotPasswordMode ? (
+            <>
+              {resetStep === 1 && (
+                <div className="input-group">
+                  <div className="input-wrapper">
+                    <input
+                      id="resetEmail"
+                      type="email"
+                      placeholder="Email address"
+                      value={loginId}
+                      onChange={e => setLoginId(e.target.value)}
+                      autocomplete="off"
+                      required
+                    />
+                  </div>
+                </div>
+              )}
 
-          {!forgotPasswordMode && (
-            <div className="input-group">
-              <div className="input-wrapper">
-                <input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  placeholder="Password"
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  autocomplete="new-password"
-                  required
-                />
-                <button
-                  type="button"
-                  className="password-toggle"
-                  onClick={() => setShowPassword(!showPassword)}
-                  aria-label={showPassword ? "Hide password" : "Show password"}
-                >
-                  {showPassword ? "👁️" : "👁️‍🗨️"}
-                </button>
+              {resetStep === 2 && (
+                <div className="input-group">
+                  <div className="input-wrapper">
+                    <input
+                      id="otp"
+                      type="text"
+                      placeholder="Enter 6-digit OTP"
+                      value={otp}
+                      onChange={e => setOtp(e.target.value)}
+                      maxLength="6"
+                      autocomplete="off"
+                      required
+                    />
+                  </div>
+                </div>
+              )}
+
+              {resetStep === 3 && (
+                <>
+                  <div className="input-group">
+                    <div className="input-wrapper">
+                      <input
+                        id="newPassword"
+                        type="password"
+                        placeholder="New Password"
+                        value={newPassword}
+                        onChange={e => setNewPassword(e.target.value)}
+                        required
+                      />
+                    </div>
+                  </div>
+                  <div className="input-group">
+                    <div className="input-wrapper">
+                      <input
+                        id="confirmNewPassword"
+                        type="password"
+                        placeholder="Confirm New Password"
+                        value={confirmNewPassword}
+                        onChange={e => setConfirmNewPassword(e.target.value)}
+                        required
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
+            </>
+          ) : (
+            <>
+              <div className="input-group">
+                <div className="input-wrapper">
+                  <input
+                    id="loginId"
+                    type="email"
+                    placeholder="Email address"
+                    value={loginId}
+                    onChange={e => setLoginId(e.target.value)}
+                    autocomplete="off"
+                    required
+                  />
+                </div>
               </div>
-            </div>
+
+              <div className="input-group">
+                <div className="input-wrapper">
+                  <input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Password"
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    autocomplete="new-password"
+                    required
+                  />
+                  <button
+                    type="button"
+                    className="password-toggle"
+                    onClick={() => setShowPassword(!showPassword)}
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                  >
+                    {showPassword ? "👁️" : "👁️‍🗨️"}
+                  </button>
+                </div>
+              </div>
+            </>
           )}
 
           <div className="form-options">
@@ -342,6 +452,7 @@ const Login = ({ onLogin, switchToRegister }) => {
                 setForgotPasswordMode(false);
                 setError('');
                 setResetMessage('');
+                setResetStep(1);
               }}>
                 Back to Login
               </button>
@@ -357,8 +468,8 @@ const Login = ({ onLogin, switchToRegister }) => {
 
           <button type="submit" disabled={loading} className="auth-button">
             {loading ? 
-              (forgotPasswordMode ? "SENDING..." : "SIGNING IN...") : 
-              (forgotPasswordMode ? "SEND RESET EMAIL" : "SIGN IN")
+              (forgotPasswordMode ? (resetStep === 1 ? "SENDING..." : resetStep === 2 ? "VERIFYING..." : "RESETTING...") : "SIGNING IN...") : 
+              (forgotPasswordMode ? (resetStep === 1 ? "SEND OTP" : resetStep === 2 ? "VERIFY OTP" : "RESET PASSWORD") : "SIGN IN")
             }
           </button>
         </form>

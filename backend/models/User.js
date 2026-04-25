@@ -92,6 +92,25 @@ const userSchema = new mongoose.Schema({
             type: String,
             default: null
         }
+    },
+    resetPasswordOTP: {
+        type: String,
+        default: null
+    },
+    resetPasswordExpires: {
+        type: Date,
+        default: null
+    },
+    warnings: [{
+        message: { type: String, required: true },
+        reason: { type: String },
+        date: { type: Date, default: Date.now },
+        by: { type: mongoose.Schema.Types.ObjectId, ref: 'Admin' },
+        isRead: { type: Boolean, default: false }
+    }],
+    spamScore: {
+        type: Number,
+        default: 0
     }
 }, {
     timestamps: true

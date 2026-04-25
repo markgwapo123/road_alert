@@ -31,7 +31,7 @@ const ReportsManagement = () => {
   // Set initial filter from URL parameter
   useEffect(() => {
     const filterParam = searchParams.get('filter')
-    if (filterParam && ['all', 'pending', 'verified', 'rejected'].includes(filterParam)) {
+    if (filterParam && ['all', 'pending', 'verified', 'rejected', 'resolved'].includes(filterParam)) {
       setFilterStatus(filterParam)
     }
   }, [searchParams])
@@ -456,10 +456,13 @@ const ReportsManagement = () => {
                     <div className="min-w-0 flex-1">
                       <p className="text-xs font-medium text-gray-600">Date</p>
                       <p className="text-sm font-bold text-gray-800">
-                        {new Date(report.createdAt).toLocaleDateString('en-US', { 
+                        {new Date(report.createdAt).toLocaleString('en-US', { 
                           month: 'short', 
                           day: 'numeric',
-                          year: '2-digit'
+                          year: '2-digit',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          hour12: true
                         })}
                       </p>
                     </div>

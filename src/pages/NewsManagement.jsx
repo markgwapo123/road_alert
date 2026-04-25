@@ -32,6 +32,8 @@ const NewsManagement = () => {
     totalPages: 1,
     totalPosts: 0
   })
+  const [selectedIds, setSelectedIds] = useState([])
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false)
 
   useEffect(() => {
     fetchCurrentAdmin()
@@ -181,10 +183,48 @@ const NewsManagement = () => {
         headers: { Authorization: `Bearer ${token}` }
       })
       setMessage('News post deleted successfully')
+      setSelectedIds(prev => prev.filter(id => id !== postId))
       fetchNewsPosts()
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to delete news post')
     }
+  }
+
+  const handleBulkDelete = async () => {
+    if (!selectedIds.length) return
+    if (!window.confirm(`Are you sure you want to delete ${selectedIds.length} selected news posts?`)) return
+
+    setIsBulkDeleting(true)
+    try {
+      const token = localStorage.getItem('adminToken')
+      const response = await axios.delete(`${config.API_BASE_URL}/news/admin/bulk-delete`, {
+        headers: { Authorization: `Bearer ${token}` },
+        data: { ids: selectedIds }
+      })
+      setMessage(response.data.message)
+      setSelectedIds([])
+      fetchNewsPosts()
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to delete selected news posts')
+    } finally {
+      setIsBulkDeleting(false)
+    }
+  }
+
+  const toggleSelectAll = () => {
+    if (selectedIds.length === newsPosts.length) {
+      setSelectedIds([])
+    } else {
+      setSelectedIds(newsPosts.map(post => post._id))
+    }
+  }
+
+  const toggleSelectOne = (postId) => {
+    setSelectedIds(prev => 
+      prev.includes(postId) 
+        ? prev.filter(id => id !== postId)
+        : [...prev, postId]
+    )
   }
 
   const resetForm = () => {
@@ -222,22 +262,22 @@ const NewsManagement = () => {
       return true
     })
     
-    if (validFiles.length > 5) {
+    if (selectedFiles.length + validFiles.length > 5) {
       setError('Maximum 5 files allowed')
       return
     }
     
-    setSelectedFiles(validFiles)
+    setSelectedFiles(prev => [...prev, ...validFiles])
     
     // Create preview URLs
-    const previewUrls = validFiles.map(file => {
+    const newPreviewUrls = validFiles.map(file => {
       if (file.type.startsWith('image/')) {
         return URL.createObjectURL(file)
       }
       return null
     })
     
-    setFilePreviewUrls(previewUrls)
+    setFilePreviewUrls(prev => [...prev, ...newPreviewUrls])
     setError('') // Clear any previous errors
   }
 
@@ -343,10 +383,25 @@ const NewsManagement = () => {
 
       {/* News Posts List */}
       <div className="bg-white shadow-xl rounded-lg overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200">
+        <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
           <h2 className="text-xl font-semibold text-gray-900">
             News Posts ({pagination.totalPosts})
           </h2>
+          {selectedIds.length > 0 && (
+            <div className="flex items-center gap-4">
+              <span className="text-sm font-medium text-blue-600">
+                {selectedIds.length} item{selectedIds.length !== 1 ? 's' : ''} selected
+              </span>
+              <button
+                onClick={handleBulkDelete}
+                disabled={isBulkDeleting}
+                className="bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-2 px-4 rounded-lg flex items-center gap-2 transition-colors"
+              >
+                <TrashIcon className="w-4 h-4" />
+                {isBulkDeleting ? 'Deleting...' : 'Delete Selected'}
+              </button>
+            </div>
+          )}
         </div>
         
         {loading ? (
@@ -365,6 +420,14 @@ const NewsManagement = () => {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
+                    <th className="px-6 py-3 text-left">
+                      <input 
+                        type="checkbox" 
+                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer"
+                        checked={newsPosts.length > 0 && selectedIds.length === newsPosts.length}
+                        onChange={toggleSelectAll}
+                      />
+                    </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type & Priority</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
@@ -375,9 +438,17 @@ const NewsManagement = () => {
                   {newsPosts.map((post) => (
                     <tr 
                       key={post._id} 
-                      className="hover:bg-gray-50 cursor-pointer transition-colors"
+                      className={`hover:bg-gray-50 cursor-pointer transition-colors ${selectedIds.includes(post._id) ? 'bg-blue-50' : ''}`}
                       onClick={() => fetchPostDetails(post._id)}
                     >
+                      <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
+                        <input 
+                          type="checkbox" 
+                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer"
+                          checked={selectedIds.includes(post._id)}
+                          onChange={() => toggleSelectOne(post._id)}
+                        />
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div>
                           <div className="text-sm font-medium text-gray-900 mb-1 flex items-center">
@@ -602,99 +673,117 @@ const NewsManagement = () => {
                 />
               </div>
 
-              {/* File Upload Section */}
+              {/* File Upload Section - Modern Grid Layout */}
               {!editingPost && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                <div className="space-y-4">
+                  <label className="block text-sm font-medium text-gray-700">
                     Media Files (Images/Videos)
                   </label>
-                  <div className="border-2 border-dashed border-gray-300 rounded-md p-6 text-center hover:border-gray-400 transition-colors">
-                    <input
-                      type="file"
-                      multiple
-                      accept="image/*,video/*"
-                      onChange={handleFileSelect}
-                      className="hidden"
-                      id="media-upload"
-                    />
-                    <label htmlFor="media-upload" className="cursor-pointer">
-                      <div className="space-y-2">
-                        <svg className="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
-                          <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
-                        <div className="text-sm text-gray-600">
-                          <span className="font-medium text-blue-600 hover:text-blue-500">
-                            Click to upload files
-                          </span>{' '}
-                          or drag and drop
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          Images: JPG, PNG, GIF, WebP | Videos: MP4, AVI, MOV, WMV, WebM
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          Maximum 5 files, 50MB each
-                        </div>
-                      </div>
-                    </label>
-                  </div>
-
-                  {/* File Preview */}
-                  {selectedFiles.length > 0 && (
-                    <div className="mt-4">
-                      <h4 className="text-sm font-medium text-gray-700 mb-2">
-                        Selected Files ({selectedFiles.length}/5)
-                      </h4>
-                      <div className="space-y-2 max-h-32 overflow-y-auto">
-                        {selectedFiles.map((file, index) => (
-                          <div key={index} className="flex items-center justify-between bg-gray-50 p-2 rounded">
-                            <div className="flex items-center space-x-3">
-                              {filePreviewUrls[index] ? (
-                                <img 
-                                  src={filePreviewUrls[index]} 
-                                  alt={file.name}
-                                  className="h-10 w-10 object-cover rounded"
-                                />
-                              ) : (
-                                <div className="h-10 w-10 bg-gray-300 rounded flex items-center justify-center">
-                                  <svg className="h-6 w-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 4V2a1 1 0 011-1h8a1 1 0 011 1v2m0 0V2a1 1 0 011-1h8a1 1 0 011 1v2m-9 2h10l-1 12H8L7 6z"></path>
-                                  </svg>
-                                </div>
-                              )}
-                              <div className="flex-1 min-w-0">
-                                <div className="text-sm font-medium text-gray-900 truncate">
-                                  {file.name}
-                                </div>
-                                <div className="text-xs text-gray-500">
-                                  {formatFileSize(file.size)} • {file.type.split('/')[1].toUpperCase()}
-                                </div>
-                              </div>
+                  
+                  {selectedFiles.length > 0 ? (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                      {selectedFiles.map((file, index) => (
+                        <div key={index} className="relative group aspect-square bg-gray-50 rounded-xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition-all">
+                          {filePreviewUrls[index] ? (
+                            <img 
+                              src={filePreviewUrls[index]} 
+                              alt={file.name}
+                              className="absolute inset-0 w-full h-full object-contain z-0"
+                            />
+                          ) : (
+                            <div className="absolute inset-0 w-full h-full flex flex-col items-center justify-center p-2 text-center z-0">
+                              <span className="text-4xl mb-2">🎥</span>
+                              <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider truncate w-full px-2">{file.name.split('.').pop()}</span>
                             </div>
+                          )}
+                          
+                          {/* Modern Hover Overlay */}
+                          <div className="absolute inset-0 z-10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                            <div className="absolute inset-0 bg-gray-900 bg-opacity-40 backdrop-blur-[1px]" />
                             <button
                               type="button"
-                              onClick={() => removeFile(index)}
-                              className="text-red-500 hover:text-red-700 p-1"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                removeFile(index);
+                              }}
+                              className="relative z-20 bg-red-600 hover:bg-red-700 text-white p-2.5 rounded-xl shadow-xl transform scale-90 group-hover:scale-100 transition-all duration-200"
                             >
-                              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
-                              </svg>
+                              <TrashIcon className="w-5 h-5" />
                             </button>
                           </div>
-                        ))}
-                      </div>
+                          
+                          {/* File info badge - cleaner look */}
+                          <div className="absolute bottom-0 left-0 right-0 bg-gray-900 bg-opacity-70 text-white text-[10px] py-1.5 px-2 font-medium truncate z-20">
+                            {formatFileSize(file.size)}
+                          </div>
+                        </div>
+                      ))}
+                      
+                      {selectedFiles.length < 5 && (
+                        <label className="border-2 border-dashed border-gray-300 rounded-xl aspect-square flex flex-col items-center justify-center cursor-pointer hover:border-blue-500 hover:bg-blue-50 hover:shadow-inner transition-all group">
+                          <input
+                            type="file"
+                            multiple
+                            accept="image/*,video/*"
+                            onChange={handleFileSelect}
+                            className="hidden"
+                          />
+                          <div className="w-10 h-10 bg-gray-100 text-gray-400 rounded-full flex items-center justify-center group-hover:bg-blue-100 group-hover:text-blue-600 transition-colors">
+                            <PlusIcon className="w-6 h-6" />
+                          </div>
+                          <span className="text-xs text-gray-500 mt-2 font-semibold group-hover:text-blue-600">Add More</span>
+                          <span className="text-[10px] text-gray-400 mt-0.5">{selectedFiles.length}/5 files</span>
+                        </label>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="border-2 border-dashed border-gray-300 rounded-xl p-10 text-center hover:border-blue-500 hover:bg-blue-50 hover:shadow-inner transition-all group">
+                      <input
+                        type="file"
+                        multiple
+                        accept="image/*,video/*"
+                        onChange={handleFileSelect}
+                        className="hidden"
+                        id="media-upload"
+                      />
+                      <label htmlFor="media-upload" className="cursor-pointer">
+                        <div className="space-y-4">
+                          <div className="mx-auto w-16 h-16 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
+                            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                            </svg>
+                          </div>
+                          <div className="space-y-1">
+                            <div className="text-base text-gray-700 font-semibold">
+                              Click to upload news media
+                            </div>
+                            <div className="text-sm text-gray-500">
+                              Or drag and drop files here
+                            </div>
+                          </div>
+                          <div className="flex flex-wrap justify-center gap-2 pt-2 text-[11px] text-gray-400">
+                            <span className="px-2 py-0.5 bg-gray-100 rounded">JPG, PNG, WebP</span>
+                            <span className="px-2 py-0.5 bg-gray-100 rounded">MP4, MOV</span>
+                            <span className="px-2 py-0.5 bg-gray-100 rounded">Max 5 files • 50MB each</span>
+                          </div>
+                        </div>
+                      </label>
                     </div>
                   )}
 
                   {/* Upload Progress */}
                   {uploadProgress > 0 && uploadProgress < 100 && (
-                    <div className="mt-4">
-                      <div className="flex items-center justify-between text-sm text-gray-600 mb-1">
-                        <span>Uploading...</span>
+                    <div className="mt-4 bg-white p-3 rounded-lg border border-blue-100 shadow-sm">
+                      <div className="flex items-center justify-between text-xs font-semibold text-blue-600 mb-2 uppercase tracking-wider">
+                        <span className="flex items-center">
+                          <div className="animate-spin h-3 w-3 border-2 border-blue-600 border-t-transparent rounded-full mr-2"></div>
+                          Uploading Media Content...
+                        </span>
                         <span>{uploadProgress}%</span>
                       </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div className="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden shadow-inner">
                         <div 
-                          className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
+                          className="bg-blue-600 h-full rounded-full transition-all duration-300 shadow-[0_0_10px_rgba(37,99,235,0.5)]" 
                           style={{ width: `${uploadProgress}%` }}
                         ></div>
                       </div>

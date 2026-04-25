@@ -10,7 +10,7 @@ const SystemSettings = require('../models/SystemSettings');
 const { auth, canManageReports, canDeleteReports, createAuditLog } = require('../middleware/roleAuth');
 const NotificationService = require('../services/NotificationService');
 const {
-  checkDailyReportLimit,
+  checkSpamBehavior,
   validateReportRequirements,
   getSetting
 } = require('../middleware/settingsEnforcement');
@@ -349,31 +349,15 @@ router.get('/stats', async (req, res) => {
 // @access  Private
 router.get('/daily-limit', require('../middleware/userAuth'), async (req, res) => {
   try {
-    // Get max reports per day from system settings
-    const maxReportsPerDay = await SystemSettings.getSetting('max_reports_per_day', 10);
-
-    // Count user's reports today
-    const startOfDay = new Date();
-    startOfDay.setHours(0, 0, 0, 0);
-    const endOfDay = new Date();
-    endOfDay.setHours(23, 59, 59, 999);
-
-    const todayReportsCount = await Report.countDocuments({
-      'reportedBy.id': req.user.id,
-      createdAt: { $gte: startOfDay, $lte: endOfDay }
-    });
-
-    const remainingReports = Math.max(0, maxReportsPerDay - todayReportsCount);
-    const canSubmit = todayReportsCount < maxReportsPerDay;
-
+    // Return unlimited status
     res.json({
       success: true,
       dailyLimit: {
-        maxReports: maxReportsPerDay,
-        usedToday: todayReportsCount,
-        remaining: remainingReports,
-        canSubmit: canSubmit,
-        resetsAt: endOfDay.toISOString()
+        maxReports: 999999,
+        usedToday: 0,
+        remaining: 999999,
+        canSubmit: true,
+        resetsAt: new Date(Date.now() + 86400000).toISOString()
       }
     });
   } catch (error) {
@@ -486,8 +470,11 @@ router.post('/', upload.array('images', 5), reportValidation, async (req, res) =
           reportId: report._id,
           reportType: report.type
         });
+
+        // 📢 NEW: Broadcast to ALL users
+        await NotificationService.broadcastNewReportNotification(report);
       } catch (notifError) {
-        console.error('Failed to send submission notification:', notifError);
+        console.error('Failed to send notifications:', notifError);
         // Don't fail the request if notification fails
       }
     }
@@ -1032,12 +1019,11 @@ router.delete('/:id', auth, canDeleteReports, async (req, res) => {
 
     // Store report data for audit log before deletion
     const reportData = {
-      title: report.title,
+      type: report.type,
       description: report.description,
       status: report.status,
       location: report.location,
-      hazardType: report.hazardType,
-      reporter: report.reporter
+      reportedBy: report.reportedBy
     };
 
     // Delete the report
@@ -1046,15 +1032,22 @@ router.delete('/:id', auth, canDeleteReports, async (req, res) => {
     // Delete associated images
     if (report.images && report.images.length > 0) {
       report.images.forEach(image => {
-        const imagePath = path.join(__dirname, '../uploads', image.filename);
-        if (fs.existsSync(imagePath)) {
-          fs.unlinkSync(imagePath);
+        try {
+          const filename = typeof image === 'string' ? image : image.filename;
+          if (filename && !filename.startsWith('data:') && !filename.startsWith('http')) {
+            const imagePath = path.join(__dirname, '../uploads', filename);
+            if (fs.existsSync(imagePath)) {
+              fs.unlinkSync(imagePath);
+            }
+          }
+        } catch (imgError) {
+          console.warn('Could not delete image file:', imgError.message);
         }
       });
     }
 
     // Create audit log
-    await createAuditLog(req, 'DELETE_REPORT', 'reports', `Deleted report: ${reportData.title}`, {
+    await createAuditLog(req, 'DELETE_REPORT', 'reports', `Deleted report: ${reportData.type} at ${reportData.location?.address}`, {
       targetType: 'Report',
       targetId: req.params.id,
       previousValues: reportData
@@ -1081,7 +1074,7 @@ router.delete('/:id', auth, canDeleteReports, async (req, res) => {
 // @route   POST /api/reports/user
 // @desc    Create new report (for authenticated users)
 // @access  Private
-router.post('/user', require('../middleware/userAuth'), upload.array('images', 5), reportValidation, async (req, res) => {
+router.post('/user', require('../middleware/userAuth'), upload.array('images', 5), reportValidation, checkSpamBehavior, async (req, res) => {
   try {
     // Check if user account is frozen
     if (req.user.isFrozen === true) {
@@ -1098,30 +1091,6 @@ router.post('/user', require('../middleware/userAuth'), upload.array('images', 5
         success: false,
         error: 'Account is not active. Please contact support.',
         frozen: req.user.isFrozen || false
-      });
-    }
-
-    // Check daily report limit from system settings
-    const maxReportsPerDay = await SystemSettings.getSetting('max_reports_per_day', 10);
-
-    // Count user's reports today
-    const startOfDay = new Date();
-    startOfDay.setHours(0, 0, 0, 0);
-    const endOfDay = new Date();
-    endOfDay.setHours(23, 59, 59, 999);
-
-    const todayReportsCount = await Report.countDocuments({
-      'reportedBy.id': req.user.id,
-      createdAt: { $gte: startOfDay, $lte: endOfDay }
-    });
-
-    if (todayReportsCount >= maxReportsPerDay) {
-      return res.status(429).json({
-        success: false,
-        error: `Daily report limit reached. You can only submit ${maxReportsPerDay} reports per day.`,
-        limitReached: true,
-        maxReports: maxReportsPerDay,
-        currentCount: todayReportsCount
       });
     }
 
@@ -1188,7 +1157,8 @@ router.post('/user', require('../middleware/userAuth'), upload.array('images', 5
         severity: report.severity,
         status: report.status,
         submittedAt: report.submittedAt
-      }
+      },
+      warning: req.spamWarning || null
     });
 
     // ⚡ Invalidate cache for the user

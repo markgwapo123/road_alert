@@ -8,31 +8,67 @@
 
 .map-header {
   display: flex;
+  justify-content: space-between;
   align-items: center;
   gap: 10px;
-  padding: 16px 20px;
-  background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+  padding: 12px 20px;
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
   color: white;
-  border-bottom: 2px solid #0056b3;
+}
+
+.header-main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.map-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.map-mode-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.map-mode-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.map-mode-btn.active {
+  background: #3b82f6;
+  border-color: #3b82f6;
+  box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
 }
 
 .map-icon {
-  font-size: 24px;
+  font-size: 20px;
 }
 
 .map-header h3 {
   margin: 0;
-  flex: 1;
-  font-size: 18px;
-  font-weight: 600;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
 }
 
 .map-count {
-  background: rgba(255, 255, 255, 0.2);
-  padding: 4px 12px;
-  border-radius: 12px;
-  font-size: 14px;
-  font-weight: 500;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #94a3b8;
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .map-view {
