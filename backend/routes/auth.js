@@ -9,11 +9,11 @@ const Notification = require('../models/Notification');
 const cache = require('../services/cache');
 const { auth } = require('../middleware/roleAuth');
 const NotificationService = require('../services/NotificationService');
-const { 
-  checkRegistrationAllowed, 
+const {
+  checkRegistrationAllowed,
   validatePasswordRequirements,
   checkLoginAttempts,
-  getSetting 
+  getSetting
 } = require('../middleware/settingsEnforcement');
 
 const router = express.Router();
@@ -25,54 +25,54 @@ const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 // @desc    Register a new user
 // @access  Public
 router.post('/register', checkRegistrationAllowed, validatePasswordRequirements, async (req, res) => {
-    try {
-        const { username, email, password } = req.body;
+  try {
+    const { username, email, password } = req.body;
 
-        // Validate input
-        if (!username || !email || !password) {
-            return res.status(400).json({ error: 'Please enter all fields' });
-        }
-
-        // Check for existing user by email or username
-        let user = await User.findOne({ $or: [{ email }, { username }] });
-        if (user) {
-            return res.status(400).json({ error: 'Username or email already exists' });
-        }
-
-        // Create new user
-        user = new User({
-            username,
-            email,
-            password,
-        });
-
-        // Password will be hashed automatically by the User model pre-save hook
-        await user.save();
-
-        // Send welcome notification to new user
-        try {
-            await NotificationService.createWelcomeNotification(user._id, user.username);
-        } catch (notifError) {
-            console.error('Failed to send welcome notification:', notifError);
-            // Don't fail registration if notification fails
-        }
-
-        res.status(201).json({ success: true, message: 'User registered successfully' });
-
-    } catch (error) {
-        console.error('Register error:', error);
-        if (error.code === 11000) {
-            // Duplicate key error
-            return res.status(400).json({ error: 'Username or email already exists' });
-        }
-        // Log the error details for debugging
-        if (error.errors) {
-            Object.keys(error.errors).forEach(key => {
-                console.error(`Validation error for ${key}:`, error.errors[key].message);
-            });
-        }
-        res.status(500).json({ error: error.message || 'Server error during registration' });
+    // Validate input
+    if (!username || !email || !password) {
+      return res.status(400).json({ error: 'Please enter all fields' });
     }
+
+    // Check for existing user by email or username
+    let user = await User.findOne({ $or: [{ email }, { username }] });
+    if (user) {
+      return res.status(400).json({ error: 'Username or email already exists' });
+    }
+
+    // Create new user
+    user = new User({
+      username,
+      email,
+      password,
+    });
+
+    // Password will be hashed automatically by the User model pre-save hook
+    await user.save();
+
+    // Send welcome notification to new user
+    try {
+      await NotificationService.createWelcomeNotification(user._id, user.username);
+    } catch (notifError) {
+      console.error('Failed to send welcome notification:', notifError);
+      // Don't fail registration if notification fails
+    }
+
+    res.status(201).json({ success: true, message: 'User registered successfully' });
+
+  } catch (error) {
+    console.error('Register error:', error);
+    if (error.code === 11000) {
+      // Duplicate key error
+      return res.status(400).json({ error: 'Username or email already exists' });
+    }
+    // Log the error details for debugging
+    if (error.errors) {
+      Object.keys(error.errors).forEach(key => {
+        console.error(`Validation error for ${key}:`, error.errors[key].message);
+      });
+    }
+    res.status(500).json({ error: error.message || 'Server error during registration' });
+  }
 });
 
 // @route   POST /api/auth/login
@@ -118,19 +118,19 @@ router.post('/login', checkLoginAttempts, async (req, res) => {
       ]);
 
       console.log('🔑 Password check for', user.email, '- Match:', isMatch);
-      
+
       if (!isMatch) {
         if (req.loginAttempts) req.loginAttempts.recordFailure();
         return res.status(401).json({ error: 'Invalid credentials' });
       }
-      
+
       if (req.loginAttempts) req.loginAttempts.recordSuccess();
-      
+
       // ⚡ Update last login asynchronously (fire-and-forget)
       User.findByIdAndUpdate(user._id, { lastLogin: new Date() }).exec().catch(err => console.error('Last login update failed:', err));
-      
+
       const expiresIn = sessionTimeout > 0 ? `${sessionTimeout}m` : '7d';
-      
+
       const token = jwt.sign(
         { id: user._id, username: user.username, email: user.email },
         process.env.JWT_SECRET || 'your_jwt_secret',
@@ -228,12 +228,12 @@ router.post('/login', checkLoginAttempts, async (req, res) => {
 router.get('/verify', auth, async (req, res) => {
   try {
     const admin = await Admin.findById(req.admin.id).select('-password');
-    
+
     if (!admin) {
       return res.status(404).json({
         error: 'Admin not found'
       });
-    }    res.json({
+    } res.json({
       success: true,
       admin: {
         id: admin._id,
@@ -309,7 +309,7 @@ router.put('/change-password', auth, async (req, res) => {
         error: 'Authentication required'
       });
     }
-    
+
     // Verify current password
     const isMatch = await user.comparePassword(currentPassword);
     if (!isMatch) {
@@ -343,7 +343,7 @@ router.put('/profile', auth, async (req, res) => {
     const { email, profile } = req.body;
 
     const admin = await Admin.findById(req.admin.id);
-    
+
     if (!admin) {
       return res.status(404).json({
         error: 'Admin not found'
@@ -390,7 +390,7 @@ router.put('/profile', auth, async (req, res) => {
 router.get('/verification-status', require('../middleware/userAuth'), async (req, res) => {
   try {
     const user = await User.findById(req.user.id).select('-password');
-    
+
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -437,7 +437,7 @@ router.post('/social-login', async (req, res) => {
           audience: process.env.GOOGLE_CLIENT_ID,
         });
         const payload = ticket.getPayload();
-        
+
         userInfo = {
           id: payload.sub,
           email: payload.email,
@@ -462,7 +462,7 @@ router.post('/social-login', async (req, res) => {
     if (!user) {
       // Create new user from social login
       const username = userInfo.email.split('@')[0] + '_' + userInfo.provider;
-      
+
       user = new User({
         username: username,
         email: userInfo.email,
@@ -538,7 +538,7 @@ router.post('/google-login', async (req, res) => {
         audience: process.env.GOOGLE_CLIENT_ID,
       });
       const payload = ticket.getPayload();
-      
+
       userInfo = {
         id: payload.sub,
         email: payload.email,
@@ -561,7 +561,7 @@ router.post('/google-login', async (req, res) => {
     if (!user) {
       // Create new user from Google login
       const username = userInfo.email.split('@')[0] + '_google';
-      
+
       user = new User({
         username: username,
         email: userInfo.email,
@@ -632,11 +632,11 @@ router.post('/google-login', async (req, res) => {
 router.post('/admin/unlock-account', async (req, res) => {
   try {
     const { loginId } = req.body; // email or username
-    
+
     if (!loginId) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'Email or username required' 
+      return res.status(400).json({
+        success: false,
+        error: 'Email or username required'
       });
     }
 
@@ -647,23 +647,23 @@ router.post('/admin/unlock-account', async (req, res) => {
 
     const key = loginId.toLowerCase();
     const hadLockout = global.loginAttempts.has(key);
-    
+
     // Remove the lockout
     global.loginAttempts.delete(key);
 
     res.json({
       success: true,
-      message: hadLockout 
-        ? `Account ${loginId} has been unlocked` 
+      message: hadLockout
+        ? `Account ${loginId} has been unlocked`
         : `Account ${loginId} was not locked`,
       wasLocked: hadLockout
     });
 
   } catch (error) {
     console.error('Unlock account error:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: 'Failed to unlock account' 
+    res.status(500).json({
+      success: false,
+      error: 'Failed to unlock account'
     });
   }
 });
@@ -683,9 +683,9 @@ router.post('/admin/clear-settings-cache', async (req, res) => {
 
   } catch (error) {
     console.error('Clear settings cache error:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: 'Failed to clear settings cache' 
+    res.status(500).json({
+      success: false,
+      error: 'Failed to clear settings cache'
     });
   }
 });
@@ -710,7 +710,7 @@ router.post('/forgot-password', async (req, res) => {
 
     // Generate 6-digit OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    
+
     // Save OTP to user (valid for 10 minutes)
     user.resetPasswordOTP = otp;
     user.resetPasswordExpires = Date.now() + 10 * 60 * 1000;
@@ -718,7 +718,7 @@ router.post('/forgot-password', async (req, res) => {
 
     // Send email using nodemailer
     const nodemailer = require('nodemailer');
-    
+
     // Try to get credentials from env
     const transporter = nodemailer.createTransport({
       service: 'gmail',
@@ -740,10 +740,10 @@ router.post('/forgot-password', async (req, res) => {
       console.log('------------------------------------------');
       console.log(`🔑 PASSWORD RESET OTP FOR ${user.email}: ${otp}`);
       console.log('------------------------------------------');
-      return res.json({ 
-        success: true, 
+      return res.json({
+        success: true,
         message: 'Reset OTP generated. (Development Mode: OTP logged to console)',
-        devMode: true 
+        devMode: true
       });
     }
 
@@ -771,7 +771,7 @@ router.post('/verify-otp', async (req, res) => {
       return res.status(400).json({ error: 'Email and OTP are required' });
     }
 
-    const user = await User.findOne({ 
+    const user = await User.findOne({
       email,
       resetPasswordOTP: otp,
       resetPasswordExpires: { $gt: Date.now() }
@@ -807,7 +807,7 @@ router.post('/reset-password', async (req, res) => {
       return res.status(400).json({ error: 'Password must be at least 6 characters long' });
     }
 
-    const user = await User.findOne({ 
+    const user = await User.findOne({
       email,
       resetPasswordOTP: otp,
       resetPasswordExpires: { $gt: Date.now() }

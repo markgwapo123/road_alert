@@ -159,8 +159,6 @@ userSchema.methods.canSubmitReports = function() {
 };
 
 // Add indexes for faster queries
-userSchema.index({ username: 1 });
-userSchema.index({ email: 1 });
 userSchema.index({ lastLogin: -1 }); // ⚡ Critical for active users query
 userSchema.index({ lastActivity: -1 });
 

@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const connectDB = async () => {
   try {
     // Configure mongoose for better network handling
-    mongoose.set('bufferCommands', false);
+    mongoose.set('bufferCommands', true);
     
     // Connection options for better network handling
     const options = {

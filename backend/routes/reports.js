@@ -62,6 +62,11 @@ router.get('/', async (req, res) => {
       sortOrder = 'desc'
     } = req.query;
 
+    // ⚡ Try cache first (15s TTL)
+    const cacheKey = `reports:admin:${JSON.stringify(req.query)}`;
+    const cached = cache.get(cacheKey);
+    if (cached) return res.json({ ...cached, fromCache: true });
+
     // Build filter object
     const filter = {};
     if (status) {
@@ -86,20 +91,20 @@ router.get('/', async (req, res) => {
     const sort = {};
     sort[sortBy] = sortOrder === 'desc' ? -1 : 1;
 
-    // Execute query with pagination and timeout protection
-    // Exclude large image data from list view for faster loading
-    const reports = await Report.find(filter)
-      .select('-images.data -evidencePhoto.data')
-      .sort(sort)
-      .limit(limit * 1)
-      .skip((page - 1) * limit)
-      .maxTimeMS(30000) // 30 second query timeout
-      .exec();
+    // 🚀 Run queries in parallel and use .lean()
+    const [reports, totalReports] = await Promise.all([
+      Report.find(filter)
+        .select('-images.data -evidencePhoto.data')
+        .sort(sort)
+        .limit(limit * 1)
+        .skip((page - 1) * limit)
+        .lean()
+        .maxTimeMS(30000)
+        .exec(),
+      Report.countDocuments(filter).maxTimeMS(5000)
+    ]);
 
-    // Get total count for pagination with timeout
-    const totalReports = await Report.countDocuments(filter).maxTimeMS(5000);
-
-    res.json({
+    const response = {
       success: true,
       data: reports,
       pagination: {
@@ -109,7 +114,12 @@ router.get('/', async (req, res) => {
         hasNextPage: page < Math.ceil(totalReports / limit),
         hasPrevPage: page > 1
       }
-    });
+    };
+
+    // ⚡ Cache for 15 seconds
+    cache.set(cacheKey, response, 15);
+
+    res.json(response);
 
   } catch (error) {
     console.error('Get reports error:', error);

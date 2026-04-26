@@ -5,6 +5,7 @@ const { handleNewsUpload, getFileType } = require('../middleware/newsUpload');
 const path = require('path');
 const fs = require('fs');
 const NotificationService = require('../services/NotificationService');
+const cache = require('../services/cache');
 
 const router = express.Router();
 
@@ -320,6 +321,11 @@ router.get('/public/posts', async (req, res) => {
     const { page = 1, limit = 20, type } = req.query;
     const skip = (page - 1) * limit;
 
+    // ⚡ Try cache first (15s TTL)
+    const cacheKey = `news:public:${JSON.stringify(req.query)}`;
+    const cached = cache.get(cacheKey);
+    if (cached) return res.json({ ...cached, fromCache: true });
+
     // Build filter for active, non-expired posts
     let filter = {
       isActive: true,
@@ -331,16 +337,20 @@ router.get('/public/posts', async (req, res) => {
 
     if (type) filter.type = type;
 
-    const posts = await NewsPost.find(filter)
-      .populate('author', 'username')
-      .select('-viewedBy -attachments.data') // Don't send view tracking or base64 data to public
-      .sort({ priority: -1, publishDate: -1 })
-      .limit(parseInt(limit))
-      .skip(skip);
+    // 🚀 Use .lean() and run in parallel
+    const [posts, totalPosts] = await Promise.all([
+      NewsPost.find(filter)
+        .populate('author', 'username')
+        .select('-viewedBy -attachments.data')
+        .sort({ priority: -1, publishDate: -1 })
+        .limit(parseInt(limit))
+        .skip(skip)
+        .lean()
+        .exec(),
+      NewsPost.countDocuments(filter)
+    ]);
 
-    const totalPosts = await NewsPost.countDocuments(filter);
-
-    res.json({
+    const response = {
       posts,
       pagination: {
         currentPage: parseInt(page),
@@ -349,7 +359,12 @@ router.get('/public/posts', async (req, res) => {
         hasNext: skip + posts.length < totalPosts,
         hasPrev: page > 1
       }
-    });
+    };
+
+    // ⚡ Cache for 15 seconds
+    cache.set(cacheKey, response, 15);
+
+    res.json(response);
 
   } catch (error) {
     console.error('Get public posts error:', error);

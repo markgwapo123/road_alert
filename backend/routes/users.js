@@ -107,23 +107,27 @@ router.get('/me/stats', userAuth, async (req, res) => {
     const cached = cache.get(cacheKey);
     if (cached) return res.json(cached);
     
-    // Get report counts by status
-    const [totalReports, pendingReports, verifiedReports, resolvedReports, rejectedReports] = await Promise.all([
-      Report.countDocuments({ 'reportedBy.id': userId }),
-      Report.countDocuments({ 'reportedBy.id': userId, status: 'pending' }),
-      Report.countDocuments({ 'reportedBy.id': userId, status: 'verified' }),
-      Report.countDocuments({ 'reportedBy.id': userId, status: 'resolved' }),
-      Report.countDocuments({ 'reportedBy.id': userId, status: 'rejected' })
+    // 🚀 Use aggregation for faster counting in a single database hit
+    const stats = await Report.aggregate([
+      { $match: { 'reportedBy.id': userId } },
+      { $group: {
+          _id: '$status',
+          count: { $sum: 1 }
+        }
+      }
     ]);
+
+    const getCount = (status) => stats.find(s => s._id === status)?.count || 0;
+    const totalReports = stats.reduce((acc, curr) => acc + curr.count, 0);
 
     const response = {
       success: true,
       data: {
         totalReports,
-        pendingReports,
-        verifiedReports,
-        resolvedReports,
-        rejectedReports
+        pendingReports: getCount('pending'),
+        verifiedReports: getCount('verified'),
+        resolvedReports: getCount('resolved'),
+        rejectedReports: getCount('rejected')
       }
     };
 
