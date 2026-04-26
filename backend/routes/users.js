@@ -1,4 +1,5 @@
 const express = require('express');
+const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const multer = require('multer');
@@ -109,7 +110,7 @@ router.get('/me/stats', userAuth, async (req, res) => {
     
     // 🚀 Use aggregation for faster counting in a single database hit
     const stats = await Report.aggregate([
-      { $match: { 'reportedBy.id': userId } },
+      { $match: { 'reportedBy.id': new mongoose.Types.ObjectId(userId) } },
       { $group: {
           _id: '$status',
           count: { $sum: 1 }

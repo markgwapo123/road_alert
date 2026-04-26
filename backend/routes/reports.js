@@ -1,4 +1,5 @@
 const express = require('express');
+const mongoose = require('mongoose');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
@@ -169,7 +170,7 @@ router.get('/my-reports', require('../middleware/userAuth'), async (req, res) =>
     if (cached) return res.json({ ...cached, fromCache: true });
 
     // Build filter object for user's reports
-    const filter = { 'reportedBy.id': userId };
+    const filter = { 'reportedBy.id': new mongoose.Types.ObjectId(userId) };
     if (status) filter.status = status;
     if (type) filter.type = type;
     if (severity) filter.severity = severity;
@@ -190,6 +191,9 @@ router.get('/my-reports', require('../middleware/userAuth'), async (req, res) =>
         .exec(),
       Report.countDocuments(filter)
     ]);
+
+    console.log(`✅ DB Found ${reports.length} reports out of ${totalReports} total for user ${userId}`);
+    if (reports.length > 0) console.log(`🔍 First report ID: ${reports[0]._id}`);
 
     const totalPages = Math.ceil(totalReports / parseInt(limit));
 

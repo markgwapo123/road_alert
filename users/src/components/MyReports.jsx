@@ -2,14 +2,14 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import config from '../config/index.js';
 
-const MyReports = ({ token, prefetchedReports, onRefresh }) => {
+const MyReports = ({ token, prefetchedReports, prefetchedCount, onRefresh }) => {
   const [reports, setReports] = useState(prefetchedReports || []);
   const [loading, setLoading] = useState(!prefetchedReports || prefetchedReports.length === 0);
   const [error, setError] = useState(null);
   const [enlargedImage, setEnlargedImage] = useState(null);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
-  const [totalReports, setTotalReports] = useState(0);
+  const [totalReports, setTotalReports] = useState(prefetchedCount || 0);
   const [loadingMore, setLoadingMore] = useState(false);
 
   console.log('MyReports component rendered with token:', token ? 'present' : 'missing');
@@ -18,6 +18,7 @@ const MyReports = ({ token, prefetchedReports, onRefresh }) => {
     console.log('MyReports useEffect - prefetched:', prefetchedReports?.length);
     if (prefetchedReports && prefetchedReports.length > 0) {
       setReports(prefetchedReports);
+      setTotalReports(prefetchedCount || prefetchedReports.length);
       setLoading(false);
     } else if (token && (!prefetchedReports || prefetchedReports.length === 0)) {
       fetchMyReports(1);

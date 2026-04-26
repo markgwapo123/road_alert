@@ -35,6 +35,7 @@ function AppContent() {
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [myReports, setMyReports] = useState([]);
+  const [myReportsCount, setMyReportsCount] = useState(0);
   const [currentView, setCurrentView] = useState('home');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [user, setUser] = useState(null);
@@ -344,6 +345,7 @@ function AppContent() {
       });
       if (res.data && res.data.success) {
         setMyReports(res.data.reports || []);
+        setMyReportsCount(res.data.pagination?.totalReports || 0);
       }
     } catch (err) {
       console.log('My Reports unavailable:', err.message);
@@ -894,7 +896,14 @@ function AppContent() {
                 onNewsViewed={handleNewsViewed} 
               />
             )}
-            {currentView === 'myreports' && <MyReports token={token} prefetchedReports={myReports} onRefresh={fetchMyReports} />}
+            {currentView === 'myreports' && (
+              <MyReports 
+                token={token} 
+                prefetchedReports={myReports} 
+                prefetchedCount={myReportsCount}
+                onRefresh={fetchMyReports} 
+              />
+            )}
             {currentView === 'profile' && (
               <ProfilePage 
                 token={token} 

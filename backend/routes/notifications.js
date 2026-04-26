@@ -1,4 +1,5 @@
 const express = require('express');
+const mongoose = require('mongoose');
 const Notification = require('../models/Notification');
 const userAuth = require('../middleware/userAuth');
 const cache = require('../services/cache');
@@ -25,7 +26,7 @@ router.get('/', userAuth, async (req, res) => {
     }
     
     // Build filter for user-specific notifications
-    const userFilter = { userId: userId };
+    const userFilter = { userId: new mongoose.Types.ObjectId(userId) };
     if (unread_only === 'true') {
       userFilter.isRead = false;
     }
