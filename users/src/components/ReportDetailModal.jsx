@@ -230,7 +230,12 @@ const ReportDetailModal = ({ report, isOpen, onClose, reportUser }) => {
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                 {reportUser.profile?.profileImage ? (
                   <img
-                    src={reportUser.profile.profileImage.startsWith('data:') ? reportUser.profile.profileImage : `${config.BACKEND_URL}${reportUser.profile.profileImage}`}
+                    src={(() => {
+                      const img = reportUser.profile.profileImage;
+                      if (img.startsWith('http')) return img;
+                      if (img.startsWith('data:')) return img;
+                      return `${config.BACKEND_URL}${img}`;
+                    })()}
                     alt="Reporter"
                     style={{
                       width: '40px',
@@ -422,22 +427,24 @@ const ReportDetailModal = ({ report, isOpen, onClose, reportUser }) => {
                 <img
                   src={(() => {
                     const imageData = report.images[0];
-                    // If it's a Base64 data URL, use it directly
-                    if (imageData?.data) {
+                    if (!imageData) return null;
+                    
+                    // 1. Priority: Cloudinary URL
+                    if (imageData.imageUrl) return imageData.imageUrl;
+                    
+                    // 2. Base64 data URL
+                    if (imageData.data) {
                       return `data:${imageData.mimetype};base64,${imageData.data}`;
                     }
-                    // Legacy: If filename is a full URL (Cloudinary), use it directly
-                    const filename = imageData?.filename || imageData;
-                    // Make sure filename is a string before calling startsWith
+                    
+                    // 3. Legacy: Filename as URL
+                    const filename = imageData.filename || imageData;
                     if (typeof filename === 'string') {
-                      if (filename.startsWith('http://') || filename.startsWith('https://')) {
-                        return filename;
-                      }
-                      if (filename.startsWith('data:')) {
-                        return filename;
-                      }
+                      if (filename.startsWith('http')) return filename;
+                      if (filename.startsWith('data:')) return filename;
                     }
-                    // Use image API endpoint
+                    
+                    // 4. Fallback: API endpoint
                     return `${config.BACKEND_URL}/api/reports/${report._id}/image/0`;
                   })()}
                   alt="Report image"
@@ -537,21 +544,25 @@ const ReportDetailModal = ({ report, isOpen, onClose, reportUser }) => {
                     }}>
                       <img
                         src={(() => {
-                          // Handle Base64 data URL
-                          if (report.evidencePhoto.data) {
-                            return `data:${report.evidencePhoto.mimetype};base64,${report.evidencePhoto.data}`;
+                          const evidence = report.evidencePhoto;
+                          if (!evidence) return null;
+                          
+                          // 1. Priority: Cloudinary URL
+                          if (evidence.imageUrl) return evidence.imageUrl;
+                          
+                          // 2. Base64 data URL
+                          if (evidence.data) {
+                            return `data:${evidence.mimetype};base64,${evidence.data}`;
                           }
-                          // Handle filename or URL
-                          const filename = report.evidencePhoto.filename || report.evidencePhoto;
+                          
+                          // 3. Legacy: Filename or URL
+                          const filename = evidence.filename || evidence;
                           if (typeof filename === 'string') {
-                            if (filename.startsWith('http://') || filename.startsWith('https://')) {
-                              return filename;
-                            }
-                            if (filename.startsWith('data:')) {
-                              return filename;
-                            }
+                            if (filename.startsWith('http')) return filename;
+                            if (filename.startsWith('data:')) return filename;
                           }
-                          // Use evidence photo API endpoint
+                          
+                          // 4. Fallback: API endpoint
                           return `${config.BACKEND_URL}/api/reports/${report._id}/evidence-photo`;
                         })()}
                         alt="Admin Feedback"

@@ -4,6 +4,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const cache = require('../services/cache');
+const { reportStorage } = require('../services/cloudinaryConfig');
 const { body, validationResult } = require('express-validator');
 const Report = require('../models/Report');
 const User = require('../models/User');
@@ -18,21 +19,10 @@ const {
 
 const router = express.Router();
 
-// Configure multer to store files in memory as Buffer (for Base64 conversion)
-const storage = multer.memoryStorage();
-
-const upload = multer({
-  storage: storage,
-  limits: {
-    fileSize: 5 * 1024 * 1024, // 5MB limit
-  },
-  fileFilter: (req, file, cb) => {
-    if (file.mimetype.startsWith('image/')) {
-      cb(null, true);
-    } else {
-      cb(new Error('Only image files are allowed'), false);
-    }
-  }
+// (Cloudinary storage is now used instead)
+const upload = multer({ 
+  storage: reportStorage,
+  limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit for reports
 });
 
 // Validation rules
@@ -1118,9 +1108,9 @@ router.post('/user', require('../middleware/userAuth'), upload.array('images', 5
       });
     }
 
-    // Process uploaded images - Convert to Base64 for MongoDB storage
+    // Process uploaded images - Cloudinary handles the storage
     const images = req.files ? req.files.map(file => ({
-      data: file.buffer.toString('base64'), // Store image as Base64 string
+      imageUrl: file.path, // Cloudinary URL
       originalName: file.originalname,
       mimetype: file.mimetype,
       size: file.size

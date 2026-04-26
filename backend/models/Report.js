@@ -55,6 +55,7 @@ const reportSchema = new mongoose.Schema({
     default: 'pending'
   },
   images: [{
+    imageUrl: String,
     filename: String,  // Legacy: For old file-based storage
     data: String,      // Base64 encoded image data
     originalName: String,
@@ -95,6 +96,7 @@ const reportSchema = new mongoose.Schema({
     maxLength: 1000
   },
   evidencePhoto: {
+    imageUrl: String,
     data: String,      // Base64 encoded image data
     originalName: String,
     mimetype: String,

@@ -2,32 +2,19 @@ const express = require('express');
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const cache = require('../services/cache');
+const { profileStorage } = require('../services/cloudinaryConfig');
+const multer = require('multer');
+const upload = multer({ storage: profileStorage });
 const User = require('../models/User');
 const Report = require('../models/Report');
 const userAuth = require('../middleware/userAuth');
 
 const router = express.Router();
 
-// Configure multer to store files in memory for Base64 conversion
-const storage = multer.memoryStorage();
-
-const upload = multer({
-  storage: storage,
-  limits: {
-    fileSize: 5 * 1024 * 1024 // 5MB limit
-  },
-  fileFilter: (req, file, cb) => {
-    if (file.mimetype.startsWith('image/')) {
-      cb(null, true);
-    } else {
-      cb(new Error('Only image files are allowed'), false);
-    }
-  }
-});
+// (Cloudinary storage is now used instead)
 
 // @route   GET /api/users/me
 // @desc    Get current user profile
@@ -323,9 +310,8 @@ router.post('/profile-image', userAuth, upload.single('image'), async (req, res)
       }
     }
 
-    // Convert image to Base64 and store in MongoDB
-    const imageBase64 = req.file.buffer.toString('base64');
-    const imageDataUrl = `data:${req.file.mimetype};base64,${imageBase64}`;
+    // Cloudinary URL is available in req.file.path
+    const imageDataUrl = req.file.path;
     
     user.profile.profileImage = imageDataUrl;
 

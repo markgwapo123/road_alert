@@ -71,9 +71,12 @@ const ProfilePage = ({ token, prefetchedUser, onBack, onLogout, onUserUpdate }) 
             notificationsEnabled: userData.profile?.notificationsEnabled !== false
           });
           
-          // Handle profile image - check if it's a data URL or a path
+          // Handle profile image - check if it's a Cloudinary URL, data URL, or a path
           if (userData.profileImage) {
-            if (userData.profileImage.startsWith('data:')) {
+            if (userData.profileImage.startsWith('http')) {
+              // It's a Cloudinary URL, use directly
+              setProfileImage(userData.profileImage);
+            } else if (userData.profileImage.startsWith('data:')) {
               // It's a Base64 data URL, use directly
               setProfileImage(userData.profileImage);
             } else {

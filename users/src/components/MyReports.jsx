@@ -237,22 +237,24 @@ const MyReports = ({ token, prefetchedReports, prefetchedCount, onRefresh }) => 
                       fetchpriority="low"
                       src={(() => {
                         const imageData = report.images[0];
-                        // If it's a Base64 data URL, use it directly
-                        if (imageData?.data) {
+                        if (!imageData) return null;
+                        
+                        // 1. Priority: Cloudinary URL
+                        if (imageData.imageUrl) return imageData.imageUrl;
+                        
+                        // 2. Base64 Data
+                        if (imageData.data) {
                           return `data:${imageData.mimetype};base64,${imageData.data}`;
                         }
-                        // Legacy: If filename is a full URL (Cloudinary), use it directly
-                        const filename = imageData?.filename || imageData;
-                        // Make sure filename is a string before calling startsWith
+                        
+                        // 3. Legacy: Filename as URL
+                        const filename = imageData.filename || imageData;
                         if (typeof filename === 'string') {
-                          if (filename.startsWith('http://') || filename.startsWith('https://')) {
-                            return filename;
-                          }
-                          if (filename.startsWith('data:')) {
-                            return filename;
-                          }
+                          if (filename.startsWith('http')) return filename;
+                          if (filename.startsWith('data:')) return filename;
                         }
-                        // Use image API endpoint
+                        
+                        // 4. Fallback: API endpoint
                         return `${config.BACKEND_URL}/api/reports/${report._id}/image/0`;
                       })()}
                       alt="Report"
