@@ -159,6 +159,7 @@ userSchema.methods.canSubmitReports = function() {
 };
 
 // Add indexes for faster queries
+userSchema.index({ createdAt: -1 }); // ⚡ Critical for sorted user list query
 userSchema.index({ lastLogin: -1 }); // ⚡ Critical for active users query
 userSchema.index({ lastActivity: -1 });
 

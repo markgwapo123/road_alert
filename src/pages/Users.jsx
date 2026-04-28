@@ -27,6 +27,8 @@ const Users = () => {
   const [warningMessage, setWarningMessage] = useState('')
   const [warningReason, setWarningReason] = useState('Manual Warning')
   const [isSendingWarning, setIsSendingWarning] = useState(false)
+  const [prefetchedReports, setPrefetchedReports] = useState({})
+  const [prefetchingId, setPrefetchingId] = useState(null)
 
   useEffect(() => {
     fetchUsers()
@@ -115,9 +117,45 @@ const Users = () => {
     return isOnline ? CheckCircleIcon : XCircleIcon
   }
 
+  const prefetchUserReports = async (userId) => {
+    // Don't prefetch if already have it or currently prefetching
+    if (prefetchedReports[userId] || prefetchingId === userId) return
+
+    try {
+      setPrefetchingId(userId)
+      const token = localStorage.getItem('adminToken')
+      const response = await fetch(`${config.API_BASE_URL}/admin/user-reports/${userId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setPrefetchedReports(prev => ({
+          ...prev,
+          [userId]: data.data.reports || []
+        }))
+      }
+    } catch (err) {
+      console.error('Prefetch error:', err)
+    } finally {
+      setPrefetchingId(null)
+    }
+  }
+
   const viewUserProfile = async (user) => {
     setSelectedUser(user)
     setShowUserModal(true)
+    
+    // Check if we have prefetched data
+    if (prefetchedReports[user._id]) {
+      setUserReports(prefetchedReports[user._id])
+      setLoadingReports(false)
+      return
+    }
+
     setLoadingReports(true)
 
     try {
@@ -131,7 +169,13 @@ const Users = () => {
 
       if (response.ok) {
         const data = await response.json()
-        setUserReports(data.data.reports || [])
+        const reports = data.data.reports || []
+        setUserReports(reports)
+        // Store it for future use
+        setPrefetchedReports(prev => ({
+          ...prev,
+          [user._id]: reports
+        }))
       } else {
         console.error('Failed to fetch user reports')
         setUserReports([])
@@ -582,9 +626,20 @@ const Users = () => {
                         )}
                         <button
                           onClick={() => viewUserProfile(user)}
-                          className="inline-flex items-center px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
+                          onMouseEnter={() => prefetchUserReports(user._id)}
+                          className={`inline-flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
+                            prefetchedReports[user._id] 
+                              ? 'text-gray-700 bg-green-50 hover:bg-green-100 border border-green-200' 
+                              : 'text-blue-600 bg-blue-50 hover:bg-blue-100'
+                          }`}
                         >
-                          <EyeIcon className="h-4 w-4 mr-1" />
+                          <EyeIcon className={`h-4 w-4 mr-1 ${
+                            prefetchingId === user._id 
+                              ? 'animate-pulse text-blue-500' 
+                              : prefetchedReports[user._id] 
+                                ? 'text-green-600' 
+                                : 'text-blue-600'
+                          }`} />
                           View Profile
                         </button>
                       </div>

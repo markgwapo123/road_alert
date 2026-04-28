@@ -71,6 +71,7 @@ export const SettingsProvider = ({ children }) => {
       const data = await response.json();
       
       if (data.success && data.settings) {
+        console.log('⚙️ Settings received from backend. Maintenance Mode:', data.settings.maintenance_mode);
         // Merge with defaults to ensure all settings exist
         setSettings(prev => ({
           ...DEFAULT_SETTINGS,
@@ -94,9 +95,9 @@ export const SettingsProvider = ({ children }) => {
     fetchSettings();
   }, [fetchSettings]);
 
-  // Refresh settings periodically (every 5 minutes)
+  // Refresh settings periodically (every 30 seconds)
   useEffect(() => {
-    const interval = setInterval(fetchSettings, 5 * 60 * 1000);
+    const interval = setInterval(fetchSettings, 30 * 1000);
     return () => clearInterval(interval);
   }, [fetchSettings]);
 

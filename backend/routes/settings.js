@@ -2,6 +2,7 @@ const express = require('express');
 const SystemSettings = require('../models/SystemSettings');
 const AuditLog = require('../models/AuditLog');
 const { auth, requireSuperAdmin, canAccessSettings, canViewAuditLogs, createAuditLog } = require('../middleware/roleAuth');
+const { clearSettingsCache } = require('../middleware/settingsEnforcement');
 const cache = require('../services/cache');
 
 const router = express.Router();
@@ -58,6 +59,7 @@ router.get('/maintenance/status', async (req, res) => {
 router.put('/maintenance/toggle', auth, canAccessSettings, async (req, res) => {
   try {
     const { enabled, message, scheduledStart, scheduledEnd } = req.body;
+    console.log(`🔧 Admin ${req.admin.username} is toggling maintenance to: ${enabled}`);
     
     // Update maintenance mode
     await SystemSettings.setSetting('maintenance_mode', enabled, {
@@ -99,6 +101,11 @@ router.put('/maintenance/toggle', auth, canAccessSettings, async (req, res) => {
         adminId: req.admin.id
       });
     }
+    
+    // ⚡ CRITICAL: Invalidate ALL settings caches immediately
+    clearSettingsCache();
+    cache.del('settings:public');
+    console.log('🔄 Settings cache invalidated after maintenance toggle');
     
     // Log the action
     await createAuditLog(req, 'settings_update', 'settings', 
@@ -168,6 +175,9 @@ router.get('/', auth, canAccessSettings, async (req, res) => {
 // @desc    Get public settings (for frontend config)
 // @access  Public
 router.get('/public', async (req, res) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
   try {
     const cacheKey = 'settings:public';
     const cachedSettings = cache.get(cacheKey);

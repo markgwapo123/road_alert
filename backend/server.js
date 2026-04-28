@@ -179,14 +179,32 @@ app.get('/api/debug/uploads', (req, res) => {
 });
 
 // Routes
-app.use('/api/auth', require('./routes/auth'));
-app.use('/api/reports', require('./routes/reports'));
-app.use('/api/admin', require('./routes/admin'));
-app.use('/api/users', require('./routes/users'));
-app.use('/api/notifications', require('./routes/notifications'));
-app.use('/api/news', require('./routes/news'));
+const { checkMaintenanceMode } = require('./middleware/settingsEnforcement');
+const { auth: adminAuth } = require('./middleware/roleAuth');
+
+// Public settings (needed to check maintenance status)
 app.use('/api/settings', require('./routes/settings'));
-app.use('/api/dashboard', require('./routes/dashboard'));
+
+// 🛡️ Admin Routes - Authenticate first so checkMaintenanceMode can identify admins
+app.use('/api/admin', (req, res, next) => {
+  // If it's an options request, let it through
+  if (req.method === 'OPTIONS') return next();
+  
+  // Try to authenticate as admin
+  adminAuth(req, res, (err) => {
+    // We ignore the error here because checkMaintenanceMode will handle 
+    // blocking anyway if they aren't a valid admin
+    checkMaintenanceMode(req, res, next);
+  });
+}, require('./routes/admin'));
+
+// 🛡️ User & Public Routes - Blocked by maintenance mode
+app.use('/api/auth', checkMaintenanceMode, require('./routes/auth'));
+app.use('/api/reports', checkMaintenanceMode, require('./routes/reports'));
+app.use('/api/users', checkMaintenanceMode, require('./routes/users'));
+app.use('/api/notifications', checkMaintenanceMode, require('./routes/notifications'));
+app.use('/api/news', checkMaintenanceMode, require('./routes/news'));
+app.use('/api/dashboard', checkMaintenanceMode, require('./routes/dashboard'));
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

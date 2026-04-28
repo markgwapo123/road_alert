@@ -304,6 +304,7 @@ router.get('/app-users', auth, async (req, res) => {
     // Exclude heavy fields for faster loading
     const users = await User.find({}, {
       password: 0,
+      'profile.profileImage': 0, // ⚡ Exclude bloated Base64 image
       'profile.profilePictureGallery': 0 // Exclude gallery for list view
     })
     .sort({ createdAt: -1 })
@@ -351,10 +352,11 @@ router.get('/app-users', auth, async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Get app users error:', error);
+    console.error('❌ Fetch app users error:', error);
     res.status(500).json({
       success: false,
-      error: 'Server error while fetching users'
+      error: 'Server error while fetching app users',
+      message: error.message
     });
   }
 });
@@ -366,8 +368,8 @@ router.get('/user-reports/:userId', auth, async (req, res) => {
   try {
     const { userId } = req.params;
 
-    // Verify the user exists
-    const user = await User.findById(userId);
+    // Verify the user exists - Only select necessary fields to avoid bloat
+    const user = await User.findById(userId).select('name email').lean();
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -378,7 +380,8 @@ router.get('/user-reports/:userId', auth, async (req, res) => {
     // Get all reports by this user, sorted by most recent first
     const reports = await Report.find({ 'reportedBy.id': userId })
       .sort({ createdAt: -1 })
-      .select('type description location status severity createdAt images updatedAt reportedBy');
+      .select('type description location status severity createdAt images updatedAt reportedBy')
+      .lean();
 
     // Get user's report statistics
     const totalReports = reports.length;
@@ -596,7 +599,8 @@ router.delete('/user/:userId', auth, canDeleteUsers, async (req, res) => {
 router.get('/users', auth, async (req, res) => {
   try {
     // Check if user is admin
-    if (req.admin.role !== 'admin') {
+    // Check if user is admin or super admin
+    if (req.admin.role !== 'super_admin' && req.admin.role !== 'admin_user') {
       return res.status(403).json({
         error: 'Access denied. Admin role required.'
       });
@@ -610,9 +614,11 @@ router.get('/users', auth, async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Get users error:', error);
+    console.error('❌ Get admin users error:', error);
     res.status(500).json({
-      error: 'Server error while fetching users'
+      success: false,
+      error: 'Server error while fetching admin users',
+      message: error.message
     });
   }
 });

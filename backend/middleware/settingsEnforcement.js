@@ -3,7 +3,7 @@ const SystemSettings = require('../models/SystemSettings');
 // Cache settings for performance (refresh every 60 seconds)
 let settingsCache = null;
 let cacheTimestamp = 0;
-const CACHE_TTL = 60000; // 60 seconds
+const CACHE_TTL = 5000; // 5 seconds (fast response to changes)
 
 const refreshSettingsCache = async () => {
   const now = Date.now();
@@ -35,6 +35,8 @@ const clearSettingsCache = () => {
 const checkMaintenanceMode = async (req, res, next) => {
   try {
     const maintenanceMode = await getSetting('maintenance_mode', false);
+    
+    console.log(`🛡️ Maintenance check: ${maintenanceMode ? 'ENABLED' : 'DISABLED'} for ${req.method} ${req.originalUrl}`);
     
     if (!maintenanceMode) {
       return next();

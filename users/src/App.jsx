@@ -26,8 +26,24 @@ function AppContent() {
     getSetting, 
     isMaintenanceMode, 
     getMaintenanceInfo,
-    getAuthConfig 
+    getAuthConfig,
+    refreshSettings
   } = useSettings();
+
+  // Axios interceptor for maintenance mode
+  useEffect(() => {
+    const interceptor = axios.interceptors.response.use(
+      (response) => response,
+      (error) => {
+        if (error.response && error.response.status === 503) {
+          console.log('🚧 Maintenance detected via API - refreshing settings');
+          refreshSettings();
+        }
+        return Promise.reject(error);
+      }
+    );
+    return () => axios.interceptors.response.eject(interceptor);
+  }, [refreshSettings]);
   
   const [token, setToken] = useState(localStorage.getItem('token'));
   const [showRegister, setShowRegister] = useState(false);

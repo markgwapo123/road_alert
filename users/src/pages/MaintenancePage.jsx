@@ -86,9 +86,11 @@ const MaintenancePage = ({ message, scheduledEnd }) => {
         >
           🔄 Check Again
         </button>
+        {/* 
         <p className="auto-check-info">
           Auto-checking in {secondsUntilCheck} seconds...
         </p>
+        */}
       </div>
 
       <style>{`
