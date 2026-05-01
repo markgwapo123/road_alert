@@ -40,8 +40,8 @@ const FACE_MIN_ASPECT_RATIO = 0.6;  // Face should not be too narrow
 const FACE_MAX_ASPECT_RATIO = 1.4;  // Face should not be too wide
 
 // License plate aspect ratio constraints (width / height)
-const PLATE_MIN_ASPECT_RATIO = 1.5;  // Minimum: plate must be wider than tall
-const PLATE_MAX_ASPECT_RATIO = 6.0;  // Maximum: reject excessively wide boxes
+const PLATE_MIN_ASPECT_RATIO = 1.1;  // Minimum: plate must be wider than tall
+const PLATE_MAX_ASPECT_RATIO = 6.5;  // Maximum: reject excessively wide boxes
 
 /**
  * BOUNDING BOX VALIDATION for license plates
@@ -1079,57 +1079,57 @@ const detectPlatesFallback = (canvas) => {
 
   const candidates = [];
 
-  // Search lower 60% of image
-  const searchStartY = Math.floor(height * 0.4);
+  // Search entire image
+  const searchStartY = 0;
   const searchEndY = Math.floor(height * 0.95);
 
-  // Strict size constraints
-  const minW = Math.max(60, width * 0.1);
-  const maxW = Math.min(220, width * 0.28);
+  // Broad size constraints
+  const minW = Math.max(40, width * 0.05);
+  const maxW = Math.min(500, width * 0.65);
 
-  const stepX = Math.max(10, Math.floor(width / 50));
-  const stepY = Math.max(8, Math.floor(height / 40));
+  const stepX = Math.max(6, Math.floor(width / 60));
+  const stepY = Math.max(5, Math.floor(height / 50));
 
-  const testWidths = [minW, minW * 1.4, minW * 1.8];
+  const testWidths = [minW, minW * 1.5, minW * 2, minW * 2.5, minW * 3, minW * 3.5].filter(w => w <= maxW);
 
   for (const testW of testWidths) {
     if (testW > maxW) continue;
-    const testH = testW / 3.3;
+    const testH = testW / 3.0;
 
     for (let y = searchStartY; y < searchEndY - testH; y += stepY) {
       for (let x = 0; x < width - testW; x += stepX) {
         let greenPixels = 0, whitePixels = 0, darkPixels = 0, sampleCount = 0;
 
-        for (let py = y; py < y + testH; py += 4) {
-          for (let px = x; px < x + testW; px += 4) {
+        for (let py = y; py < y + testH; py += 3) {
+          for (let px = x; px < x + testW; px += 3) {
             const idx = (Math.floor(py) * width + Math.floor(px)) * 4;
             const r = pixels[idx], g = pixels[idx + 1], b = pixels[idx + 2];
             const brightness = (r + g + b) / 3;
 
-            if (g > 90 && g > r * 1.15 && g > b * 1.1 && brightness > 50 && brightness < 180) {
+            if (g > 85 && g > r * 1.1 && g > b * 1.05 && brightness > 40 && brightness < 190) {
               greenPixels++;
-            } else if (brightness > 185 && Math.abs(r - g) < 30 && Math.abs(g - b) < 30) {
+            } else if (brightness > 175 && Math.abs(r - g) < 40 && Math.abs(g - b) < 40) {
               whitePixels++;
-            } else if (brightness < 70) {
+            } else if (brightness < 80) {
               darkPixels++;
             }
             sampleCount++;
           }
         }
 
-        if (sampleCount < 20) continue;
+        if (sampleCount < 15) continue;
 
         const greenRatio = greenPixels / sampleCount;
         const whiteRatio = whitePixels / sampleCount;
         const darkRatio = darkPixels / sampleCount;
 
         let plateType = null, colorRatio = 0;
-        if (greenRatio > 0.25) { plateType = 'green'; colorRatio = greenRatio; }
-        else if (whiteRatio > 0.35) { plateType = 'white'; colorRatio = whiteRatio; }
+        if (greenRatio > 0.20) { plateType = 'green'; colorRatio = greenRatio; }
+        else if (whiteRatio > 0.25) { plateType = 'white'; colorRatio = whiteRatio; }
 
-        if (!plateType || darkRatio < 0.08 || darkRatio > 0.45) continue;
+        if (!plateType || darkRatio < 0.04 || darkRatio > 0.55) continue;
 
-        const confidence = colorRatio * 0.5 + darkRatio * 0.3;
+        const confidence = colorRatio * 0.5 + darkRatio * 0.35;
 
         // BOUNDING BOX VALIDATION for fallback (no vehicle context)
         const plateCandidate = { x, y, width: testW, height: testH, confidence, plateType };
@@ -1138,7 +1138,7 @@ const detectPlatesFallback = (canvas) => {
         if (!validation.isValid) continue; // Skip invalid boxes
 
         // PRIVACY SAFETY: Include borderline plates that pass validation
-        if (confidence >= PLATE_BORDERLINE_THRESHOLD) {
+        if (confidence >= 0.35) {
           const overlaps = candidates.some(c =>
             Math.abs(c.x - x) < testW * 0.4 && Math.abs(c.y - y) < testH * 0.4
           );
@@ -1155,10 +1155,10 @@ const detectPlatesFallback = (canvas) => {
 
   // Validate all results before returning
   const validatedResults = [];
-  for (const plate of candidates.slice(0, 5)) { // Check top 5
-    if (validatedResults.length >= 3) break; // Return max 3
+  for (const plate of candidates.slice(0, 10)) { // Check top 10
+    if (validatedResults.length >= 5) break; // Return max 5
 
-    const status = plate.confidence >= PLATE_CONFIDENCE_THRESHOLD ? '✅ VALIDATED' : '⚠️ borderline VALIDATED';
+    const status = plate.confidence >= 0.35 ? '✅ VALIDATED' : '⚠️ borderline VALIDATED';
     console.log(`🔄 FALLBACK: ${status} ${plate.plateType} plate (conf: ${(plate.confidence * 100).toFixed(0)}%)`);
     validatedResults.push(plate);
   }
