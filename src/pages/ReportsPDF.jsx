@@ -115,7 +115,7 @@ const ReportsPDF = () => {
             <input
               type="text"
               placeholder="Search reports..."
-              className="px-3 py-2 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm"
+              className="px-3 py-2 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm text-black bg-white"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -124,15 +124,15 @@ const ReportsPDF = () => {
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1">Status</label>
             <select
-              className="px-3 py-2 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm"
+              className="px-3 py-2 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm text-black bg-white"
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
             >
-              <option value="all">All Status</option>
-              <option value="pending">Pending</option>
-              <option value="verified">Verified</option>
-              <option value="rejected">Rejected</option>
-              <option value="resolved">Resolved</option>
+              <option value="all" className="text-black bg-white">All Status</option>
+              <option value="pending" className="text-black bg-white">Pending</option>
+              <option value="verified" className="text-black bg-white">Verified</option>
+              <option value="rejected" className="text-black bg-white">Rejected</option>
+              <option value="resolved" className="text-black bg-white">Resolved</option>
             </select>
           </div>
 
@@ -141,7 +141,7 @@ const ReportsPDF = () => {
               <label className="block text-xs font-medium text-gray-500 mb-1">From</label>
               <input
                 type="date"
-                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm"
+                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm text-black bg-white"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
               />
@@ -150,7 +150,7 @@ const ReportsPDF = () => {
               <label className="block text-xs font-medium text-gray-500 mb-1">To</label>
               <input
                 type="date"
-                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm"
+                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm text-black bg-white"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
               />
