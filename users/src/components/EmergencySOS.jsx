@@ -37,7 +37,7 @@ const EmergencySOS = () => {
           try {
             // Reverse Geocoding using Nominatim (OpenStreetMap)
             const response = await fetch(
-              `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=10`
+              `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`
             );
             const data = await response.json();
             
@@ -112,7 +112,7 @@ const EmergencySOS = () => {
       let addr = fullAddress || location || 'Unknown location';
       let cityName = location || 'Unknown';
       let provinceName = geoData?.state || geoData?.region || 'Unknown';
-      let barangayName = geoData?.suburb || geoData?.neighbourhood || geoData?.village || 'Unknown';
+      let barangayName = geoData?.suburb || geoData?.neighbourhood || geoData?.village || geoData?.hamlet || geoData?.quarter || geoData?.residential || geoData?.city_district || geoData?.road || geoData?.address29 || 'Unknown';
 
       // If no coords yet, get them now
       if (!lat || !lng) {
