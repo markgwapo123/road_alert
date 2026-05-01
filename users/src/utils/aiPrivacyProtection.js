@@ -1033,15 +1033,14 @@ const blurPlatesAdaptive = (canvas, plates) => {
       return;
     }
 
-    // TIGHT bounding box - 3-5% expansion max for precision
-    // Rule: Blur ONLY the plate, NOT headlights, bumper, grille, or vehicle body
-    const padX = width * 0.03;  // 3% horizontal padding
-    const padY = height * 0.05; // 5% vertical padding
+    // WIDE bounding box - substantial padding upwards and horizontally
+    // Rule: Expand the blur box to ensure the whole plate is completely covered
+    const padX = width * 0.20;  // 20% horizontal padding
 
     const blurX = Math.max(0, x - padX);
-    const blurY = Math.max(0, y - padY);
+    const blurY = Math.max(0, y - height * 0.55); // Lift blur 55% of height UP
     let blurW = width + padX * 2;
-    let blurH = height + padY * 2;
+    let blurH = height * 1.95; // Expand height to cover above and below detected region
 
     // Final clamp to ensure blur stays within image
     if (blurX + blurW > imgWidth) blurW = imgWidth - blurX;
