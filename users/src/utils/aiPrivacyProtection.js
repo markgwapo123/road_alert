@@ -1073,6 +1073,21 @@ const detectPlatesFallback = (canvas) => {
 
   const candidates = [];
 
+  // Compute global image brightness to automatically optimize scanning rules
+  let totalBrightness = 0;
+  for (let i = 0; i < pixels.length; i += 16) { // Sample every 4th pixel for speed
+    totalBrightness += (pixels[i] + pixels[i + 1] + pixels[i + 2]) / 3;
+  }
+  const avgBrightness = totalBrightness / (pixels.length / 16);
+  console.log(`🤖 Smart AI: Average image brightness is ${avgBrightness.toFixed(1)}`);
+
+  // Dynamically configure detection thresholds based on lighting conditions
+  const isLowLight = avgBrightness < 80;
+  const isOverExposed = avgBrightness > 185;
+
+  const minColorRatio = isLowLight ? 0.12 : (isOverExposed ? 0.10 : 0.15);
+  const minDarkRatio = isLowLight ? 0.01 : 0.02;
+
   // Search entire image
   const searchStartY = 0;
   const searchEndY = Math.floor(height * 0.95);
@@ -1118,12 +1133,12 @@ const detectPlatesFallback = (canvas) => {
         const darkRatio = darkPixels / sampleCount;
 
         let plateType = null, colorRatio = 0;
-        if (whiteRatio + greenRatio > 0.15) {
+        if (whiteRatio + greenRatio > minColorRatio) {
           plateType = 'white';
           colorRatio = whiteRatio + greenRatio;
         }
 
-        if (!plateType || darkRatio < 0.02 || darkRatio > 0.70) continue;
+        if (!plateType || darkRatio < minDarkRatio || darkRatio > 0.70) continue;
 
         const confidence = colorRatio * 0.5 + darkRatio * 0.35;
 
