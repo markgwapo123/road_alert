@@ -1,5 +1,6 @@
 const cloudinary = require('cloudinary').v2;
-const CloudinaryStorage = require('multer-storage-cloudinary');
+const cloudinaryRoot = require('cloudinary');
+const CloudinaryStorage = require('multer-storage-cloudinary').CloudinaryStorage || require('multer-storage-cloudinary');
 const dotenv = require('dotenv');
 
 dotenv.config();
@@ -11,7 +12,7 @@ cloudinary.config({
 });
 
 const reportStorage = new CloudinaryStorage({
-  cloudinary: cloudinary,
+  cloudinary: cloudinaryRoot,
   params: {
     folder: 'road_alert/reports',
     allowed_formats: ['jpg', 'png', 'jpeg', 'webp'],
@@ -20,7 +21,7 @@ const reportStorage = new CloudinaryStorage({
 });
 
 const profileStorage = new CloudinaryStorage({
-  cloudinary: cloudinary,
+  cloudinary: cloudinaryRoot,
   params: {
     folder: 'road_alert/profiles',
     allowed_formats: ['jpg', 'png', 'jpeg', 'webp'],
