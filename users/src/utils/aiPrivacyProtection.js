@@ -1107,7 +1107,7 @@ const detectPlatesFallback = (canvas) => {
 
     for (let y = searchStartY; y < searchEndY - testH; y += stepY) {
       for (let x = 0; x < width - testW; x += stepX) {
-        let greenPixels = 0, whitePixels = 0, darkPixels = 0, sampleCount = 0;
+        let greenPixels = 0, whitePixels = 0, yellowPixels = 0, darkPixels = 0, sampleCount = 0;
 
         for (let py = y; py < y + testH; py += 3) {
           for (let px = x; px < x + testW; px += 3) {
@@ -1115,11 +1115,20 @@ const detectPlatesFallback = (canvas) => {
             const r = pixels[idx], g = pixels[idx + 1], b = pixels[idx + 2];
             const brightness = (r + g + b) / 3;
 
-            if (g > 85 && g > r * 1.1 && g > b * 1.05 && brightness > 40 && brightness < 190) {
+            // GREEN
+            if (g > 70 && g > r * 1.05 && g > b * 1.02 && brightness > 30 && brightness < 195) {
               greenPixels++;
-            } else if (brightness > 175 && Math.abs(r - g) < 40 && Math.abs(g - b) < 40) {
+            }
+            // WHITE
+            if (brightness > 165 && Math.abs(r - g) < 45 && Math.abs(g - b) < 45) {
               whitePixels++;
-            } else if (brightness < 80) {
+            }
+            // YELLOW
+            if (r > 130 && g > 100 && b < 95 && Math.abs(r - g) < 60 && r > b * 1.3) {
+              yellowPixels++;
+            }
+            // DARK TEXT
+            if (brightness < 90) {
               darkPixels++;
             }
             sampleCount++;
@@ -1130,12 +1139,13 @@ const detectPlatesFallback = (canvas) => {
 
         const greenRatio = greenPixels / sampleCount;
         const whiteRatio = whitePixels / sampleCount;
+        const yellowRatio = yellowPixels / sampleCount;
         const darkRatio = darkPixels / sampleCount;
 
         let plateType = null, colorRatio = 0;
-        if (whiteRatio + greenRatio > minColorRatio) {
-          plateType = 'white';
-          colorRatio = whiteRatio + greenRatio;
+        if (whiteRatio + greenRatio + yellowRatio > minColorRatio) {
+          plateType = 'smart_detected';
+          colorRatio = whiteRatio + greenRatio + yellowRatio;
         }
 
         if (!plateType || darkRatio < minDarkRatio || darkRatio > 0.70) continue;
