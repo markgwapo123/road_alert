@@ -7,7 +7,8 @@ Write-Host ""
 
 # Step 1: Navigate to users folder
 Write-Host "Step 1: Navigating to users folder..." -ForegroundColor Yellow
-Set-Location -Path "D:\copy\road_alert\users"
+$ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+if ($ScriptDir) { Set-Location -Path $ScriptDir }
 Write-Host "✓ Location: $PWD" -ForegroundColor Green
 Write-Host ""
 
