@@ -246,6 +246,26 @@ const Dashboard = () => {
       </div>
 
       {/* Recent Reports */}
+      <style>{`
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 6px;
+          height: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background-color: rgba(156, 163, 175, 0.5);
+          border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background-color: rgba(156, 163, 175, 0.8);
+        }
+        .custom-scrollbar {
+          scrollbar-width: thin;
+          scrollbar-color: rgba(156, 163, 175, 0.5) transparent;
+        }
+      `}</style>
       <div className="bg-white rounded-lg shadow">
         <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
           <h2 className="text-lg font-semibold text-gray-900 capitalize">
@@ -266,7 +286,7 @@ const Dashboard = () => {
             <p className="mt-2 text-gray-600">Loading recent reports...</p>
           </div>
         ) : (
-          <div className="divide-y divide-gray-200">
+          <div className="divide-y divide-gray-200 max-h-[450px] overflow-y-auto custom-scrollbar">
             {recentReports.map((report) => (
               <div key={report.id || report._id} className={`p-6 border-l-4 ${getSeverityColor(report.severity)}`}>
                 <div className="flex items-center justify-between">
