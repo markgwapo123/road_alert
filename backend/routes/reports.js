@@ -528,12 +528,12 @@ router.post('/', upload.array('images', 5), async (req, res) => {
       });
     }
 
-    // Process uploaded images - Convert to Base64 for MongoDB storage
+    // Process uploaded images - Cloudinary handles the storage
     const images = req.files ? req.files.map(file => ({
-      data: file.buffer.toString('base64'), // Store image as Base64 string
-      originalName: file.originalname,
+      imageUrl: file.path || file.secure_url || file.url,
+      originalName: file.originalname || file.originalName,
       mimetype: file.mimetype,
-      size: file.size
+      size: file.size || file.bytes
     })) : [];    // Create report
     const reportData = {
       ...req.body,
@@ -1218,10 +1218,10 @@ router.post('/user', require('../middleware/userAuth'), upload.array('images', 5
 
     // Process uploaded images - Cloudinary handles the storage
     const images = req.files ? req.files.map(file => ({
-      imageUrl: file.path, // Cloudinary URL
-      originalName: file.originalname,
+      imageUrl: file.path || file.secure_url || file.url,
+      originalName: file.originalname || file.originalName,
       mimetype: file.mimetype,
-      size: file.size
+      size: file.size || file.bytes
     })) : [];
 
     // Create report data
