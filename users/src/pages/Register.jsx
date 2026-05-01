@@ -23,6 +23,7 @@ const Register = ({ onRegister, switchToLogin }) => {
   const { first: brandFirst, second: brandSecond } = splitBrandName(siteName);
 
   const [email, setEmail] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [username, setUsername] = useState('');
@@ -44,6 +45,7 @@ const Register = ({ onRegister, switchToLogin }) => {
   // Clear form when component mounts
   useEffect(() => {
     setEmail('');
+    setPhoneNumber('');
     setPassword('');
     setConfirmPassword('');
     setUsername('');
@@ -97,6 +99,19 @@ const Register = ({ onRegister, switchToLogin }) => {
       setLoading(false);
       return;
     }
+    if (!phoneNumber.trim()) {
+      showError('Please enter your phone number');
+      setLoading(false);
+      return;
+    }
+    // Validate Philippine phone number format
+    const cleanPhone = phoneNumber.trim().replace(/[\s-]/g, '');
+    const phoneRegex = /^(\+63|0)9\d{9}$/;
+    if (!phoneRegex.test(cleanPhone)) {
+      showError('Please enter a valid Philippine phone number (e.g., 09123456789 or +639123456789)');
+      setLoading(false);
+      return;
+    }
 
     // Validate password using system settings
     const passwordValidation = validatePassword(password);
@@ -116,6 +131,7 @@ const Register = ({ onRegister, switchToLogin }) => {
       const res = await axios.post(`${config.API_BASE_URL}/auth/register`, {
         username: username.trim(),
         email: email.trim(),
+        phoneNumber: phoneNumber.trim(),
         password
       }, {
         timeout: 15000
@@ -195,6 +211,20 @@ const Register = ({ onRegister, switchToLogin }) => {
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 autocomplete="off"
+                required
+              />
+            </div>
+          </div>
+
+          <div className="input-group">
+            <div className="input-wrapper">
+              <input
+                id="phoneNumber"
+                type="tel"
+                placeholder="Phone number (e.g., 09123456789)"
+                value={phoneNumber}
+                onChange={e => setPhoneNumber(e.target.value)}
+                autoComplete="tel"
                 required
               />
             </div>

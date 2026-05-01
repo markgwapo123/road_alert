@@ -26,7 +26,7 @@ const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 // @access  Public
 router.post('/register', checkRegistrationAllowed, validatePasswordRequirements, async (req, res) => {
   try {
-    const { username, email, password } = req.body;
+    const { username, email, phoneNumber, password } = req.body;
 
     // Validate input
     if (!username || !email || !password) {
@@ -44,6 +44,9 @@ router.post('/register', checkRegistrationAllowed, validatePasswordRequirements,
       username,
       email,
       password,
+      profile: {
+        phone: phoneNumber || null
+      }
     });
 
     // Password will be hashed automatically by the User model pre-save hook
@@ -80,23 +83,34 @@ router.post('/register', checkRegistrationAllowed, validatePasswordRequirements,
 // @access  Public
 router.post('/login', checkLoginAttempts, async (req, res) => {
   try {
-    const { email, username, password } = req.body;
+    const { email, username, phoneNumber, password } = req.body;
 
     // Debug logging
-    console.log('🔐 Login attempt:', { email, username, passwordLength: password?.length });
+    console.log('🔐 Login attempt:', { email, username, phoneNumber, passwordLength: password?.length });
 
     // Validate input
-    if ((!email && !username) || !password) {
+    if ((!email && !username && !phoneNumber) || !password) {
       return res.status(400).json({
-        error: 'Email/Username and password are required'
+        error: 'Email, phone number, or username and password are required'
       });
     }
 
-    // ⚡ Try user and admin lookups in parallel if it's a username login
+    // ⚡ Try user and admin lookups
     let user = null;
     let admin = null;
 
-    if (email) {
+    if (phoneNumber) {
+      // Phone number login - normalize the phone number for lookup
+      const cleanPhone = phoneNumber.replace(/[\s-]/g, '');
+      user = await User.findOne({ 'profile.phone': cleanPhone }).lean();
+      // Also try with alternate format (0 vs +63)
+      if (!user && cleanPhone.startsWith('0')) {
+        user = await User.findOne({ 'profile.phone': '+63' + cleanPhone.slice(1) }).lean();
+      } else if (!user && cleanPhone.startsWith('+63')) {
+        user = await User.findOne({ 'profile.phone': '0' + cleanPhone.slice(3) }).lean();
+      }
+      console.log('👤 User lookup by phone:', cleanPhone, '- Found:', !!user);
+    } else if (email) {
       user = await User.findOne({ email }).lean();
       console.log('👤 User lookup by email:', email, '- Found:', !!user);
     } else {

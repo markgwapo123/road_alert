@@ -214,3 +214,118 @@
     right: 15px;
   }
 }
+
+/* Emergency Report Section */
+.sos-emergency-section {
+  margin-top: 16px;
+}
+
+.sos-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.sos-divider::before,
+.sos-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: #e2e8f0;
+}
+
+.sos-divider span {
+  font-size: 12px;
+  color: #94a3b8;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.sos-emergency-btn {
+  width: 100%;
+  padding: 14px 20px;
+  border: none;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
+  color: white;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 14px rgba(220, 38, 38, 0.35);
+  letter-spacing: 0.3px;
+}
+
+.sos-emergency-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(220, 38, 38, 0.45);
+}
+
+.sos-emergency-btn:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.sos-emergency-btn:disabled {
+  opacity: 0.85;
+  cursor: wait;
+}
+
+.sos-emergency-btn-icon {
+  font-size: 20px;
+}
+
+.sos-btn-spinner {
+  width: 18px;
+  height: 18px;
+  border: 2.5px solid rgba(255, 255, 255, 0.3);
+  border-top: 2.5px solid white;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.sos-emergency-desc {
+  font-size: 11px;
+  color: #94a3b8;
+  text-align: center;
+  margin-top: 10px;
+  line-height: 1.4;
+}
+
+.sos-emergency-success {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 14px;
+  padding: 20px;
+  text-align: center;
+}
+
+.sos-emergency-success-icon {
+  font-size: 32px;
+  display: block;
+  margin-bottom: 8px;
+}
+
+.sos-emergency-success p {
+  margin: 4px 0;
+  font-size: 13px;
+  color: #166534;
+  line-height: 1.5;
+}
+
+.sos-emergency-success p strong {
+  font-size: 15px;
+}
+
+.sos-emergency-error {
+  font-size: 12px;
+  color: #dc2626;
+  text-align: center;
+  margin-top: 8px;
+  font-weight: 500;
+}

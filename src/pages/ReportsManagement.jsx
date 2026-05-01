@@ -27,6 +27,13 @@ const ReportsManagement = () => {
   const [deleteLoading, setDeleteLoading] = useState(false)
   const [imageModalOpen, setImageModalOpen] = useState(false)
   const [selectedImage, setSelectedImage] = useState(null)
+  const [detailModalOpen, setDetailModalOpen] = useState(false)
+  const [detailReport, setDetailReport] = useState(null)
+
+  const handleRowClick = (report) => {
+    setDetailReport(report)
+    setDetailModalOpen(true)
+  }
   
   // Set initial filter from URL parameter
   useEffect(() => {
@@ -352,270 +359,211 @@ const ReportsManagement = () => {
         </div>
       </div>
 
-      {/* Reports Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-        {filteredReports.length === 0 ? (
-          <div className="col-span-full text-center py-12">
-            <div className="mx-auto h-12 w-12 text-gray-400">
-              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-            </div>
-            <h3 className="mt-4 text-lg font-bold text-gray-800">No reports found</h3>
-            <p className="mt-2 font-medium text-gray-700">Try adjusting your search criteria or filters.</p>
-          </div>
-        ) : (
-          filteredReports.map((report) => (
-            <div key={report._id} className="bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300 border border-gray-100 overflow-hidden">
-              {/* Card Header */}
-              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-6 py-4 border-b border-gray-100">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <div className="p-2 bg-white rounded-lg shadow-sm">
-                      <svg className="h-5 w-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.464 0L4.35 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                      </svg>
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-bold text-gray-800 capitalize">{report.type}</h3>
-                      <p className="text-sm font-medium text-gray-700">Report #{report._id.slice(-8)}</p>
-                    </div>
-                  </div>
-                  <div className="flex flex-col items-end space-y-1">
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(report.status)}`}>
-                      {report.status.toUpperCase()}
-                    </span>
-                    <span className={`text-xs font-medium ${getSeverityColor(report.severity)}`}>
-                      {report.severity.toUpperCase()} PRIORITY
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Card Body */}
-              <div className="p-6 space-y-4">
-                {/* Location */}
-                <div className="flex items-start space-x-3">
-                  <div className="p-1.5 bg-red-100 rounded-lg">
-                    <svg className="h-4 w-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+      {/* Reports Table */}
+      <style>{`
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 6px;
+          height: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background-color: rgba(156, 163, 175, 0.5);
+          border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background-color: rgba(156, 163, 175, 0.8);
+        }
+        .custom-scrollbar {
+          scrollbar-width: thin;
+          scrollbar-color: rgba(156, 163, 175, 0.5) transparent;
+        }
+      `}</style>
+      <div className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">
+        <div className="overflow-x-auto overflow-y-auto custom-scrollbar" style={{ maxHeight: '490px' }}>
+          <table className="w-full text-sm">
+            <thead className="sticky top-0 z-10">
+              <tr className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-gray-200">
+                <th className="text-left px-6 py-3 font-semibold text-gray-700">Type</th>
+                <th className="text-left px-6 py-3 font-semibold text-gray-700">Reporter</th>
+                <th className="text-left px-6 py-3 font-semibold text-gray-700">Date</th>
+                <th className="text-left px-6 py-3 font-semibold text-gray-700">Location</th>
+                <th className="text-left px-6 py-3 font-semibold text-gray-700">Status</th>
+                <th className="text-left px-6 py-3 font-semibold text-gray-700">Priority</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {filteredReports.length === 0 ? (
+                <tr>
+                  <td colSpan="6" className="text-center py-12 text-gray-500">
+                    <svg className="mx-auto h-10 w-10 text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-gray-800">Location</p>
-                    <p className="text-sm font-medium text-gray-700 truncate" title={report.location?.address}>
-                      {report.location?.address || 'No address provided'}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Description */}
-                <div className="flex items-start space-x-3">
-                  <div className="p-1.5 bg-blue-100 rounded-lg">
-                    <svg className="h-4 w-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h7" />
-                    </svg>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-gray-800">Description</p>
-                    <p className="text-sm font-medium text-gray-700 line-clamp-2" title={report.description}>
-                      {report.description}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Reporter & Date */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="flex items-center space-x-2">
-                    <div className="w-7 h-7 rounded-full bg-green-100 flex items-center justify-center overflow-hidden">
-                      {report.reportedBy?.profile?.profileImage ? (
-                        <img 
-                          src={`http://localhost:3001${report.reportedBy.profile.profileImage}`}
-                          alt={`${report.reportedBy?.name || report.reportedBy?.username}'s profile`}
-                          className="h-full w-full object-cover"
-                        />
-                      ) : (
-                        <svg className="h-4 w-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                        </svg>
-                      )}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs font-medium text-gray-600">Reporter</p>
-                      <p className="text-sm font-bold text-gray-800 truncate">
-                        {report.reportedBy?.name || report.reportedBy?.username || 'Anonymous'}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <div className="p-1.5 bg-purple-100 rounded-lg">
-                      <svg className="h-4 w-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs font-medium text-gray-600">Date</p>
-                      <p className="text-sm font-bold text-gray-800">
-                        {new Date(report.createdAt).toLocaleString('en-US', { 
-                          month: 'short', 
-                          day: 'numeric',
-                          year: '2-digit',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                          hour12: true
-                        })}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Image Preview */}
-                {report.images && report.images.length > 0 && (
-                  <div className="space-y-2">
-                    <p className="text-sm font-bold text-gray-800">Report Image</p>
-                    <div className="h-32 bg-gray-100 rounded-lg overflow-hidden border border-gray-200 flex items-center justify-center">
-                      <img
-                        src={(() => {
-                          const imageData = report.images[0];
-                          
-                          // If it's a Base64 data URL in the new format
-                          if (imageData?.data) {
-                            return `data:${imageData.mimetype};base64,${imageData.data}`;
-                          }
-                          
-                          const filename = imageData?.filename || imageData;
-                          
-                          // Make sure filename is a string before calling startsWith
-                          if (typeof filename === 'string') {
-                            // If it's already a data URL, use it
-                            if (filename.startsWith('data:')) {
-                              return filename;
-                            }
-                            
-                            // If filename is already a full URL (Cloudinary), use it directly
-                            if (filename.startsWith('http://') || filename.startsWith('https://')) {
-                              return filename;
-                            }
-                          }
-                          
-                          // Use the image API endpoint to fetch the image
-                          return `${config.BACKEND_URL}/api/reports/${report._id}/image/0`;
-                        })()}
-                        alt="Report evidence"
-                        className="max-w-full max-h-full object-contain cursor-pointer hover:opacity-90 transition-opacity"
-                        onClick={() => handleImageClick(report)}
-                        onError={(e) => {
-                          e.target.src = `data:image/svg+xml;utf8,${encodeURIComponent(`
-                            <svg xmlns='http://www.w3.org/2000/svg' width='128' height='128'>
-                              <rect width='128' height='128' fill='%23f3f4f6'/>
-                              <text x='64' y='64' text-anchor='middle' dy='0.3em' fill='%236b7280' font-size='14'>Image unavailable</text>
-                            </svg>
-                          `)}`;
-                        }}
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {/* Map Preview */}
-                {report.location?.coordinates && (
-                  <div className="space-y-2">
-                    <p className="text-sm font-bold text-gray-800">Location Map</p>
-                    <div className="h-32 bg-gray-100 rounded-lg overflow-hidden border border-gray-200">
-                      <iframe
-                        src={`https://maps.google.com/maps?q=${report.location.coordinates.latitude},${report.location.coordinates.longitude}&z=15&output=embed`}
-                        width="100%"
-                        height="100%"
-                        style={{ border: 0 }}
-                        title="Report Location"
-                        loading="lazy"
-                      ></iframe>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Card Footer - Actions */}
-              <div className="px-6 py-4 bg-gray-50 border-t border-gray-100">
-                {report.status === 'pending' ? (
-                  <div className="space-y-3">
-                    <p className="text-xs font-bold text-gray-700 text-center">Action Required</p>
-                    <div className={`grid ${isSuperAdmin() ? 'grid-cols-4' : 'grid-cols-3'} gap-2`}>
-                      <button
-                        onClick={() => handleEdit(report)}
-                        className="px-3 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 transition-colors font-medium text-center flex flex-col items-center justify-center"
-                      >
-                        <span className="text-base mb-1">✏️</span>
-                        <span className="text-xs">Edit</span>
-                      </button>
-                      <button
-                        onClick={() => handleAccept(report._id)}
-                        className="px-3 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 focus:ring-2 focus:ring-green-500 focus:ring-offset-1 transition-colors font-medium text-center flex flex-col items-center justify-center"
-                      >
-                        <span className="text-base mb-1">✓</span>
-                        <span className="text-xs">Verified</span>
-                      </button>
-                      <button
-                        onClick={() => handleReject(report._id)}
-                        className="px-3 py-2 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 focus:ring-2 focus:ring-red-500 focus:ring-offset-1 transition-colors font-medium text-center flex flex-col items-center justify-center"
-                      >
-                        <span className="text-base mb-1">✗</span>
-                        <span className="text-xs">Reject</span>
-                      </button>
-                      {isSuperAdmin() && (
-                        <button
-                          onClick={() => confirmDeleteReport(report)}
-                          className="px-3 py-2 bg-gray-600 text-white text-sm rounded-lg hover:bg-gray-700 focus:ring-2 focus:ring-gray-500 focus:ring-offset-1 transition-colors font-medium text-center flex flex-col items-center justify-center"
-                        >
-                          <TrashIcon className="h-4 w-4 mb-1" />
-                          <span className="text-xs">Delete</span>
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <div className={`w-2 h-2 rounded-full ${
-                        report.status === 'verified' ? 'bg-green-500' : 
-                        report.status === 'resolved' ? 'bg-blue-500' : 'bg-red-500'
-                      }`}></div>
-                      <span className="text-sm font-medium text-gray-700">
-                        {report.status === 'verified' ? 'Verified & Published' : 
-                         report.status === 'resolved' ? '✅ Issue Resolved' : 'Rejected'}
+                    <p className="font-medium">No reports found</p>
+                  </td>
+                </tr>
+              ) : (
+                filteredReports.map((report) => (
+                  <tr
+                    key={report._id}
+                    onClick={() => handleRowClick(report)}
+                    className="hover:bg-blue-50 cursor-pointer transition-colors"
+                  >
+                    <td className="px-6 py-4">
+                      <span className="font-semibold text-gray-800 capitalize">{report.type}</span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="text-gray-700">{report.reportedBy?.name || report.reportedBy?.username || 'Anonymous'}</span>
+                    </td>
+                    <td className="px-6 py-4 text-gray-600 whitespace-nowrap">
+                      {new Date(report.createdAt).toLocaleString('en-US', { month: 'short', day: 'numeric', year: '2-digit', hour: '2-digit', minute: '2-digit', hour12: true })}
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="text-gray-700 truncate block max-w-[250px]" title={report.location?.address}>
+                        {report.location?.address || 'No address'}
                       </span>
-                    </div>
-                    <div className="flex gap-2">
-                      {report.status === 'verified' && (
-                        <button
-                          onClick={() => handleResolve(report)}
-                          className="px-3 py-1.5 bg-green-600 text-white text-xs rounded-md hover:bg-green-700 transition-colors font-medium"
-                        >
-                          ✅ Mark Resolved
-                        </button>
-                      )}
-                      <button
-                        onClick={() => handleEdit(report)}
-                        className="px-3 py-1.5 bg-blue-600 text-white text-xs rounded-md hover:bg-blue-700 transition-colors"
-                      >
-                        Edit
-                      </button>
-                      {isSuperAdmin() && (
-                        <button
-                          onClick={() => confirmDeleteReport(report)}
-                          className="px-3 py-1.5 bg-gray-600 text-white text-xs rounded-md hover:bg-gray-700 transition-colors"
-                        >
-                          Delete
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                )}
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${getStatusColor(report.status)}`}>
+                        {report.status?.toUpperCase()}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`text-xs font-semibold ${getSeverityColor(report.severity)}`}>
+                        {report.severity?.toUpperCase()}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Report Detail Modal */}
+      {detailModalOpen && detailReport && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999] p-4" onClick={() => setDetailModalOpen(false)}>
+          <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl" onClick={e => e.stopPropagation()}>
+            {/* Modal Header */}
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-6 py-4 border-b border-gray-200 flex items-center justify-between sticky top-0 z-10">
+              <div>
+                <h2 className="text-lg font-bold text-gray-800 capitalize">{detailReport.type} Report</h2>
+                <p className="text-sm text-gray-500">#{detailReport._id?.slice(-8)}</p>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(detailReport.status)}`}>{detailReport.status?.toUpperCase()}</span>
+                <button onClick={() => setDetailModalOpen(false)} className="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
               </div>
             </div>
-          ))
-        )}
-      </div>
+
+            {/* Modal Body */}
+            <div className="p-6 space-y-5">
+              {/* Reporter & Date */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-xs font-medium text-gray-500 mb-1">Reporter</p>
+                  <p className="text-sm font-bold text-gray-800">{detailReport.reportedBy?.name || detailReport.reportedBy?.username || 'Anonymous'}</p>
+                  {detailReport.reportedBy?.email && <p className="text-xs text-gray-500">{detailReport.reportedBy.email}</p>}
+                  {detailReport.reportedBy?.phone && <p className="text-xs text-gray-500">📞 {detailReport.reportedBy.phone}</p>}
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-gray-500 mb-1">Date Submitted</p>
+                  <p className="text-sm font-bold text-gray-800">
+                    {new Date(detailReport.createdAt).toLocaleString('en-US', { month: 'long', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })}
+                  </p>
+                </div>
+              </div>
+
+              {/* Location */}
+              <div>
+                <p className="text-xs font-medium text-gray-500 mb-1">Location</p>
+                <p className="text-sm font-bold text-gray-800">{detailReport.location?.address || 'No address'}</p>
+                <p className="text-xs text-gray-500">{detailReport.barangay}, {detailReport.city}, {detailReport.province}</p>
+              </div>
+
+              {/* Description */}
+              <div>
+                <p className="text-xs font-medium text-gray-500 mb-1">Description</p>
+                <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded-lg">{detailReport.description || 'No description'}</p>
+              </div>
+
+              {/* Priority & Severity */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-xs font-medium text-gray-500 mb-1">Severity</p>
+                  <span className={`text-sm font-semibold ${getSeverityColor(detailReport.severity)}`}>{detailReport.severity?.toUpperCase()}</span>
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-gray-500 mb-1">Priority</p>
+                  <span className={`text-sm font-semibold ${detailReport.priority === 'urgent' ? 'text-red-600' : detailReport.priority === 'high' ? 'text-orange-600' : 'text-gray-600'}`}>{detailReport.priority?.toUpperCase() || 'MEDIUM'}</span>
+                </div>
+              </div>
+
+              {/* Images */}
+              {detailReport.images && detailReport.images.length > 0 && (
+                <div>
+                  <p className="text-xs font-medium text-gray-500 mb-2">Report Image</p>
+                  <div className="h-48 bg-gray-100 rounded-lg overflow-hidden border border-gray-200 flex items-center justify-center">
+                    <img
+                      src={(() => {
+                        const img = detailReport.images[0];
+                        if (img?.imageUrl) return img.imageUrl;
+                        if (img?.data) return `data:${img.mimetype};base64,${img.data}`;
+                        return `${config.BACKEND_URL}/api/reports/${detailReport._id}/image/0`;
+                      })()}
+                      alt="Report evidence"
+                      className="max-w-full max-h-full object-contain cursor-pointer hover:opacity-90"
+                      onClick={() => { handleImageClick(detailReport); }}
+                      onError={(e) => { e.target.style.display = 'none'; }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Map */}
+              {detailReport.location?.coordinates && (
+                <div>
+                  <p className="text-xs font-medium text-gray-500 mb-2">Location Map</p>
+                  <div className="h-48 bg-gray-100 rounded-lg overflow-hidden border border-gray-200">
+                    <iframe
+                      src={`https://maps.google.com/maps?q=${detailReport.location.coordinates.latitude},${detailReport.location.coordinates.longitude}&z=15&output=embed`}
+                      width="100%" height="100%" style={{ border: 0 }} title="Report Location" loading="lazy"
+                    ></iframe>
+                  </div>
+                </div>
+              )}
+
+              {/* Admin Notes */}
+              {detailReport.adminNotes && (
+                <div>
+                  <p className="text-xs font-medium text-gray-500 mb-1">Admin Notes</p>
+                  <p className="text-sm text-gray-700 bg-yellow-50 p-3 rounded-lg border border-yellow-100">{detailReport.adminNotes}</p>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer - Actions */}
+            <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex flex-wrap gap-2 justify-end sticky bottom-0">
+              {detailReport.status === 'pending' && (
+                <>
+                  <button onClick={() => { handleAccept(detailReport._id); setDetailModalOpen(false); }} className="px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 font-medium">✓ Verify</button>
+                  <button onClick={() => { handleReject(detailReport._id); setDetailModalOpen(false); }} className="px-4 py-2 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 font-medium">✗ Reject</button>
+                </>
+              )}
+              {detailReport.status === 'verified' && (
+                <button onClick={() => { handleResolve(detailReport); setDetailModalOpen(false); }} className="px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 font-medium">✅ Mark Resolved</button>
+              )}
+              <button onClick={() => { handleEdit(detailReport); setDetailModalOpen(false); }} className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 font-medium">Edit</button>
+              {isSuperAdmin() && (
+                <button onClick={() => { confirmDeleteReport(detailReport); setDetailModalOpen(false); }} className="px-4 py-2 bg-gray-600 text-white text-sm rounded-lg hover:bg-gray-700 font-medium">Delete</button>
+              )}
+              <button onClick={() => setDetailModalOpen(false)} className="px-4 py-2 bg-white text-gray-700 text-sm rounded-lg border border-gray-300 hover:bg-gray-50 font-medium">Close</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Edit Report Modal */}
       <EditReportModal

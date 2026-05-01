@@ -422,6 +422,82 @@ router.get('/map', async (req, res) => {
   }
 });
 
+// @route   POST /api/reports/emergency
+// @desc    Create emergency report from SOS button
+// @access  Private (requires user token)
+router.post('/emergency', require('../middleware/userAuth'), async (req, res) => {
+  try {
+    const { latitude, longitude, address, province, city, barangay } = req.body;
+
+    // Validate required location data
+    if (!latitude || !longitude) {
+      return res.status(400).json({
+        error: 'Location coordinates are required for emergency reports'
+      });
+    }
+
+    const user = req.user;
+    const userPhone = user.profile?.phone || '';
+
+    // Build the emergency report
+    const report = new Report({
+      type: 'emergency',
+      description: `🚨 EMERGENCY REPORT - User needs immediate assistance. Phone: ${userPhone || 'Not available'}. Location: ${address || 'Unknown'}`,
+      location: {
+        address: address || 'Unknown location',
+        coordinates: {
+          latitude: parseFloat(latitude),
+          longitude: parseFloat(longitude)
+        }
+      },
+      province: province || 'Unknown',
+      city: city || 'Unknown',
+      barangay: barangay || 'Unknown',
+      severity: 'high',
+      priority: 'urgent',
+      status: 'pending',
+      reportedBy: {
+        id: user._id,
+        name: user.profile?.fullName || user.username,
+        username: user.username,
+        email: user.email,
+        phone: userPhone
+      }
+    });
+
+    await report.save();
+
+    // Invalidate cache
+    cache.invalidatePrefix(`reports:${user._id}`);
+
+    // Send notifications
+    try {
+      await NotificationService.createReportSubmittedNotification({
+        userId: user._id,
+        reportId: report._id,
+        reportType: 'emergency'
+      });
+      await NotificationService.broadcastNewReportNotification(report);
+    } catch (notifError) {
+      console.error('Failed to send emergency notifications:', notifError);
+    }
+
+    console.log(`🚨 EMERGENCY REPORT created by ${user.username} (${userPhone}) at ${address}`);
+
+    res.status(201).json({
+      success: true,
+      message: 'Emergency report sent successfully',
+      data: report
+    });
+
+  } catch (error) {
+    console.error('Emergency report error:', error);
+    res.status(500).json({
+      error: 'Server error while creating emergency report'
+    });
+  }
+});
+
 // @route   POST /api/reports
 // @desc    Create new report (for mobile app)
 // @access  Public

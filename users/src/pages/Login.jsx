@@ -8,7 +8,7 @@ const Login = ({ onLogin, switchToRegister }) => {
   const { getSetting } = useSettings();
   const siteName = getSetting('site_name', 'BantayDalan');
   
-  const [loginId, setLoginId] = useState(''); // can be email or username
+  const [loginId, setLoginId] = useState(''); // can be email, phone, or username
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [showErrorModal, setShowErrorModal] = useState(false);
@@ -193,17 +193,27 @@ const Login = ({ onLogin, switchToRegister }) => {
     e.preventDefault();
     setError('');
     setLoading(true);
-    // Only allow Gmail addresses
-    if (!loginId.includes('@gmail.com')) {
-      showError('Only Gmail addresses are allowed for login.');
+    // Detect if loginId is a phone number or email
+    const trimmedId = loginId.trim();
+    const isPhone = /^(\+63|0)9\d{9}$/.test(trimmedId.replace(/[\s-]/g, ''));
+    const isEmail = trimmedId.includes('@');
+
+    if (!isPhone && !isEmail) {
+      showError('Please enter a valid email address or phone number.');
       setLoading(false);
       return;
     }
+
+    // Build login payload
+    const loginPayload = {};
+    if (isPhone) {
+      loginPayload.phoneNumber = trimmedId.replace(/[\s-]/g, '');
+    } else {
+      loginPayload.email = trimmedId;
+    }
+    loginPayload.password = password;
     try {
-      const res = await axios.post(`${config.API_BASE_URL}/auth/login`, {
-        email: loginId.trim(),
-        password
-      }, {
+      const res = await axios.post(`${config.API_BASE_URL}/auth/login`, loginPayload, {
         timeout: 30000 // 30 seconds for sleeping Render backend
       });
       onLogin(res.data.token);
@@ -211,7 +221,7 @@ const Login = ({ onLogin, switchToRegister }) => {
       if (err.code === 'ECONNREFUSED' || (err.message && err.message.includes('Network Error'))) {
         showError('Cannot connect to server. Please check your internet connection.');
       } else if (err.response?.status === 401) {
-        showError('Invalid Gmail or password. Please check your credentials and try again.');
+        showError('Invalid email/phone number or password. Please check your credentials and try again.');
       } else if (err.response?.status === 404) {
         showError('User not found. Please register first.');
       } else {
@@ -408,11 +418,11 @@ const Login = ({ onLogin, switchToRegister }) => {
                 <div className="input-wrapper">
                   <input
                     id="loginId"
-                    type="email"
-                    placeholder="Email address"
+                    type="text"
+                    placeholder="Email or Phone number"
                     value={loginId}
                     onChange={e => setLoginId(e.target.value)}
-                    autocomplete="off"
+                    autoComplete="off"
                     required
                   />
                 </div>

@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+import config from '../config/index.js';
 import { useSettings } from '../context/SettingsContext';
 import './EmergencySOS.css';
 
@@ -7,8 +9,13 @@ const EmergencySOS = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [location, setLocation] = useState(null);
+  const [coords, setCoords] = useState(null);
+  const [fullAddress, setFullAddress] = useState(null);
+  const [geoData, setGeoData] = useState(null);
   const [contacts, setContacts] = useState(null);
   const [error, setError] = useState(null);
+  const [emergencySending, setEmergencySending] = useState(false);
+  const [emergencyResult, setEmergencyResult] = useState(null); // 'success' | 'error' | null
 
   const emergencyData = getSetting('emergency_contacts', {});
 
@@ -25,6 +32,7 @@ const EmergencySOS = () => {
       navigator.geolocation.getCurrentPosition(
         async (position) => {
           const { latitude, longitude } = position.coords;
+          setCoords({ latitude, longitude });
           
           try {
             // Reverse Geocoding using Nominatim (OpenStreetMap)
@@ -35,9 +43,12 @@ const EmergencySOS = () => {
             
             const address = data.address;
             const city = address.city || address.town || address.municipality || address.village || 'default';
+            const fullAddr = data.display_name || city;
             console.log('📍 SOS detected raw location:', city);
             
             setLocation(city);
+            setFullAddress(fullAddr);
+            setGeoData(address);
             
             // ⚡ Robust Matching Logic:
             // 1. Try exact match
@@ -79,6 +90,65 @@ const EmergencySOS = () => {
       setError(err.message);
       setContacts(emergencyData['default']);
       setLoading(false);
+    }
+  };
+
+  // Handle emergency report submission
+  const handleEmergencyReport = async () => {
+    setEmergencySending(true);
+    setEmergencyResult(null);
+
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setEmergencyResult('error');
+        setEmergencySending(false);
+        return;
+      }
+
+      // Use stored coords or try to get fresh ones
+      let lat = coords?.latitude;
+      let lng = coords?.longitude;
+      let addr = fullAddress || location || 'Unknown location';
+      let cityName = location || 'Unknown';
+      let provinceName = geoData?.state || geoData?.region || 'Unknown';
+      let barangayName = geoData?.suburb || geoData?.neighbourhood || geoData?.village || 'Unknown';
+
+      // If no coords yet, get them now
+      if (!lat || !lng) {
+        try {
+          const pos = await new Promise((resolve, reject) => {
+            navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 10000 });
+          });
+          lat = pos.coords.latitude;
+          lng = pos.coords.longitude;
+        } catch (geoErr) {
+          console.error('Emergency geolocation failed:', geoErr);
+          setEmergencyResult('error');
+          setEmergencySending(false);
+          return;
+        }
+      }
+
+      // Send to dedicated emergency endpoint (backend handles user data via token)
+      await axios.post(`${config.API_BASE_URL}/reports/emergency`, {
+        latitude: lat,
+        longitude: lng,
+        address: addr,
+        province: provinceName,
+        city: cityName,
+        barangay: barangayName
+      }, {
+        headers: { 'Authorization': `Bearer ${token}` },
+        timeout: 15000
+      });
+
+      setEmergencyResult('success');
+    } catch (err) {
+      console.error('Emergency report error:', err);
+      setEmergencyResult('error');
+    } finally {
+      setEmergencySending(false);
     }
   };
 
@@ -149,6 +219,45 @@ const EmergencySOS = () => {
                   <p className="sos-disclaimer">
                     Tap any contact to initiate a direct call. In case of extreme life-threatening emergency, always dial 911 immediately.
                   </p>
+
+                  {/* Emergency Report Button */}
+                  <div className="sos-emergency-section">
+                    <div className="sos-divider">
+                      <span>or</span>
+                    </div>
+                    {emergencyResult === 'success' ? (
+                      <div className="sos-emergency-success">
+                        <span className="sos-emergency-success-icon">✅</span>
+                        <p><strong>Emergency report sent!</strong></p>
+                        <p>Admin has been notified with your location and phone number. Stay safe.</p>
+                      </div>
+                    ) : (
+                      <>
+                        <button
+                          className="sos-emergency-btn"
+                          onClick={handleEmergencyReport}
+                          disabled={emergencySending}
+                        >
+                          {emergencySending ? (
+                            <>
+                              <div className="sos-btn-spinner"></div>
+                              <span>Sending Emergency Report...</span>
+                            </>
+                          ) : (
+                            <>
+                              <span>Send Emergency Report</span>
+                            </>
+                          )}
+                        </button>
+                        <p className="sos-emergency-desc">
+                          Sends your location & phone number to admin for immediate response
+                        </p>
+                        {emergencyResult === 'error' && (
+                          <p className="sos-emergency-error">Failed to send report. Please try calling directly.</p>
+                        )}
+                      </>
+                    )}
+                  </div>
                 </>
               )}
             </div>
