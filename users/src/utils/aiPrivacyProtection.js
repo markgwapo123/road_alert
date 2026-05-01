@@ -1235,7 +1235,6 @@ export const applyAIPrivacyProtection = async (canvas, options = {}) => {
         detectFaces(canvas),
         detectPeople(canvas)
       ]);
-
       facesFound = faces.filter(f => f.confidence >= faceConfidence);
       peopleFound = people;
 
@@ -1247,10 +1246,29 @@ export const applyAIPrivacyProtection = async (canvas, options = {}) => {
       }
 
       // 2. Blur heads of people (when face not directly detected)
-      if (peopleFound.length > 0 && facesFound.length === 0) {
-        blurPeople(canvas, peopleFound);
-        totalDetections += peopleFound.length;
-        console.log(`✅ Blurred ${peopleFound.length} head(s)`);
+      const nonOverlappingPeople = peopleFound.filter(p => {
+        const [px, py, pw, ph] = p.bbox;
+        const headY = py;
+        const headX = px + pw * 0.15;
+        const headW = pw * 0.70;
+        const headH = ph * 0.25;
+
+        return !facesFound.some(f => {
+          const fx = f.x || f.topLeft?.[0] || 0;
+          const fy = f.y || f.topLeft?.[1] || 0;
+          const fw = f.width || (f.bottomRight?.[0] - f.topLeft?.[0]) || 0;
+          const fh = f.height || (f.bottomRight?.[1] - f.topLeft?.[1]) || 0;
+
+          const ox = Math.max(0, Math.min(fx + fw, headX + headW) - Math.max(fx, headX));
+          const oy = Math.max(0, Math.min(fy + fh, headY + headH) - Math.max(fy, headY));
+          return (ox * oy) / (headW * headH) > 0.3; // 30% overlap
+        });
+      });
+
+      if (nonOverlappingPeople.length > 0) {
+        blurPeople(canvas, nonOverlappingPeople);
+        totalDetections += nonOverlappingPeople.length;
+        console.log(`✅ Blurred ${nonOverlappingPeople.length} head(s)`);
       }
     } else {
       console.log('\n👤 Face/Person detection disabled via options');
