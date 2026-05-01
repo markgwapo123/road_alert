@@ -13,6 +13,8 @@ const ReportsManagement = () => {
   const { isSuperAdmin, canDeleteReports } = useAuth()
   
   const [searchTerm, setSearchTerm] = useState('')
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
   const [filterStatus, setFilterStatus] = useState('all')
   const [reports, setReports] = useState([])
   const [loading, setLoading] = useState(true)
@@ -282,13 +284,28 @@ const ReportsManagement = () => {
     }
   }
 
-  // Filter reports based on search term and status
+  // Filter reports based on search term, status, and date range
   const filteredReports = reports.filter(report => {
     const matchesSearch = report.type?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          report.location?.address?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          report.description?.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesStatus = filterStatus === 'all' || report.status === filterStatus
-    return matchesSearch && matchesStatus
+
+    let matchesDate = true
+    if (startDate || endDate) {
+      const reportDate = new Date(report.createdAt)
+      if (startDate) {
+        const start = new Date(startDate)
+        if (reportDate < start) matchesDate = false
+      }
+      if (endDate) {
+        const end = new Date(endDate)
+        end.setHours(23, 59, 59, 999)
+        if (reportDate > end) matchesDate = false
+      }
+    }
+
+    return matchesSearch && matchesStatus && matchesDate
   })
 
   if (loading) {
@@ -332,8 +349,8 @@ const ReportsManagement = () => {
       </div>
 
       {/* Search and Filter */}
-      <div className="flex flex-col sm:flex-row gap-4">
-        <div className="relative flex-1">
+      <div className="flex flex-col sm:flex-row gap-4 items-center">
+        <div className="relative flex-1 w-full">
           <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
           <input
             type="text"
@@ -343,10 +360,42 @@ const ReportsManagement = () => {
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        <div className="relative">
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto items-center">
+          <div className="flex items-center gap-2 bg-white border border-gray-300 rounded-lg px-3 py-1.5 w-full sm:w-auto">
+            <span className="text-xs text-gray-500 font-medium">From:</span>
+            <input
+              type="date"
+              className="py-0.5 focus:outline-none bg-transparent text-gray-900 text-sm"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+            />
+          </div>
+          <div className="flex items-center gap-2 bg-white border border-gray-300 rounded-lg px-3 py-1.5 w-full sm:w-auto">
+            <span className="text-xs text-gray-500 font-medium">To:</span>
+            <input
+              type="date"
+              className="py-0.5 focus:outline-none bg-transparent text-gray-900 text-sm"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+            />
+          </div>
+          {(startDate || endDate) && (
+            <button
+              onClick={() => {
+                setStartDate('')
+                setEndDate('')
+              }}
+              className="text-xs text-red-600 hover:text-red-800 font-medium whitespace-nowrap"
+              title="Clear date filters"
+            >
+              Clear Date
+            </button>
+          )}
+        </div>
+        <div className="relative w-full sm:w-auto">
           <FunnelIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
           <select
-            className="pl-10 pr-8 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white text-gray-900"
+            className="pl-10 pr-8 py-2 w-full sm:w-auto border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white text-gray-900"
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
           >
