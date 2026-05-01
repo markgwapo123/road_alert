@@ -26,8 +26,8 @@ const FACE_CONFIDENCE_THRESHOLD = 0.60;  // Lowered for distant faces
 const FACE_HIGH_CONFIDENCE = 0.85;       // High confidence - definitely a face
 const FACE_MIN_CONFIDENCE = 0.50;        // Absolute minimum for multi-scale
 const PERSON_CONFIDENCE_THRESHOLD = 0.5; // COCO-SSD person confidence
-const PLATE_CONFIDENCE_THRESHOLD = 0.50; // License plate detection - lowered for privacy safety
-const PLATE_BORDERLINE_THRESHOLD = 0.45; // Borderline plates - raised to reduce false positives
+const PLATE_CONFIDENCE_THRESHOLD = 0.25; // License plate detection - lowered for privacy safety
+const PLATE_BORDERLINE_THRESHOLD = 0.20; // Borderline plates - raised to reduce false positives
 
 // Multi-scale detection settings
 const SCALE_FACTORS = [1.0, 1.5, 2.0, 2.5, 3.0]; // Upscale factors for distant faces
@@ -56,14 +56,9 @@ const validatePlateBoundingBox = (plate, vehicle, imgWidth, imgHeight) => {
 
   // 1. Check aspect ratio (width > height for plates)
   const aspectRatio = plate.width / plate.height;
-  if (aspectRatio < PLATE_MIN_ASPECT_RATIO) {
+  if (vehicle && (aspectRatio < PLATE_MIN_ASPECT_RATIO || aspectRatio > PLATE_MAX_ASPECT_RATIO)) {
     validationResult.isValid = false;
-    validationResult.rejectionReason = `Aspect ratio ${aspectRatio.toFixed(2)} too low (square/tall box - not a plate)`;
-    return validationResult;
-  }
-  if (aspectRatio > PLATE_MAX_ASPECT_RATIO) {
-    validationResult.isValid = false;
-    validationResult.rejectionReason = `Aspect ratio ${aspectRatio.toFixed(2)} too high (excessively wide)`;
+    validationResult.rejectionReason = `Aspect ratio ${aspectRatio.toFixed(2)} invalid for vehicle-attached plate`;
     return validationResult;
   }
 
@@ -1124,10 +1119,12 @@ const detectPlatesFallback = (canvas) => {
         const darkRatio = darkPixels / sampleCount;
 
         let plateType = null, colorRatio = 0;
-        if (greenRatio > 0.20) { plateType = 'green'; colorRatio = greenRatio; }
-        else if (whiteRatio > 0.25) { plateType = 'white'; colorRatio = whiteRatio; }
+        if (whiteRatio + greenRatio > 0.15) {
+          plateType = 'white';
+          colorRatio = whiteRatio + greenRatio;
+        }
 
-        if (!plateType || darkRatio < 0.04 || darkRatio > 0.55) continue;
+        if (!plateType || darkRatio < 0.02 || darkRatio > 0.70) continue;
 
         const confidence = colorRatio * 0.5 + darkRatio * 0.35;
 
@@ -1138,7 +1135,7 @@ const detectPlatesFallback = (canvas) => {
         if (!validation.isValid) continue; // Skip invalid boxes
 
         // PRIVACY SAFETY: Include borderline plates that pass validation
-        if (confidence >= 0.35) {
+        if (confidence >= 0.25) {
           const overlaps = candidates.some(c =>
             Math.abs(c.x - x) < testW * 0.4 && Math.abs(c.y - y) < testH * 0.4
           );
@@ -1158,7 +1155,7 @@ const detectPlatesFallback = (canvas) => {
   for (const plate of candidates.slice(0, 10)) { // Check top 10
     if (validatedResults.length >= 5) break; // Return max 5
 
-    const status = plate.confidence >= 0.35 ? '✅ VALIDATED' : '⚠️ borderline VALIDATED';
+    const status = plate.confidence >= 0.25 ? '✅ VALIDATED' : '⚠️ borderline VALIDATED';
     console.log(`🔄 FALLBACK: ${status} ${plate.plateType} plate (conf: ${(plate.confidence * 100).toFixed(0)}%)`);
     validatedResults.push(plate);
   }
