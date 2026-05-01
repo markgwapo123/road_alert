@@ -501,14 +501,30 @@ router.post('/emergency', require('../middleware/userAuth'), async (req, res) =>
 // @route   POST /api/reports
 // @desc    Create new report (for mobile app)
 // @access  Public
-router.post('/', upload.array('images', 5), reportValidation, async (req, res) => {
+router.post('/', upload.array('images', 5), async (req, res) => {
   try {
-    // Check validation errors
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
+    const errors = [];
+    const type = req.body.type;
+    const province = req.body.province;
+    const city = req.body.city;
+    const barangay = req.body.barangay;
+    
+    const address = req.body['location[address]'] || req.body.location?.address;
+    const latitude = req.body['location[coordinates][latitude]'] || req.body.location?.coordinates?.latitude;
+    const longitude = req.body['location[coordinates][longitude]'] || req.body.location?.coordinates?.longitude;
+
+    if (!type) errors.push({ msg: 'Type is required', param: 'type' });
+    if (!province) errors.push({ msg: 'Province is required', param: 'province' });
+    if (!city) errors.push({ msg: 'City is required', param: 'city' });
+    if (!barangay) errors.push({ msg: 'Barangay is required', param: 'barangay' });
+    if (!address) errors.push({ msg: 'Address must be provided', param: 'location[address]' });
+    if (latitude === undefined || latitude === null || isNaN(parseFloat(latitude))) errors.push({ msg: 'Valid latitude is required', param: 'location[coordinates][latitude]' });
+    if (longitude === undefined || longitude === null || isNaN(parseFloat(longitude))) errors.push({ msg: 'Valid longitude is required', param: 'location[coordinates][longitude]' });
+
+    if (errors.length > 0) {
       return res.status(400).json({
         error: 'Validation failed',
-        details: errors.array()
+        details: errors
       });
     }
 
@@ -526,10 +542,10 @@ router.post('/', upload.array('images', 5), reportValidation, async (req, res) =
       status: 'pending',
       images,
       location: {
-        address: req.body.location.address,
+        address: address || 'No address provided',
         coordinates: {
-          latitude: parseFloat(req.body.location.coordinates.latitude),
-          longitude: parseFloat(req.body.location.coordinates.longitude)
+          latitude: parseFloat(latitude || 0),
+          longitude: parseFloat(longitude || 0)
         }
       }
     };
@@ -1154,7 +1170,7 @@ router.delete('/:id', auth, canDeleteReports, async (req, res) => {
 // @route   POST /api/reports/user
 // @desc    Create new report (for authenticated users)
 // @access  Private
-router.post('/user', require('../middleware/userAuth'), upload.array('images', 5), reportValidation, checkSpamBehavior, async (req, res) => {
+router.post('/user', require('../middleware/userAuth'), upload.array('images', 5), checkSpamBehavior, async (req, res) => {
   try {
     // Check if user account is frozen
     if (req.user.isFrozen === true) {
@@ -1174,13 +1190,29 @@ router.post('/user', require('../middleware/userAuth'), upload.array('images', 5
       });
     }
 
-    // Check validation errors
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
+    const errors = [];
+    const type = req.body.type;
+    const province = req.body.province;
+    const city = req.body.city;
+    const barangay = req.body.barangay;
+    
+    const address = req.body['location[address]'] || req.body.location?.address;
+    const latitude = req.body['location[coordinates][latitude]'] || req.body.location?.coordinates?.latitude;
+    const longitude = req.body['location[coordinates][longitude]'] || req.body.location?.coordinates?.longitude;
+
+    if (!type) errors.push({ msg: 'Type is required', param: 'type' });
+    if (!province) errors.push({ msg: 'Province is required', param: 'province' });
+    if (!city) errors.push({ msg: 'City is required', param: 'city' });
+    if (!barangay) errors.push({ msg: 'Barangay is required', param: 'barangay' });
+    if (!address) errors.push({ msg: 'Address must be provided', param: 'location[address]' });
+    if (latitude === undefined || latitude === null || isNaN(parseFloat(latitude))) errors.push({ msg: 'Valid latitude is required', param: 'location[coordinates][latitude]' });
+    if (longitude === undefined || longitude === null || isNaN(parseFloat(longitude))) errors.push({ msg: 'Valid longitude is required', param: 'location[coordinates][longitude]' });
+
+    if (errors.length > 0) {
       return res.status(400).json({
         success: false,
         error: 'Validation failed',
-        details: errors.array()
+        details: errors
       });
     }
 
