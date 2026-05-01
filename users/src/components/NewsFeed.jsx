@@ -106,9 +106,9 @@ const NewsFeed = ({ user, unreadNewsCount, onNewsViewed }) => {
         const reportsData = reportsResponse.data.data || [];
         const newsData = newsResponse.data.posts || [];
 
-        // Separate active (verified) and resolved reports
-        const activeReports = reportsData.filter(r => r.status === 'verified');
-        const resolvedReportsData = reportsData.filter(r => r.status === 'resolved');
+        // Separate active (verified) and resolved reports, excluding 'emergency' types from the news feed
+        const activeReports = reportsData.filter(r => r.status === 'verified' && r.type !== 'emergency');
+        const resolvedReportsData = reportsData.filter(r => r.status === 'resolved' && r.type !== 'emergency');
 
         console.log('📊 Reports loaded:', {
           total: reportsData.length,
