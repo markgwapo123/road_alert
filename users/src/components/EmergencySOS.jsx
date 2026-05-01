@@ -43,7 +43,13 @@ const EmergencySOS = () => {
             
             const address = data.address;
             const city = address.city || address.town || address.municipality || address.village || 'default';
-            const fullAddr = data.display_name || city;
+            let fullAddr = (data.display_name || city)
+              .replace(/purok\s+\d+/gi, '')
+              .replace(/purok\s+\w+/gi, '')
+              .replace(/purok\b/gi, '')
+              .replace(/,\s*,/g, ',')
+              .replace(/^\s*,\s*|\s*,\s*$/g, '')
+              .trim();
             console.log('📍 SOS detected raw location:', city);
             
             setLocation(city);

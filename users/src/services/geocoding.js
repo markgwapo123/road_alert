@@ -115,8 +115,14 @@ export const getReverseGeocode = async (latitude, longitude) => {
     const barangayRaw = barangayCandidates[0] || ''; // Primary candidate
     const barangay = normalizeBarangayName(barangayRaw);
 
-    // Full formatted address
-    const fullAddress = data.display_name || '';
+    // Full formatted address (removing Purok information if present)
+    let fullAddress = (data.display_name || '')
+      .replace(/purok\s+\d+/gi, '')
+      .replace(/purok\s+\w+/gi, '')
+      .replace(/purok\b/gi, '')
+      .replace(/,\s*,/g, ',')
+      .replace(/^\s*,\s*|\s*,\s*$/g, '')
+      .trim();
 
     console.log('🗺️ OpenStreetMap raw address:', JSON.stringify(address, null, 2));
     console.log('📍 Barangay candidates from fields:', barangayCandidates);
