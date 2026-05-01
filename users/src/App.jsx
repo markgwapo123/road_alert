@@ -58,6 +58,31 @@ function AppContent() {
   const [unreadNewsCount, setUnreadNewsCount] = useState(0);
   const [lastNewsId, setLastNewsId] = useState(localStorage.getItem('lastSeenNewsId'));
   const lastNewsIdRef = useRef(localStorage.getItem('lastSeenNewsId'));
+
+  // App Version Checking logic
+  const [showUpdatePrompt, setShowUpdatePrompt] = useState(false);
+  const [downloadUrl, setDownloadUrl] = useState('');
+
+  useEffect(() => {
+    const checkAppVersion = async () => {
+      try {
+        const res = await axios.get(`${config.API_BASE_URL}/settings/public`);
+        const { settings } = res.data;
+        const currentVersion = "1.0.1"; // Hardcoded inside this APK version
+        
+        if (settings && settings.app_version && settings.app_version !== currentVersion) {
+          setDownloadUrl(settings.apk_download_url || '');
+          setShowUpdatePrompt(true);
+        }
+      } catch (err) {
+        console.log('App version check failed:', err.message);
+      }
+    };
+
+    if (token) {
+      checkAppVersion();
+    }
+  }, [token]);
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [confirmationMessage, setConfirmationMessage] = useState('');
   const [confirmationType, setConfirmationType] = useState('success');
@@ -990,6 +1015,44 @@ function AppContent() {
       />
       {/* Floating Emergency SOS Button */}
       {token && <EmergencySOS />}
+
+      {/* App Update Prompt Modal */}
+      {showUpdatePrompt && (
+        <div className="modal-overlay" style={{ zIndex: 10000, position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(4px)' }}>
+          <div className="confirmation-modal" style={{ maxWidth: '400px', backgroundColor: 'white', padding: '24px', borderRadius: '16px', textAlign: 'center', boxShadow: '0 10px 25px rgba(0,0,0,0.2)' }}>
+            <div className="confirmation-icon" style={{ fontSize: '40px', marginBottom: '16px' }}>🚀</div>
+            <h3 style={{ margin: '10px 0', color: '#3b82f6', fontSize: '20px' }}>App Update Available</h3>
+            <p style={{ fontSize: '14px', color: '#6b7280', marginBottom: '24px' }}>
+              A new version of the app is available. Update now to access the latest features, improvements, and performance enhancements.
+            </p>
+            {downloadUrl ? (
+              <a 
+                href={downloadUrl} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                style={{ textDecoration: 'none' }}
+              >
+                <button 
+                  className="mvp-btn mvp-btn-block"
+                  style={{ width: '100%', backgroundColor: '#3b82f6', color: 'white', border: 'none', padding: '12px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', marginBottom: '10px' }}
+                >
+                  Download Now
+                </button>
+              </a>
+            ) : (
+              <p style={{ fontSize: '13px', color: '#ef4444', marginBottom: '12px' }}>
+                Please ask your administrator for the new APK file.
+              </p>
+            )}
+            <button 
+              onClick={() => setShowUpdatePrompt(false)}
+              style={{ width: '100%', backgroundColor: 'transparent', color: '#6b7280', border: '1px solid #e5e7eb', padding: '12px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}
+            >
+              Later
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -242,10 +242,11 @@ router.get('/public', async (req, res) => {
       min_password_length: 8,
       require_strong_passwords: true,
       two_factor_auth: false,
-      report_expiry_days: 30,
       notifications_enabled: true,
       email_notifications: true,
-      push_notifications: true
+      push_notifications: true,
+      app_version: '1.0.1',
+      apk_download_url: ''
     };
     
     // Merge defaults with database values (database takes priority)
