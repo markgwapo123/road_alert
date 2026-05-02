@@ -25,10 +25,10 @@ let personModel = null;
 // ============================================================================
 
 // Confidence thresholds - detections below these will NOT be blurred
-const FACE_CONFIDENCE_THRESHOLD = 0.80;  // High confidence - definitely a face
-const FACE_HIGH_CONFIDENCE = 0.90;       // High confidence - definitely a face
-const FACE_MIN_CONFIDENCE = 0.70;        // Absolute minimum for multi-scale
-const PERSON_CONFIDENCE_THRESHOLD = 0.80; // COCO-SSD person confidence
+const FACE_CONFIDENCE_THRESHOLD = 0.05;  // Extreme safe fail-safe override
+const FACE_HIGH_CONFIDENCE = 0.50;       // Moderate confidence for safety
+const FACE_MIN_CONFIDENCE = 0.01;        // Minimum for multi-scale
+const PERSON_CONFIDENCE_THRESHOLD = 0.10; // COCO-SSD person confidence
 const PLATE_CONFIDENCE_THRESHOLD = 0.15; // License plate detection - lowered for privacy safety
 const PLATE_BORDERLINE_THRESHOLD = 0.10; // Borderline plates - lowered to detect more plates
 
@@ -39,8 +39,8 @@ const MAX_FACE_SIZE = 500;  // Maximum face size in pixels
 const NMS_IOU_THRESHOLD = 0.3; // IoU threshold for NMS - tighter to reduce overlapping boxes
 
 // Face aspect ratio validation (width / height)
-const FACE_MIN_ASPECT_RATIO = 0.6;  // Face should not be too narrow
-const FACE_MAX_ASPECT_RATIO = 1.4;  // Face should not be too wide
+const FACE_MIN_ASPECT_RATIO = 0.4;  // Wider face support
+const FACE_MAX_ASPECT_RATIO = 1.8;  // Wider face support
 
 // License plate aspect ratio constraints (width / height)
 const PLATE_MIN_ASPECT_RATIO = 0.5;  // Minimum: plate must be wider than tall
@@ -668,12 +668,11 @@ export const blurPeople = (canvas, people) => {
       // COCO-SSD returns bbox as [x, y, width, height]
       const [x, y, width, height] = person.bbox;
 
-      // FULL HEAD REGION - top 25% of person for complete face coverage
-      // Human head is roughly 1/7 to 1/8 of body height, but we go larger to ensure full blur
-      const headHeight = height * 0.25;
-      const headWidth = Math.min(width * 0.70, headHeight * 1.2); // Head slightly wider for full coverage
+      // FULL HEAD REGION - top 35% of person for complete head, hair, ears, and neck coverage
+      const headHeight = height * 0.35;
+      const headWidth = Math.min(width * 0.90, headHeight * 1.3); // Head slightly wider for full coverage
       const headX = x + (width - headWidth) / 2; // Center horizontally
-      const headY = y; // Start from very top
+      const headY = Math.max(0, y - headHeight * 0.1); // Extend slightly upwards to fully cover hair
 
       console.log(`🔒 Blurring face region ${index + 1} (${(person.score * 100).toFixed(0)}% conf): ${Math.round(headWidth)}x${Math.round(headHeight)} at (${Math.round(headX)}, ${Math.round(headY)})`);
 
