@@ -832,11 +832,11 @@ const detectVehiclesStage1 = async (canvas) => {
           }
 
           // Safety bounds check for reasonable bounding boxes
-          if (w < 15 || h < 15 || w > origWidth * 0.85 || h > origHeight * 0.85) {
+          if (w < 2 || h < 2 || w > origWidth * 0.95 || h > origHeight * 0.95) {
             continue;
           }
 
-          if (faceScore > 0.28) {
+          if (faceScore > 0.15) {
             const x = cx - w / 2;
             const y = cy - h / 2;
             yoloFaces.push({
@@ -850,7 +850,7 @@ const detectVehiclesStage1 = async (canvas) => {
             });
           }
 
-          if (plateScore > 0.28) {
+          if (plateScore > 0.15) {
             const x = cx - w / 2;
             const y = cy - h / 2;
             yoloPlates.push({
@@ -1500,7 +1500,7 @@ export const applyAIPrivacyProtection = async (canvas, options = {}) => {
 
       if (lastYoloPlates && lastYoloPlates.length > 0) {
         console.log(`🚗 Combining ${lastYoloPlates.length} YOLOv8 detected plates...`);
-        allPlates = allPlates.concat(lastYoloPlates.filter(p => p.confidence >= plateConfidence));
+        allPlates = allPlates.concat(lastYoloPlates);
       }
 
       if (vehicles.length > 0) {
@@ -1511,9 +1511,6 @@ export const applyAIPrivacyProtection = async (canvas, options = {}) => {
       }
 
       // Fallback plate detection without vehicle is removed to prevent false positives on backgrounds.
-
-      // Filter by confidence threshold
-      allPlates = allPlates.filter(p => p.confidence >= plateConfidence);
 
       // Blur all detected plates
       if (allPlates.length > 0) {
