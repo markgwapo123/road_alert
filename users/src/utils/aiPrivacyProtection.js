@@ -1230,8 +1230,8 @@ export const blurVehiclePlates = (canvas, vehicles) => {
 export const applyAIPrivacyProtection = async (canvas, options = {}) => {
   try {
     const {
-      blurFaces = true,
-      blurPlates = true,
+      blurFaces: shouldBlurFaces = true,
+      blurPlates: shouldBlurPlates = true,
       faceConfidence = FACE_CONFIDENCE_THRESHOLD,
       plateConfidence = PLATE_CONFIDENCE_THRESHOLD
     } = options;
@@ -1254,7 +1254,7 @@ export const applyAIPrivacyProtection = async (canvas, options = {}) => {
     // ═══════════════════════════════════════════════════
     // FACE & PERSON DETECTION (INDEPENDENT - conditionally enabled)
     // ═══════════════════════════════════════════════════
-    if (blurFaces) {
+    if (shouldBlurFaces) {
       console.log('\n👤 DETECTING FACES & PEOPLE...');
       const [faces, people] = await Promise.all([
         detectFaces(canvas),
@@ -1284,7 +1284,7 @@ export const applyAIPrivacyProtection = async (canvas, options = {}) => {
     // ═══════════════════════════════════════════════════
     // LICENSE PLATE DETECTION (INDEPENDENT - conditionally enabled)
     // ═══════════════════════════════════════════════════
-    if (blurPlates) {
+    if (shouldBlurPlates) {
       console.log('\n🚗 LICENSE PLATE DETECTION...');
 
       // Collect all detected plates from multiple methods
@@ -1301,19 +1301,21 @@ export const applyAIPrivacyProtection = async (canvas, options = {}) => {
         console.log(`🔍 Found ${vehiclePlates.length} plate(s) in ${vehicles.length} vehicle region(s)`);
       }
 
-      // ALWAYS run fallback to catch plates that vehicle detection might miss
-      console.log('🔄 Running fallback plate detection (catches missed plates)...');
-      const fallbackPlates = detectPlatesFallback(canvas);
+      // If no vehicle plates detected, only then run fallback to avoid false positives (blur glitching)
+      if (allPlates.length === 0) {
+        console.log('🔄 Running fallback plate detection (catches missed plates)...');
+        const fallbackPlates = detectPlatesFallback(canvas);
 
-      // Merge fallback plates (avoid duplicates by checking overlap)
-      fallbackPlates.forEach(fp => {
-        const isDuplicate = allPlates.some(p =>
-          Math.abs(p.x - fp.x) < p.width * 0.5 && Math.abs(p.y - fp.y) < p.height * 0.5
-        );
-        if (!isDuplicate) {
-          allPlates.push(fp);
-        }
-      });
+        // Merge fallback plates (avoid duplicates by checking overlap)
+        fallbackPlates.forEach(fp => {
+          const isDuplicate = allPlates.some(p =>
+            Math.abs(p.x - fp.x) < p.width * 0.5 && Math.abs(p.y - fp.y) < p.height * 0.5
+          );
+          if (!isDuplicate) {
+            allPlates.push(fp);
+          }
+        });
+      }
 
       // Filter by confidence threshold
       allPlates = allPlates.filter(p => p.confidence >= plateConfidence);
