@@ -421,7 +421,7 @@ const Login = ({ onLogin, switchToRegister }) => {
                   <input
                     id="loginId"
                     type="text"
-                    placeholder="Email, Phone number, or Username"
+                    placeholder="Email or Phone number"
                     value={loginId}
                     onChange={e => setLoginId(e.target.value)}
                     autoComplete="off"
