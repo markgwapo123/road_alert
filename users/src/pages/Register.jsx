@@ -187,7 +187,7 @@ const Register = ({ onRegister, switchToLogin }) => {
           </h1>
         </div>
 
-        <form onSubmit={handleSubmit} className="auth-form" key={formKey}>
+        <form onSubmit={handleSubmit} className="auth-form register-form" key={formKey}>
           <div className="input-group">
             <div className="input-wrapper">
               <input

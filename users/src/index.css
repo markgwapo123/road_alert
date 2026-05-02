@@ -184,6 +184,20 @@ html {
   flex-direction: column;
 }
 
+.register-form .input-group {
+  margin-bottom: 0.5rem;
+}
+
+.register-form .input-wrapper input {
+  padding: 0.5rem 0.625rem;
+  font-size: 0.875rem;
+}
+
+.register-form .auth-button {
+  padding: 0.65rem;
+  font-size: 0.875rem;
+}
+
 .auth-title {
   font-size: 1.5rem;
   font-weight: 400;
