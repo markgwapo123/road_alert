@@ -311,36 +311,30 @@ const applyGaussianBlur = (context, x, y, width, height, blurRadius = 40) => {
     const tempCtx = tempCanvas.getContext('2d');
     tempCtx.drawImage(canvas, x, y, width, height, 0, 0, width, height);
 
-    // 2. Downscale into a tiny canvas to completely destroy and blend characters
+    // 2. Downscale into a tiny canvas to completely pixelate
+    const tinyW = Math.max(6, Math.floor(width / 15));
+    const tinyH = Math.max(6, Math.floor(height / 15));
     const tinyCanvas = document.createElement('canvas');
-    tinyCanvas.width = 12;
-    tinyCanvas.height = 6;
+    tinyCanvas.width = tinyW;
+    tinyCanvas.height = tinyH;
     const tinyCtx = tinyCanvas.getContext('2d');
-    tinyCtx.imageSmoothingEnabled = true;
-    tinyCtx.drawImage(tempCanvas, 0, 0, 12, 6);
+    tinyCtx.imageSmoothingEnabled = false;
+    tinyCtx.drawImage(tempCanvas, 0, 0, width, height, 0, 0, tinyW, tinyH);
 
-    // 3. Scale back up to original size with smoothing on to blend into a smooth block
-    const blurCanvas = document.createElement('canvas');
-    blurCanvas.width = width;
-    blurCanvas.height = height;
-    const blurCtx = blurCanvas.getContext('2d');
-    blurCtx.imageSmoothingEnabled = true;
-    blurCtx.drawImage(tinyCanvas, 0, 0, 12, 6, 0, 0, width, height);
-
-    // 4. Apply a native CSS blur filter to melt the blocks completely
-    const finalCanvas = document.createElement('canvas');
-    finalCanvas.width = width;
-    finalCanvas.height = height;
-    const finalCtx = finalCanvas.getContext('2d');
-    finalCtx.filter = `blur(${Math.max(6, Math.floor(Math.min(width, height) / 4))}px)`;
-    finalCtx.drawImage(blurCanvas, 0, 0);
+    // 3. Scale back up to original size with smoothing OFF to create crisp, solid pixelation blocks
+    const pixelCanvas = document.createElement('canvas');
+    pixelCanvas.width = width;
+    pixelCanvas.height = height;
+    const pixelCtx = pixelCanvas.getContext('2d');
+    pixelCtx.imageSmoothingEnabled = false;
+    pixelCtx.drawImage(tinyCanvas, 0, 0, tinyW, tinyH, 0, 0, width, height);
 
     // Draw directly back onto main canvas without clearing!
-    context.drawImage(finalCanvas, 0, 0, width, height, x, y, width, height);
+    context.drawImage(pixelCanvas, 0, 0, width, height, x, y, width, height);
 
-    console.log(`✅ Ultra-solid smooth Gaussian blur applied to ${width}x${height} region`);
+    console.log(`✅ Solid crisp pixelation applied to ${width}x${height} region`);
   } catch (error) {
-    console.error('Error applying blur:', error);
+    console.error('Error applying pixelation:', error);
   }
 };
 
