@@ -907,16 +907,16 @@ const detectPlatesInVehiclesStage2 = (canvas, vehicles) => {
           // 1. Must have dark pixels (text) - 5% to 50%
           if (darkRatio < 0.05 || darkRatio > 0.50) continue;
 
-          // 2. Plate area must be < 30% of vehicle area
+          // 2. Plate area must be < 55% of vehicle area
           const plateArea = testW * testH;
-          if (plateArea > vehicleArea * 0.30) continue;
+          if (plateArea > vehicleArea * 0.55) continue;
 
           // 3. Width must be > height (plates are wide rectangles)
           if (testW <= testH) continue;
 
           // 4. Position validation - plate should be in lower half of vehicle
           const relativeY = (y - vy) / vh;
-          if (relativeY < 0.35) continue; // Too high, not a plate
+          if (relativeY < 0.10) continue; // Relaxed to 10% for angled vehicles
 
           // Calculate confidence
           const positionBonus = (relativeY > 0.5 && relativeY < 0.9) ? 0.15 : 0;
@@ -1315,21 +1315,19 @@ export const applyAIPrivacyProtection = async (canvas, options = {}) => {
         console.log(`🔍 Found ${vehiclePlates.length} plate(s) in ${vehicles.length} vehicle region(s)`);
       }
 
-      // If no vehicle plates detected, only then run fallback to avoid false positives (blur glitching)
-      if (allPlates.length === 0) {
-        console.log('🔄 Running fallback plate detection (catches missed plates)...');
-        const fallbackPlates = detectPlatesFallback(canvas);
+      // ALWAYS run fallback plate detection (catches any missed plates)
+      console.log('🔄 Running fallback plate detection (catches missed plates)...');
+      const fallbackPlates = detectPlatesFallback(canvas);
 
-        // Merge fallback plates (avoid duplicates by checking overlap)
-        fallbackPlates.forEach(fp => {
-          const isDuplicate = allPlates.some(p =>
-            Math.abs(p.x - fp.x) < p.width * 0.5 && Math.abs(p.y - fp.y) < p.height * 0.5
-          );
-          if (!isDuplicate) {
-            allPlates.push(fp);
-          }
-        });
-      }
+      // Merge fallback plates (avoid duplicates by checking overlap)
+      fallbackPlates.forEach(fp => {
+        const isDuplicate = allPlates.some(p =>
+          Math.abs(p.x - fp.x) < p.width * 0.5 && Math.abs(p.y - fp.y) < p.height * 0.5
+        );
+        if (!isDuplicate) {
+          allPlates.push(fp);
+        }
+      });
 
       // Filter by confidence threshold
       allPlates = allPlates.filter(p => p.confidence >= plateConfidence);
