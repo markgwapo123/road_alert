@@ -22,10 +22,10 @@ let personModel = null;
 // ============================================================================
 
 // Confidence thresholds - detections below these will NOT be blurred
-const FACE_CONFIDENCE_THRESHOLD = 0.60;  // Lowered for distant faces
-const FACE_HIGH_CONFIDENCE = 0.85;       // High confidence - definitely a face
-const FACE_MIN_CONFIDENCE = 0.50;        // Absolute minimum for multi-scale
-const PERSON_CONFIDENCE_THRESHOLD = 0.5; // COCO-SSD person confidence
+const FACE_CONFIDENCE_THRESHOLD = 0.35;  // Lowered for distant faces
+const FACE_HIGH_CONFIDENCE = 0.70;       // High confidence - definitely a face
+const FACE_MIN_CONFIDENCE = 0.25;        // Absolute minimum for multi-scale
+const PERSON_CONFIDENCE_THRESHOLD = 0.35; // COCO-SSD person confidence
 const PLATE_CONFIDENCE_THRESHOLD = 0.15; // License plate detection - lowered for privacy safety
 const PLATE_BORDERLINE_THRESHOLD = 0.10; // Borderline plates - lowered to detect more plates
 
