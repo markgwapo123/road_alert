@@ -1050,10 +1050,22 @@ const blurPlatesAdaptive = (canvas, plates) => {
     // (grayscale + contrast stretch + sharpen — useful if plate image is extracted before blur)
     preprocessPlateRegion(context, blurX, blurY, blurW, blurH);
 
-    // Strong blur to ensure plate is completely unreadable
-    const blurStrength = Math.max(35, Math.min(55, width / 2));
+    // Apply exact blur strength based on detection confidence
+    const conf = plate.confidence;
+    let blurStrength = 25;
 
-    console.log(`🔒 FINAL BLUR: ${plate.plateType || 'unknown'} plate ${index + 1} (${(plate.confidence * 100).toFixed(0)}% conf): ${Math.round(blurW)}x${Math.round(blurH)} at (${Math.round(blurX)}, ${Math.round(blurY)})`);
+    if (conf >= 0.90) {
+      blurStrength = 100; // Strongest blur for high confidence
+    } else if (conf >= 0.40) {
+      blurStrength = 65;  // Moderate blur for medium confidence
+    } else if (conf >= 0.15) {
+      blurStrength = 25;  // Light blur for low confidence
+    } else {
+      console.log(`⚠️ Plate ${index + 1} skipped - confidence below 15%`);
+      return;
+    }
+
+    console.log(`🔒 FINAL BLUR: ${plate.plateType || 'unknown'} plate ${index + 1} (${(conf * 100).toFixed(0)}% conf, strength: ${blurStrength}): ${Math.round(blurW)}x${Math.round(blurH)} at (${Math.round(blurX)}, ${Math.round(blurY)})`);
     applyGaussianBlur(context, blurX, blurY, blurW, blurH, blurStrength);
   });
 };
