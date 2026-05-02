@@ -16,6 +16,8 @@ import * as cocoSsd from '@tensorflow-models/coco-ssd';
 import * as ort from 'onnxruntime-web';
 
 let yoloSession = null;
+let lastYoloFaces = [];
+let lastYoloPlates = [];
 
 let faceModel = null;
 let personModel = null;
@@ -755,85 +757,96 @@ const detectVehiclesStage1 = async (canvas) => {
         const scaleX = origWidth / 640;
         const scaleY = origHeight / 640;
 
-        const yoloVehicles = [];
-        const yoloVehicleClasses = [2, 3, 5, 7]; // car, motorcycle, bus, truck
-        const classNames = { 2: 'car', 3: 'motorcycle', 5: 'bus', 7: 'truck' };
+        const yoloFaces = [];
+        const yoloPlates = [];
 
         for (let i = 0; i < 8400; i++) {
-          let maxScore = 0;
-          let bestClass = -1;
+          const cx = output[0 * 8400 + i] * scaleX;
+          const cy = output[1 * 8400 + i] * scaleY;
+          const w = output[2 * 8400 + i] * scaleX;
+          const h = output[3 * 8400 + i] * scaleY;
 
-          for (const c of yoloVehicleClasses) {
-            const score = output[c * 8400 + i];
-            if (score > maxScore) {
-              maxScore = score;
-              bestClass = c;
-            }
-          }
+          const faceScore = output[4 * 8400 + i];
+          const plateScore = output[5 * 8400 + i];
 
-          if (maxScore > 0.45) {
-            const cx = output[0 * 8400 + i] * scaleX;
-            const cy = output[1 * 8400 + i] * scaleY;
-            const w = output[2 * 8400 + i] * scaleX;
-            const h = output[3 * 8400 + i] * scaleY;
-
+          if (faceScore > 0.35) {
             const x = cx - w / 2;
             const y = cy - h / 2;
+            yoloFaces.push({
+              topLeft: [Math.max(0, x), Math.max(0, y)],
+              bottomRight: [Math.min(origWidth, x + w), Math.min(origHeight, y + h)],
+              confidence: faceScore,
+              x: Math.max(0, x),
+              y: Math.max(0, y),
+              width: Math.min(origWidth - x, w),
+              height: Math.min(origHeight - y, h)
+            });
+          }
 
-            yoloVehicles.push({
-              class: classNames[bestClass],
-              score: maxScore,
-              bbox: [Math.max(0, x), Math.max(0, y), Math.min(origWidth - x, w), Math.min(origHeight - y, h)]
+          if (plateScore > 0.35) {
+            const x = cx - w / 2;
+            const y = cy - h / 2;
+            yoloPlates.push({
+              x: Math.max(0, x),
+              y: Math.max(0, y),
+              width: Math.min(origWidth - x, w),
+              height: Math.min(origHeight - y, h),
+              confidence: plateScore,
+              plateType: 'standard'
             });
           }
         }
 
         // Apply NMS to YOLO results
-        const keepYolo = [];
-        yoloVehicles.sort((a, b) => b.score - a.score);
-
-        for (const v of yoloVehicles) {
+        const keepYoloFaces = [];
+        yoloFaces.sort((a, b) => b.confidence - a.confidence);
+        for (const face of yoloFaces) {
           let overlap = false;
-          for (const kept of keepYolo) {
-            const iouVal = (box1, box2) => {
-              const xA = Math.max(box1[0], box2[0]);
-              const yA = Math.max(box1[1], box2[1]);
-              const xB = Math.min(box1[0] + box1[2], box2[0] + box2[2]);
-              const yB = Math.min(box1[1] + box1[3], box2[1] + box2[3]);
-              const interArea = Math.max(0, xB - xA) * Math.max(0, yB - yA);
-              const b1Area = box1[2] * box1[3];
-              const b2Area = box2[2] * box2[3];
-              return interArea / (b1Area + b2Area - interArea);
-            };
-            if (iouVal(v.bbox, kept.bbox) > 0.45) {
+          for (const kept of keepYoloFaces) {
+            const xA = Math.max(face.x, kept.x);
+            const yA = Math.max(face.y, kept.y);
+            const xB = Math.min(face.x + face.width, kept.x + kept.width);
+            const yB = Math.min(face.y + face.height, kept.y + kept.height);
+            const interArea = Math.max(0, xB - xA) * Math.max(0, yB - yA);
+            const b1Area = face.width * face.height;
+            const b2Area = kept.width * kept.height;
+            const iou = interArea / (b1Area + b2Area - interArea);
+            if (iou > 0.45) {
               overlap = true;
               break;
             }
           }
           if (!overlap) {
-            keepYolo.push(v);
+            keepYoloFaces.push(face);
           }
         }
 
-        console.log(`🤖 YOLOv8 found ${keepYolo.length} vehicles`);
-
-        // Combine COCO-SSD and YOLO results, avoiding duplicate bbox
-        keepYolo.forEach(yV => {
-          const isDuplicate = vehicles.some(v => {
-            const xA = Math.max(yV.bbox[0], v.bbox[0]);
-            const yA = Math.max(yV.bbox[1], v.bbox[1]);
-            const xB = Math.min(yV.bbox[0] + yV.bbox[2], v.bbox[0] + v.bbox[2]);
-            const yB = Math.min(yV.bbox[1] + yV.bbox[3], v.bbox[1] + v.bbox[3]);
+        const keepYoloPlates = [];
+        yoloPlates.sort((a, b) => b.confidence - a.confidence);
+        for (const plate of yoloPlates) {
+          let overlap = false;
+          for (const kept of keepYoloPlates) {
+            const xA = Math.max(plate.x, kept.x);
+            const yA = Math.max(plate.y, kept.y);
+            const xB = Math.min(plate.x + plate.width, kept.x + kept.width);
+            const yB = Math.min(plate.y + plate.height, kept.y + kept.height);
             const interArea = Math.max(0, xB - xA) * Math.max(0, yB - yA);
-            const b1Area = yV.bbox[2] * yV.bbox[3];
-            const b2Area = v.bbox[2] * v.bbox[3];
-            const overlapRatio = interArea / (b1Area + b2Area - interArea);
-            return overlapRatio > 0.40;
-          });
-          if (!isDuplicate) {
-            vehicles.push(yV);
+            const b1Area = plate.width * plate.height;
+            const b2Area = kept.width * kept.height;
+            const iou = interArea / (b1Area + b2Area - interArea);
+            if (iou > 0.45) {
+              overlap = true;
+              break;
+            }
           }
-        });
+          if (!overlap) {
+            keepYoloPlates.push(plate);
+          }
+        }
+
+        console.log(`🤖 YOLOv8 found ${keepYoloFaces.length} faces and ${keepYoloPlates.length} license plates`);
+        lastYoloFaces = keepYoloFaces;
+        lastYoloPlates = keepYoloPlates;
       }
     } catch (yoloErr) {
       console.warn('⚠️ YOLOv8 inference skipped or errored:', yoloErr);
@@ -1335,11 +1348,18 @@ export const applyAIPrivacyProtection = async (canvas, options = {}) => {
       await loadFaceDetectionModel();
     }
 
+    lastYoloFaces = [];
+    lastYoloPlates = [];
+
     let totalDetections = 0;
     let facesFound = [];
     let peopleFound = [];
     let platesDetected = 0;
     let vehiclesDetected = 0;
+
+    // Run custom YOLOv8 detection first so that results are available
+    const vehicles = await detectVehiclesStage1(canvas);
+    vehiclesDetected = vehicles.length;
 
     // ═══════════════════════════════════════════════════
     // FACE & PERSON DETECTION (INDEPENDENT - conditionally enabled)
@@ -1352,6 +1372,10 @@ export const applyAIPrivacyProtection = async (canvas, options = {}) => {
       ]);
 
       facesFound = faces.filter(f => f.confidence >= faceConfidence);
+      if (lastYoloFaces && lastYoloFaces.length > 0) {
+        console.log(`👤 Combining ${lastYoloFaces.length} YOLOv8 detected faces...`);
+        facesFound = facesFound.concat(lastYoloFaces.filter(f => f.confidence >= faceConfidence));
+      }
       peopleFound = people;
 
       // 1. Blur detected faces (BlazeFace - most accurate)
@@ -1394,9 +1418,10 @@ export const applyAIPrivacyProtection = async (canvas, options = {}) => {
       // Collect all detected plates from multiple methods
       let allPlates = [];
 
-      // STAGE 1: Detect vehicles to help locate plates
-      const vehicles = await detectVehiclesStage1(canvas);
-      vehiclesDetected = vehicles.length;
+      if (lastYoloPlates && lastYoloPlates.length > 0) {
+        console.log(`🚗 Combining ${lastYoloPlates.length} YOLOv8 detected plates...`);
+        allPlates = allPlates.concat(lastYoloPlates.filter(p => p.confidence >= plateConfidence));
+      }
 
       if (vehicles.length > 0) {
         // STAGE 2: Search for plates INSIDE detected vehicles
