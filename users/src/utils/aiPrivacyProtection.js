@@ -601,9 +601,9 @@ export const blurFaces = (canvas, faces) => {
       const centerX = x1 + faceWidth / 2;
       const centerY = y1 + faceHeight / 2;
 
-      // Expand to cover full head (2.5x wider, 3x taller)
-      const blurW = faceWidth * 2.5;
-      const blurH = faceHeight * 3.0;
+      // Expand to cover full head (1.5x wider, 1.6x taller)
+      const blurW = faceWidth * 1.5;
+      const blurH = faceHeight * 1.6;
 
       // Center the blur box exactly on the face center
       const blurX = centerX - blurW / 2;
@@ -622,6 +622,22 @@ export const blurFaces = (canvas, faces) => {
 
       if (finalW <= 0 || finalH <= 0) {
         console.log(`⚠️ Face ${index + 1} outside bounds - skipping`);
+        return;
+      }
+
+      // MANDATORY STRICTURES
+      const regionArea = finalW * finalH;
+      const totalArea = imgWidth * imgHeight;
+      if (finalW > imgWidth * 0.5) {
+        console.log(`❌ REJECTED in blurFaces: width too large (${finalW} > ${imgWidth * 0.5})`);
+        return;
+      }
+      if (finalH > imgHeight * 0.5) {
+        console.log(`❌ REJECTED in blurFaces: height too large (${finalH} > ${imgHeight * 0.5})`);
+        return;
+      }
+      if (regionArea > totalArea * 0.4) {
+        console.log(`❌ REJECTED in blurFaces: area too large (${regionArea} > ${totalArea * 0.4})`);
         return;
       }
 
@@ -657,6 +673,8 @@ export const blurPeople = (canvas, people) => {
   }
 
   const context = canvas.getContext('2d');
+  const imgWidth = canvas.width;
+  const imgHeight = canvas.height;
   let blurredCount = 0;
 
   people.forEach((person, index) => {
@@ -670,16 +688,39 @@ export const blurPeople = (canvas, people) => {
       // COCO-SSD returns bbox as [x, y, width, height]
       const [x, y, width, height] = person.bbox;
 
-      // FULL HEAD REGION - top 35% of person for complete head, hair, ears, and neck coverage
-      const headHeight = height * 0.35;
-      const headWidth = Math.min(width * 0.90, headHeight * 1.3); // Head slightly wider for full coverage
-      const headX = x + (width - headWidth) / 2; // Center horizontally
-      const headY = Math.max(0, y - headHeight * 0.1); // Extend slightly upwards to fully cover hair
+      // STRICT HEAD REGION CALCULATION AS PER SPEC
+      const headHeight = height * 0.25;
+      const headX1 = x + (width * 0.2);
+      const headX2 = (x + width) - (width * 0.2);
+      const headY1 = y;
+      const headY2 = y + headHeight;
 
-      console.log(`🔒 Blurring face region ${index + 1} (${(person.score * 100).toFixed(0)}% conf): ${Math.round(headWidth)}x${Math.round(headHeight)} at (${Math.round(headX)}, ${Math.round(headY)})`);
+      const headWidth = headX2 - headX1;
+
+      // MANDATORY VALIDATION CHECKS
+      const regionArea = headWidth * headHeight;
+      const totalArea = imgWidth * imgHeight;
+      if (headWidth > imgWidth * 0.5) {
+        console.log(`❌ REJECTED in blurPeople: width too large (${headWidth} > ${imgWidth * 0.5})`);
+        return;
+      }
+      if (headHeight > imgHeight * 0.5) {
+        console.log(`❌ REJECTED in blurPeople: height too large (${headHeight} > ${imgHeight * 0.5})`);
+        return;
+      }
+      if (regionArea > totalArea * 0.4) {
+        console.log(`❌ REJECTED in blurPeople: area too large (${regionArea} > ${totalArea * 0.4})`);
+        return;
+      }
+      if (headX1 < 0 || headY1 < 0 || headWidth <= 0 || headHeight <= 0) {
+        console.log(`❌ REJECTED in blurPeople: invalid coordinates`);
+        return;
+      }
+
+      console.log(`🔒 Blurring face region ${index + 1} (${(person.score * 100).toFixed(0)}% conf): ${Math.round(headWidth)}x${Math.round(headHeight)} at (${Math.round(headX1)}, ${Math.round(headY1)})`);
 
       // Apply blur to ONLY the face region - not body, not clothing
-      applyGaussianBlur(context, headX, headY, headWidth, headHeight, 35);
+      applyGaussianBlur(context, headX1, headY1, headWidth, headHeight, 35);
       blurredCount++;
 
     } catch (error) {
@@ -795,7 +836,7 @@ const detectVehiclesStage1 = async (canvas) => {
             continue;
           }
 
-          if (faceScore > 0.40) {
+          if (faceScore > 0.28) {
             const x = cx - w / 2;
             const y = cy - h / 2;
             yoloFaces.push({
@@ -809,7 +850,7 @@ const detectVehiclesStage1 = async (canvas) => {
             });
           }
 
-          if (plateScore > 0.40) {
+          if (plateScore > 0.28) {
             const x = cx - w / 2;
             const y = cy - h / 2;
             yoloPlates.push({
@@ -1166,6 +1207,19 @@ const blurPlatesAdaptive = (canvas, plates) => {
     // Final clamp to ensure blur stays within image
     if (blurX + blurW > imgWidth) blurW = imgWidth - blurX;
     if (blurY + blurH > imgHeight) blurH = imgHeight - blurY;
+
+    // STRICT VALIDATIONS
+    const regionArea = blurW * blurH;
+    const totalArea = imgWidth * imgHeight;
+
+    if (blurW > imgWidth * 0.6 || blurH > imgHeight * 0.6) {
+      console.log(`❌ REJECTED in blurPlatesAdaptive: width/height too large`);
+      return;
+    }
+    if (regionArea > totalArea * 0.4) {
+      console.log(`❌ REJECTED in blurPlatesAdaptive: area too large`);
+      return;
+    }
 
     // Apply exact blur strength based on detection confidence
     const conf = plate.confidence;
