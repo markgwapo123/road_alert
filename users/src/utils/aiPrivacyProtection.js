@@ -304,29 +304,41 @@ const applyGaussianBlur = (context, x, y, width, height, blurRadius = 40) => {
     height = Math.min(canvas.height - y, Math.ceil(height));
     if (width <= 0 || height <= 0) return;
 
-    // Create a temporary offscreen canvas of the exact target region
+    // 1. Create a temporary offscreen canvas of the exact target region
     const tempCanvas = document.createElement('canvas');
     tempCanvas.width = width;
     tempCanvas.height = height;
     const tempCtx = tempCanvas.getContext('2d');
-
-    // Draw the image region from main canvas into tempCanvas
     tempCtx.drawImage(canvas, x, y, width, height, 0, 0, width, height);
 
-    // Create a blur canvas
+    // 2. Downscale into a tiny canvas to completely destroy and blend characters
+    const tinyCanvas = document.createElement('canvas');
+    tinyCanvas.width = 12;
+    tinyCanvas.height = 6;
+    const tinyCtx = tinyCanvas.getContext('2d');
+    tinyCtx.imageSmoothingEnabled = true;
+    tinyCtx.drawImage(tempCanvas, 0, 0, 12, 6);
+
+    // 3. Scale back up to original size with smoothing on to blend into a smooth block
     const blurCanvas = document.createElement('canvas');
     blurCanvas.width = width;
     blurCanvas.height = height;
     const blurCtx = blurCanvas.getContext('2d');
+    blurCtx.imageSmoothingEnabled = true;
+    blurCtx.drawImage(tinyCanvas, 0, 0, 12, 6, 0, 0, width, height);
 
-    // Apply the Gaussian blur filter natively!
-    blurCtx.filter = `blur(${Math.max(4, blurRadius / 1.5)}px)`;
-    blurCtx.drawImage(tempCanvas, 0, 0);
+    // 4. Apply a native CSS blur filter to melt the blocks completely
+    const finalCanvas = document.createElement('canvas');
+    finalCanvas.width = width;
+    finalCanvas.height = height;
+    const finalCtx = finalCanvas.getContext('2d');
+    finalCtx.filter = `blur(${Math.max(6, Math.floor(Math.min(width, height) / 4))}px)`;
+    finalCtx.drawImage(blurCanvas, 0, 0);
 
-    // Draw directly back onto main canvas. NO clearing! This guarantees no black artifacts.
-    context.drawImage(blurCanvas, 0, 0, width, height, x, y, width, height);
+    // Draw directly back onto main canvas without clearing!
+    context.drawImage(finalCanvas, 0, 0, width, height, x, y, width, height);
 
-    console.log(`✅ Smooth Gaussian blur applied to ${width}x${height} region (no clearRect/no glitches)`);
+    console.log(`✅ Ultra-solid smooth Gaussian blur applied to ${width}x${height} region`);
   } catch (error) {
     console.error('Error applying blur:', error);
   }
