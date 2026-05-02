@@ -544,7 +544,7 @@ body {
 
   .auth-form {
     max-width: none;
-    gap: 10px;
+
   }
 
   .input-wrapper input {
@@ -648,7 +648,7 @@ body {
   }
 
   .auth-form {
-    gap: 8px;
+    gap: 3px;
   }
 
   .input-group {
@@ -2823,7 +2823,7 @@ main h1 {
 .auth-form {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 10px;
 }
 
 .input-group {
