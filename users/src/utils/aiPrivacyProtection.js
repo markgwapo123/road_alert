@@ -56,7 +56,7 @@ const validatePlateBoundingBox = (plate, vehicle, imgWidth, imgHeight) => {
 
   // 1. Check aspect ratio (width > height for plates)
   const aspectRatio = plate.width / plate.height;
-  if (vehicle && (aspectRatio < PLATE_MIN_ASPECT_RATIO || aspectRatio > PLATE_MAX_ASPECT_RATIO)) {
+  if (aspectRatio < PLATE_MIN_ASPECT_RATIO || aspectRatio > PLATE_MAX_ASPECT_RATIO) {
     validationResult.isValid = false;
     validationResult.rejectionReason = `Aspect ratio ${aspectRatio.toFixed(2)} invalid for vehicle-attached plate`;
     return validationResult;
@@ -1085,8 +1085,8 @@ const detectPlatesFallback = (canvas) => {
   const isLowLight = avgBrightness < 80;
   const isOverExposed = avgBrightness > 185;
 
-  const minColorRatio = isLowLight ? 0.12 : (isOverExposed ? 0.10 : 0.15);
-  const minDarkRatio = isLowLight ? 0.01 : 0.02;
+  const minColorRatio = isLowLight ? 0.16 : (isOverExposed ? 0.14 : 0.20);
+  const minDarkRatio = isLowLight ? 0.04 : 0.06;
 
   // Search entire image
   const searchStartY = 0;
@@ -1158,8 +1158,8 @@ const detectPlatesFallback = (canvas) => {
 
         if (!validation.isValid) continue; // Skip invalid boxes
 
-        // PRIVACY SAFETY: Include borderline plates that pass validation
-        if (confidence >= 0.25) {
+        // PRIVACY SAFETY: Include plates that pass validation with higher confidence
+        if (confidence >= 0.35) {
           const overlaps = candidates.some(c =>
             Math.abs(c.x - x) < testW * 0.4 && Math.abs(c.y - y) < testH * 0.4
           );
