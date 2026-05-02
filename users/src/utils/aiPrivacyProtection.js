@@ -25,15 +25,15 @@ let personModel = null;
 // ============================================================================
 
 // Confidence thresholds - detections below these will NOT be blurred
-const FACE_CONFIDENCE_THRESHOLD = 0.35;  // Lowered for distant faces
-const FACE_HIGH_CONFIDENCE = 0.70;       // High confidence - definitely a face
-const FACE_MIN_CONFIDENCE = 0.25;        // Absolute minimum for multi-scale
-const PERSON_CONFIDENCE_THRESHOLD = 0.35; // COCO-SSD person confidence
+const FACE_CONFIDENCE_THRESHOLD = 0.80;  // High confidence - definitely a face
+const FACE_HIGH_CONFIDENCE = 0.90;       // High confidence - definitely a face
+const FACE_MIN_CONFIDENCE = 0.70;        // Absolute minimum for multi-scale
+const PERSON_CONFIDENCE_THRESHOLD = 0.80; // COCO-SSD person confidence
 const PLATE_CONFIDENCE_THRESHOLD = 0.15; // License plate detection - lowered for privacy safety
 const PLATE_BORDERLINE_THRESHOLD = 0.10; // Borderline plates - lowered to detect more plates
 
 // Multi-scale detection settings
-const SCALE_FACTORS = [1.0, 1.5, 2.0, 2.5, 3.0]; // Upscale factors for distant faces
+const SCALE_FACTORS = [1.0]; // Fixed scale for precise inference without artifacts
 const MIN_FACE_SIZE = 15;   // Lowered minimum face size for distant faces
 const MAX_FACE_SIZE = 500;  // Maximum face size in pixels
 const NMS_IOU_THRESHOLD = 0.3; // IoU threshold for NMS - tighter to reduce overlapping boxes
