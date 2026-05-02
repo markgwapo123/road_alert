@@ -1271,11 +1271,25 @@ export const applyAIPrivacyProtection = async (canvas, options = {}) => {
         console.log(`✅ Blurred ${facesFound.length} face(s)`);
       }
 
-      // 2. Blur heads of people (when face not directly detected)
-      if (peopleFound.length > 0 && facesFound.length === 0) {
-        blurPeople(canvas, peopleFound);
-        totalDetections += peopleFound.length;
-        console.log(`✅ Blurred ${peopleFound.length} head(s)`);
+      // 2. Blur heads of people (when multiple humans are captured, force blurring all of them)
+      if (peopleFound.length > 0) {
+        const unblurredPeople = peopleFound.filter(p => {
+          const [px, py, pw, ph] = p.bbox;
+          const headX = Math.max(0, px);
+          const headY = Math.max(0, py - ph * 0.1);
+
+          const overlaps = facesFound.some(f => {
+            const [fx, fy] = f.topLeft;
+            return Math.abs(headX - fx) < (pw * 0.5) && Math.abs(headY - fy) < (ph * 0.5);
+          });
+          return !overlaps;
+        });
+
+        if (unblurredPeople.length > 0) {
+          blurPeople(canvas, unblurredPeople);
+          totalDetections += unblurredPeople.length;
+          console.log(`✅ Blurred ${unblurredPeople.length} additional head(s)`);
+        }
       }
     } else {
       console.log('\n👤 Face/Person detection disabled via options');
