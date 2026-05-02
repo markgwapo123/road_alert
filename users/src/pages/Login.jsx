@@ -198,8 +198,8 @@ const Login = ({ onLogin, switchToRegister }) => {
     const isPhone = /^(\+63|0)9\d{9}$/.test(trimmedId.replace(/[\s-]/g, ''));
     const isEmail = trimmedId.includes('@');
 
-    if (!isPhone && !isEmail) {
-      showError('Please enter a valid email address or phone number.');
+    if (!trimmedId) {
+      showError('Please enter your email, phone number, or username.');
       setLoading(false);
       return;
     }
@@ -208,8 +208,10 @@ const Login = ({ onLogin, switchToRegister }) => {
     const loginPayload = {};
     if (isPhone) {
       loginPayload.phoneNumber = trimmedId.replace(/[\s-]/g, '');
-    } else {
+    } else if (isEmail) {
       loginPayload.email = trimmedId;
+    } else {
+      loginPayload.username = trimmedId;
     }
     loginPayload.password = password;
     try {
@@ -419,7 +421,7 @@ const Login = ({ onLogin, switchToRegister }) => {
                   <input
                     id="loginId"
                     type="text"
-                    placeholder="Email or Phone number"
+                    placeholder="Email, Phone number, or Username"
                     value={loginId}
                     onChange={e => setLoginId(e.target.value)}
                     autoComplete="off"
