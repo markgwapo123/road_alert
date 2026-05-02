@@ -1143,9 +1143,9 @@ const blurPlatesAdaptive = (canvas, plates) => {
       return;
     }
 
-    // Rule: Exact, centered bounding box matching the plate with slight 5% padding
-    const padX = width * 0.05;
-    const padY = height * 0.05;
+    // Rule: Expand blur region by 10%-20% for stable coverage and avoid flickering/glitches
+    const padX = width * 0.15;
+    const padY = height * 0.15;
 
     const blurX = Math.max(0, x - padX);
     const blurY = Math.max(0, y - padY);
@@ -1155,10 +1155,6 @@ const blurPlatesAdaptive = (canvas, plates) => {
     // Final clamp to ensure blur stays within image
     if (blurX + blurW > imgWidth) blurW = imgWidth - blurX;
     if (blurY + blurH > imgHeight) blurH = imgHeight - blurY;
-
-    // Preprocess the plate region for better edge detection before any OCR
-    // (grayscale + contrast stretch + sharpen — useful if plate image is extracted before blur)
-    preprocessPlateRegion(context, blurX, blurY, blurW, blurH);
 
     // Apply exact blur strength based on detection confidence
     const conf = plate.confidence;
