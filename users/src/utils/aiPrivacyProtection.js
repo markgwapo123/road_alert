@@ -750,7 +750,9 @@ const detectVehiclesStage1 = async (canvas) => {
 
         const inputTensor = new ort.Tensor('float32', floatData, [1, 3, 640, 640]);
         const outputMap = await yoloSession.run({ images: inputTensor });
-        const output = outputMap[Object.keys(outputMap)[0]].data;
+        const outputTensor = outputMap[Object.keys(outputMap)[0]];
+        const output = outputTensor.data;
+        const dims = outputTensor.dims;
 
         const origWidth = canvas.width;
         const origHeight = canvas.height;
@@ -760,16 +762,40 @@ const detectVehiclesStage1 = async (canvas) => {
         const yoloFaces = [];
         const yoloPlates = [];
 
-        for (let i = 0; i < 8400; i++) {
-          const cx = output[0 * 8400 + i] * scaleX;
-          const cy = output[1 * 8400 + i] * scaleY;
-          const w = output[2 * 8400 + i] * scaleX;
-          const h = output[3 * 8400 + i] * scaleY;
+        // Check if output is in channel-first format [1, 6, 8400] or channel-last format [1, 8400, 6]
+        const isChannelFirst = dims[1] === 6 || dims[1] < dims[2];
+        const numBoxes = Math.max(dims[1], dims[2]);
+        const numClasses = Math.min(dims[1], dims[2]);
 
-          const faceScore = output[4 * 8400 + i];
-          const plateScore = output[5 * 8400 + i];
+        console.log(`🤖 YOLOv8 dims: [${dims.join(', ')}], isChannelFirst: ${isChannelFirst}, boxes: ${numBoxes}`);
 
-          if (faceScore > 0.35) {
+        for (let i = 0; i < numBoxes; i++) {
+          let cx, cy, w, h, faceScore, plateScore;
+
+          if (isChannelFirst) {
+            cx = output[0 * numBoxes + i] * scaleX;
+            cy = output[1 * numBoxes + i] * scaleY;
+            w = output[2 * numBoxes + i] * scaleX;
+            h = output[3 * numBoxes + i] * scaleY;
+
+            faceScore = output[4 * numBoxes + i];
+            plateScore = output[5 * numBoxes + i];
+          } else {
+            cx = output[i * numClasses + 0] * scaleX;
+            cy = output[i * numClasses + 1] * scaleY;
+            w = output[i * numClasses + 2] * scaleX;
+            h = output[i * numClasses + 3] * scaleY;
+
+            faceScore = output[i * numClasses + 4];
+            plateScore = output[i * numClasses + 5];
+          }
+
+          // Safety bounds check for reasonable bounding boxes
+          if (w < 15 || h < 15 || w > origWidth * 0.85 || h > origHeight * 0.85) {
+            continue;
+          }
+
+          if (faceScore > 0.40) {
             const x = cx - w / 2;
             const y = cy - h / 2;
             yoloFaces.push({
@@ -783,7 +809,7 @@ const detectVehiclesStage1 = async (canvas) => {
             });
           }
 
-          if (plateScore > 0.35) {
+          if (plateScore > 0.40) {
             const x = cx - w / 2;
             const y = cy - h / 2;
             yoloPlates.push({
