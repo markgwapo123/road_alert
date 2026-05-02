@@ -57,6 +57,11 @@ const validatePlateBoundingBox = (plate, vehicle, imgWidth, imgHeight) => {
     rejectionReason: null
   };
 
+  // FAIL-SAFE: HIGH CONFIDENCE BYPASS
+  if (plate.confidence >= 0.90) {
+    return validationResult;
+  }
+
   // 1. Check aspect ratio (width > height for plates)
   const aspectRatio = plate.width / plate.height;
   if (aspectRatio < PLATE_MIN_ASPECT_RATIO || aspectRatio > PLATE_MAX_ASPECT_RATIO) {
