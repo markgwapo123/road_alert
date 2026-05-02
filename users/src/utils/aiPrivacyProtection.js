@@ -304,62 +304,29 @@ const applyGaussianBlur = (context, x, y, width, height, blurRadius = 40) => {
     height = Math.min(canvas.height - y, Math.ceil(height));
     if (width <= 0 || height <= 0) return;
 
-    // ═══════════════════════════════════════════════════════════════
-    // TECHNIQUE: Pixelation + Native Canvas Blur (OpenCV equivalent)
-    // Step 1: Pixelate by downscale → upscale (guarantees unreadability)
-    // Step 2: Apply native CSS blur filter for smooth edges
-    // ═══════════════════════════════════════════════════════════════
+    // Create a temporary offscreen canvas of the exact target region
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = width;
+    tempCanvas.height = height;
+    const tempCtx = tempCanvas.getContext('2d');
 
-    // Create an offscreen canvas for the blur operation
-    const offCanvas = document.createElement('canvas');
-    offCanvas.width = width;
-    offCanvas.height = height;
-    const offCtx = offCanvas.getContext('2d');
+    // Draw the image region from main canvas into tempCanvas
+    tempCtx.drawImage(canvas, x, y, width, height, 0, 0, width, height);
 
-    // Copy the target region to offscreen canvas
-    offCtx.drawImage(canvas, x, y, width, height, 0, 0, width, height);
+    // Create a blur canvas
+    const blurCanvas = document.createElement('canvas');
+    blurCanvas.width = width;
+    blurCanvas.height = height;
+    const blurCtx = blurCanvas.getContext('2d');
 
-    // STEP 1: PIXELATION (downscale then upscale — makes details unreadable)
-    const pixelSize = Math.max(8, Math.floor(Math.min(width, height) / 6));
-    const smallW = Math.max(1, Math.floor(width / pixelSize));
-    const smallH = Math.max(1, Math.floor(height / pixelSize));
+    // Apply the Gaussian blur filter natively!
+    blurCtx.filter = `blur(${Math.max(4, blurRadius / 1.5)}px)`;
+    blurCtx.drawImage(tempCanvas, 0, 0);
 
-    // Create tiny canvas for pixelation
-    const tinyCanvas = document.createElement('canvas');
-    tinyCanvas.width = smallW;
-    tinyCanvas.height = smallH;
-    const tinyCtx = tinyCanvas.getContext('2d');
+    // Draw directly back onto main canvas. NO clearing! This guarantees no black artifacts.
+    context.drawImage(blurCanvas, 0, 0, width, height, x, y, width, height);
 
-    // Disable smoothing for crisp pixel blocks
-    tinyCtx.imageSmoothingEnabled = false;
-    tinyCtx.drawImage(offCanvas, 0, 0, smallW, smallH);
-
-    // Draw back at full size (pixelated)
-    offCtx.imageSmoothingEnabled = false;
-    offCtx.clearRect(0, 0, width, height);
-    offCtx.drawImage(tinyCanvas, 0, 0, width, height);
-
-    // STEP 2: NATIVE BLUR (Canvas filter API — GPU accelerated like OpenCV)
-    if (typeof offCtx.filter !== 'undefined') {
-      const blurCanvas = document.createElement('canvas');
-      blurCanvas.width = width;
-      blurCanvas.height = height;
-      const blurCtx = blurCanvas.getContext('2d');
-
-      // Apply CSS blur filter (equivalent to OpenCV GaussianBlur)
-      blurCtx.filter = `blur(${Math.max(3, blurRadius / 4)}px)`;
-      blurCtx.drawImage(offCanvas, 0, 0);
-
-      // Draw the blurred result back onto the main canvas
-      context.clearRect(x, y, width, height);
-      context.drawImage(blurCanvas, 0, 0, width, height, x, y, width, height);
-    } else {
-      // Fallback: just use pixelation (still effective)
-      context.clearRect(x, y, width, height);
-      context.drawImage(offCanvas, 0, 0, width, height, x, y, width, height);
-    }
-
-    console.log(`✅ Blur applied: ${width}x${height} region (pixelate+blur, radius=${blurRadius})`);
+    console.log(`✅ Smooth Gaussian blur applied to ${width}x${height} region (no clearRect/no glitches)`);
   } catch (error) {
     console.error('Error applying blur:', error);
   }
@@ -1433,19 +1400,7 @@ export const applyAIPrivacyProtection = async (canvas, options = {}) => {
         console.log(`🔍 Found ${vehiclePlates.length} plate(s) in ${vehicles.length} vehicle region(s)`);
       }
 
-      // ALWAYS run fallback plate detection (catches any missed plates)
-      console.log('🔄 Running fallback plate detection (catches missed plates)...');
-      const fallbackPlates = detectPlatesFallback(canvas);
-
-      // Merge fallback plates (avoid duplicates by checking overlap)
-      fallbackPlates.forEach(fp => {
-        const isDuplicate = allPlates.some(p =>
-          Math.abs(p.x - fp.x) < p.width * 0.5 && Math.abs(p.y - fp.y) < p.height * 0.5
-        );
-        if (!isDuplicate) {
-          allPlates.push(fp);
-        }
-      });
+      // Fallback plate detection without vehicle is removed to prevent false positives on backgrounds.
 
       // Filter by confidence threshold
       allPlates = allPlates.filter(p => p.confidence >= plateConfidence);
