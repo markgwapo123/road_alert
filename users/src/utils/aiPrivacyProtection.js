@@ -13,6 +13,9 @@
 import * as tf from '@tensorflow/tfjs';
 import * as blazeface from '@tensorflow-models/blazeface';
 import * as cocoSsd from '@tensorflow-models/coco-ssd';
+import * as ort from 'onnxruntime-web';
+
+let yoloSession = null;
 
 let faceModel = null;
 let personModel = null;
@@ -727,26 +730,136 @@ const detectVehiclesStage1 = async (canvas) => {
       await loadFaceDetectionModel();
     }
 
-    console.log('🚗 STAGE 1: Detecting vehicles...');
+    console.log('🚗 STAGE 1: Detecting vehicles with COCO-SSD and YOLOv8...');
 
-    // Run COCO-SSD detection
+    // 1. Run standard COCO-SSD detection
     const predictions = await personModel.detect(canvas, 20, 0.4);
-
-    // Filter for vehicles only with confidence > 0.5
     const vehicleClasses = ['car', 'truck', 'bus', 'motorcycle', 'bicycle'];
-    const vehicles = predictions.filter(pred =>
-      vehicleClasses.includes(pred.class) && pred.score > 0.5
+    let vehicles = predictions.filter(pred =>
+      vehicleClasses.includes(pred.class) && pred.score > 0.4
     );
 
-    // Also try with lower threshold if no vehicles found
-    if (vehicles.length === 0) {
-      const lowConfVehicles = predictions.filter(pred =>
-        vehicleClasses.includes(pred.class) && pred.score > 0.3
-      );
-      if (lowConfVehicles.length > 0) {
-        console.log(`🚙 Found ${lowConfVehicles.length} vehicle(s) with lower confidence`);
-        return lowConfVehicles;
+    // 2. Load and run YOLOv8 detection
+    try {
+      if (!yoloSession) {
+        console.log('🤖 Initializing YOLOv8 onnx session...');
+        try {
+          yoloSession = await ort.InferenceSession.create('/models/yolov8n.onnx');
+        } catch (e1) {
+          yoloSession = await ort.InferenceSession.create('./models/yolov8n.onnx');
+        }
       }
+
+      if (yoloSession) {
+        console.log('🤖 Running YOLOv8 advanced detection...');
+        const resizedCanvas = document.createElement('canvas');
+        resizedCanvas.width = 640;
+        resizedCanvas.height = 640;
+        const ctx = resizedCanvas.getContext('2d');
+        ctx.drawImage(canvas, 0, 0, 640, 640);
+
+        const imageData = ctx.getImageData(0, 0, 640, 640);
+        const data = imageData.data;
+
+        // Extract R, G, B channels, normalize to [0, 1] for CHW tensor [1, 3, 640, 640]
+        const floatData = new Float32Array(3 * 640 * 640);
+        for (let i = 0; i < 640 * 640; i++) {
+          floatData[i] = data[i * 4] / 255.0;
+          floatData[i + 640 * 640] = data[i * 4 + 1] / 255.0;
+          floatData[i + 2 * 640 * 640] = data[i * 4 + 2] / 255.0;
+        }
+
+        const inputTensor = new ort.Tensor('float32', floatData, [1, 3, 640, 640]);
+        const outputMap = await yoloSession.run({ images: inputTensor });
+        const output = outputMap[Object.keys(outputMap)[0]].data;
+
+        const origWidth = canvas.width;
+        const origHeight = canvas.height;
+        const scaleX = origWidth / 640;
+        const scaleY = origHeight / 640;
+
+        const yoloVehicles = [];
+        const yoloVehicleClasses = [2, 3, 5, 7]; // car, motorcycle, bus, truck
+        const classNames = { 2: 'car', 3: 'motorcycle', 5: 'bus', 7: 'truck' };
+
+        for (let i = 0; i < 8400; i++) {
+          let maxScore = 0;
+          let bestClass = -1;
+
+          for (const c of yoloVehicleClasses) {
+            const score = output[c * 8400 + i];
+            if (score > maxScore) {
+              maxScore = score;
+              bestClass = c;
+            }
+          }
+
+          if (maxScore > 0.45) {
+            const cx = output[0 * 8400 + i] * scaleX;
+            const cy = output[1 * 8400 + i] * scaleY;
+            const w = output[2 * 8400 + i] * scaleX;
+            const h = output[3 * 8400 + i] * scaleY;
+
+            const x = cx - w / 2;
+            const y = cy - h / 2;
+
+            yoloVehicles.push({
+              class: classNames[bestClass],
+              score: maxScore,
+              bbox: [Math.max(0, x), Math.max(0, y), Math.min(origWidth - x, w), Math.min(origHeight - y, h)]
+            });
+          }
+        }
+
+        // Apply NMS to YOLO results
+        const keepYolo = [];
+        yoloVehicles.sort((a, b) => b.score - a.score);
+
+        for (const v of yoloVehicles) {
+          let overlap = false;
+          for (const kept of keepYolo) {
+            const iouVal = (box1, box2) => {
+              const xA = Math.max(box1[0], box2[0]);
+              const yA = Math.max(box1[1], box2[1]);
+              const xB = Math.min(box1[0] + box1[2], box2[0] + box2[2]);
+              const yB = Math.min(box1[1] + box1[3], box2[1] + box2[3]);
+              const interArea = Math.max(0, xB - xA) * Math.max(0, yB - yA);
+              const b1Area = box1[2] * box1[3];
+              const b2Area = box2[2] * box2[3];
+              return interArea / (b1Area + b2Area - interArea);
+            };
+            if (iouVal(v.bbox, kept.bbox) > 0.45) {
+              overlap = true;
+              break;
+            }
+          }
+          if (!overlap) {
+            keepYolo.push(v);
+          }
+        }
+
+        console.log(`🤖 YOLOv8 found ${keepYolo.length} vehicles`);
+
+        // Combine COCO-SSD and YOLO results, avoiding duplicate bbox
+        keepYolo.forEach(yV => {
+          const isDuplicate = vehicles.some(v => {
+            const xA = Math.max(yV.bbox[0], v.bbox[0]);
+            const yA = Math.max(yV.bbox[1], v.bbox[1]);
+            const xB = Math.min(yV.bbox[0] + yV.bbox[2], v.bbox[0] + v.bbox[2]);
+            const yB = Math.min(yV.bbox[1] + yV.bbox[3], v.bbox[1] + v.bbox[3]);
+            const interArea = Math.max(0, xB - xA) * Math.max(0, yB - yA);
+            const b1Area = yV.bbox[2] * yV.bbox[3];
+            const b2Area = v.bbox[2] * v.bbox[3];
+            const overlapRatio = interArea / (b1Area + b2Area - interArea);
+            return overlapRatio > 0.40;
+          });
+          if (!isDuplicate) {
+            vehicles.push(yV);
+          }
+        });
+      }
+    } catch (yoloErr) {
+      console.warn('⚠️ YOLOv8 inference skipped or errored:', yoloErr);
     }
 
     console.log(`🚙 STAGE 1 Result: ${vehicles.length} vehicle(s) detected`);
