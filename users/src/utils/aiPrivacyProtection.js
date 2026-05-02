@@ -40,7 +40,7 @@ const FACE_MIN_ASPECT_RATIO = 0.6;  // Face should not be too narrow
 const FACE_MAX_ASPECT_RATIO = 1.4;  // Face should not be too wide
 
 // License plate aspect ratio constraints (width / height)
-const PLATE_MIN_ASPECT_RATIO = 1.1;  // Minimum: plate must be wider than tall
+const PLATE_MIN_ASPECT_RATIO = 0.5;  // Minimum: plate must be wider than tall
 const PLATE_MAX_ASPECT_RATIO = 6.5;  // Maximum: reject excessively wide boxes
 
 /**
@@ -101,14 +101,6 @@ const validatePlateBoundingBox = (plate, vehicle, imgWidth, imgHeight) => {
     if (y < vy) { height -= (vy - y); y = vy; }
     if (x + width > vehicleRight) { width = vehicleRight - x; }
     if (y + height > vehicleBottom) { height = vehicleBottom - y; }
-
-    // Validate plate is in lower portion of vehicle (not headlights/grille area)
-    const plateRelativeY = (y - vy) / vh;
-    if (plateRelativeY < 0.30) {
-      validationResult.isValid = false;
-      validationResult.rejectionReason = `Plate too high on vehicle (${(plateRelativeY * 100).toFixed(0)}% from top) - likely headlight/logo`;
-      return validationResult;
-    }
   }
 
   // Update corrected box
