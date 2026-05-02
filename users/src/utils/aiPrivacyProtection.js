@@ -26,8 +26,8 @@ const FACE_CONFIDENCE_THRESHOLD = 0.60;  // Lowered for distant faces
 const FACE_HIGH_CONFIDENCE = 0.85;       // High confidence - definitely a face
 const FACE_MIN_CONFIDENCE = 0.50;        // Absolute minimum for multi-scale
 const PERSON_CONFIDENCE_THRESHOLD = 0.5; // COCO-SSD person confidence
-const PLATE_CONFIDENCE_THRESHOLD = 0.25; // License plate detection - lowered for privacy safety
-const PLATE_BORDERLINE_THRESHOLD = 0.20; // Borderline plates - raised to reduce false positives
+const PLATE_CONFIDENCE_THRESHOLD = 0.15; // License plate detection - lowered for privacy safety
+const PLATE_BORDERLINE_THRESHOLD = 0.10; // Borderline plates - lowered to detect more plates
 
 // Multi-scale detection settings
 const SCALE_FACTORS = [1.0, 1.5, 2.0, 2.5, 3.0]; // Upscale factors for distant faces
@@ -1033,14 +1033,14 @@ const blurPlatesAdaptive = (canvas, plates) => {
       return;
     }
 
-    // WIDE bounding box - substantial padding upwards and horizontally
-    // Rule: Expand the blur box to ensure the whole plate is completely covered
-    const padX = width * 0.20;  // 20% horizontal padding
+    // Rule: Exact, centered bounding box matching the plate with slight 5% padding
+    const padX = width * 0.05;
+    const padY = height * 0.05;
 
     const blurX = Math.max(0, x - padX);
-    const blurY = Math.max(0, y - height * 0.55); // Lift blur 55% of height UP
+    const blurY = Math.max(0, y - padY);
     let blurW = width + padX * 2;
-    let blurH = height * 1.95; // Expand height to cover above and below detected region
+    let blurH = height + padY * 2;
 
     // Final clamp to ensure blur stays within image
     if (blurX + blurW > imgWidth) blurW = imgWidth - blurX;
@@ -1158,8 +1158,8 @@ const detectPlatesFallback = (canvas) => {
 
         if (!validation.isValid) continue; // Skip invalid boxes
 
-        // PRIVACY SAFETY: Include plates that pass validation with higher confidence
-        if (confidence >= 0.35) {
+        // PRIVACY SAFETY: Include plates that pass validation with inclusive confidence for privacy
+        if (confidence >= 0.15) {
           const overlaps = candidates.some(c =>
             Math.abs(c.x - x) < testW * 0.4 && Math.abs(c.y - y) < testH * 0.4
           );
