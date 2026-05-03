@@ -1544,8 +1544,8 @@ export const applyAIPrivacyProtection = async (canvas, options = {}) => {
               tier: 'STRONG'
             });
           }
-          // CLASS 1: PLATE — WEAK RECOVERY (0.10 <= conf < 0.35) → blur anyway
-          else if (plateScore >= 0.10) {
+          // CLASS 1: PLATE — WEAK RECOVERY (0.05 <= conf < 0.35) → blur anyway
+          else if (plateScore >= 0.05) {
             const x1 = cx - w / 2;
             const y1 = cy - h / 2;
             rawPlates.push({
@@ -1709,7 +1709,7 @@ export const applyAIPrivacyProtection = async (canvas, options = {}) => {
     if (shouldBlurPlates) {
       console.log('🔄 FALLBACK: Checking ALL vehicles for uncovered plates via COCO-SSD...');
       try {
-        const predictions = await personModel.detect(canvas, 20, 0.25);
+        const predictions = await personModel.detect(canvas, 20, 0.10);
         const vehicles = predictions.filter(p =>
           ['car', 'truck', 'bus', 'motorcycle'].includes(p.class)
         );
@@ -1733,7 +1733,7 @@ export const applyAIPrivacyProtection = async (canvas, options = {}) => {
               const p1H = isMoto ? vh * 0.12 : vh * 0.12;
               const p1X = vx + (vw - p1W) / 2;
               const p1Y = vy + vh * 0.60;
-              if (p1W > 5 && p1H > 3) {
+              if (p1W > 3 && p1H > 2) {
                 fallbackPlates.push({
                   x: Math.max(0, p1X), y: Math.max(0, p1Y),
                   width: p1W, height: p1H,
@@ -1747,10 +1747,10 @@ export const applyAIPrivacyProtection = async (canvas, options = {}) => {
               const p2H = isMoto ? vh * 0.12 : vh * 0.14;
               const p2X = vx + (vw - p2W) / 2;
               const p2Y = vy + vh * 0.82;
-              if (p2W > 5 && p2H > 3 && p2Y + p2H <= imgHeight) {
+              if (p2W > 3 && p2H > 2) {
                 fallbackPlates.push({
                   x: Math.max(0, p2X), y: Math.max(0, p2Y),
-                  width: p2W, height: p2H,
+                  width: Math.min(imgWidth - p2X, p2W), height: Math.min(imgHeight - p2Y, p2H),
                   confidence: 0.25, tier: 'VEHICLE_FALLBACK_BTM'
                 });
                 console.log(`🔧 FALLBACK BTM plate for ${vehicle.class}: ${Math.round(p2W)}x${Math.round(p2H)} at (${Math.round(p2X)}, ${Math.round(p2Y)})`);
