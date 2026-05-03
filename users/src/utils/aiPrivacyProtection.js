@@ -1544,26 +1544,19 @@ export const applyAIPrivacyProtection = async (canvas, options = {}) => {
               tier: 'STRONG'
             });
           }
-          // CLASS 1: PLATE — WEAK RECOVERY (0.20 <= conf < 0.35) → blur if plate-like shape
-          else if (plateScore >= 0.20) {
+          // CLASS 1: PLATE — WEAK RECOVERY (0.10 <= conf < 0.35) → blur anyway
+          else if (plateScore >= 0.10) {
             const x1 = cx - w / 2;
             const y1 = cy - h / 2;
-            const pw = Math.min(imgWidth - Math.max(0, x1), w);
-            const ph = Math.min(imgHeight - Math.max(0, y1), h);
-            const aspectRatio = pw / (ph + 1e-5);
-
-            // Only accept if plate-like shape (wider than tall)
-            if (aspectRatio > 1.5) {
-              rawPlates.push({
-                x: Math.max(0, x1),
-                y: Math.max(0, y1),
-                width: pw,
-                height: ph,
-                confidence: plateScore,
-                tier: 'WEAK_RECOVERY'
-              });
-              console.log(`🔄 WEAK plate recovery: conf ${(plateScore * 100).toFixed(0)}%, aspect ${aspectRatio.toFixed(1)} → ACCEPTED`);
-            }
+            rawPlates.push({
+              x: Math.max(0, x1),
+              y: Math.max(0, y1),
+              width: Math.min(imgWidth - Math.max(0, x1), w),
+              height: Math.min(imgHeight - Math.max(0, y1), h),
+              confidence: plateScore,
+              tier: 'WEAK_RECOVERY'
+            });
+            console.log(`🔄 WEAK plate recovery: conf ${(plateScore * 100).toFixed(0)}% → ACCEPTED (privacy > precision)`);
           }
         }
 
@@ -1710,31 +1703,44 @@ export const applyAIPrivacyProtection = async (canvas, options = {}) => {
     }
 
     // ═══════════════════════════════════════════════════
-    // STEP 4: VEHICLE FALLBACK — estimate plate if vehicle visible but no plate detected
+    // STEP 4: VEHICLE FALLBACK — ALWAYS estimate plate for vehicles without a nearby detected plate
     // ═══════════════════════════════════════════════════
     let fallbackPlates = [];
-    if (shouldBlurPlates && yoloPlates.length === 0) {
-      console.log('🔄 FALLBACK: No plates detected — checking for vehicles via COCO-SSD...');
+    if (shouldBlurPlates) {
+      console.log('🔄 FALLBACK: Checking ALL vehicles for uncovered plates via COCO-SSD...');
       try {
-        const predictions = await personModel.detect(canvas, 20, 0.3);
+        const predictions = await personModel.detect(canvas, 20, 0.25);
         const vehicles = predictions.filter(p =>
           ['car', 'truck', 'bus', 'motorcycle'].includes(p.class)
         );
         if (vehicles.length > 0) {
-          console.log(`🚗 FALLBACK: Found ${vehicles.length} vehicle(s) — estimating plate regions...`);
+          console.log(`🚗 FALLBACK: Found ${vehicles.length} vehicle(s)`);
           for (const vehicle of vehicles) {
             const [vx, vy, vw, vh] = vehicle.bbox;
-            const plateW = vw * 0.4;
-            const plateH = vh * 0.12;
-            const plateX = vx + (vw - plateW) / 2;
-            const plateY = vy + vh * 0.75;
-            if (plateW > 10 && plateH > 5) {
-              fallbackPlates.push({
-                x: Math.max(0, plateX), y: Math.max(0, plateY),
-                width: plateW, height: plateH,
-                confidence: 0.25, tier: 'VEHICLE_FALLBACK'
-              });
-              console.log(`🔧 FALLBACK plate for ${vehicle.class}: ${Math.round(plateW)}x${Math.round(plateH)} at (${Math.round(plateX)}, ${Math.round(plateY)})`);
+
+            // Check if any YOLOv8 plate already covers this vehicle region
+            const alreadyCovered = yoloPlates.some(p => {
+              const px = p.x + p.width / 2;
+              const py = p.y + p.height / 2;
+              return px >= vx && px <= vx + vw && py >= vy && py <= vy + vh;
+            });
+
+            if (!alreadyCovered) {
+              // Estimate plate at lower portion of vehicle (wider coverage)
+              const plateW = vw * 0.5;
+              const plateH = vh * 0.15;
+              const plateX = vx + (vw - plateW) / 2;
+              const plateY = vy + vh * 0.70;
+              if (plateW > 8 && plateH > 4) {
+                fallbackPlates.push({
+                  x: Math.max(0, plateX), y: Math.max(0, plateY),
+                  width: plateW, height: plateH,
+                  confidence: 0.25, tier: 'VEHICLE_FALLBACK'
+                });
+                console.log(`🔧 FALLBACK plate for ${vehicle.class} (${(vehicle.score*100).toFixed(0)}%): ${Math.round(plateW)}x${Math.round(plateH)} at (${Math.round(plateX)}, ${Math.round(plateY)})`);
+              }
+            } else {
+              console.log(`✅ Vehicle ${vehicle.class} already has a plate detected — skipping fallback`);
             }
           }
         }
