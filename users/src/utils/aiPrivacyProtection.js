@@ -1726,18 +1726,34 @@ export const applyAIPrivacyProtection = async (canvas, options = {}) => {
             });
 
             if (!alreadyCovered) {
-              // Estimate plate at lower portion of vehicle (wider coverage)
-              const plateW = vw * 0.5;
-              const plateH = vh * 0.15;
-              const plateX = vx + (vw - plateW) / 2;
-              const plateY = vy + vh * 0.70;
-              if (plateW > 8 && plateH > 4) {
+              const isMoto = vehicle.class === 'motorcycle';
+
+              // POSITION 1: Mid plate area (65% down — for grille-mounted plates)
+              const p1W = isMoto ? vw * 0.5 : vw * 0.5;
+              const p1H = isMoto ? vh * 0.12 : vh * 0.12;
+              const p1X = vx + (vw - p1W) / 2;
+              const p1Y = vy + vh * 0.60;
+              if (p1W > 5 && p1H > 3) {
                 fallbackPlates.push({
-                  x: Math.max(0, plateX), y: Math.max(0, plateY),
-                  width: plateW, height: plateH,
-                  confidence: 0.25, tier: 'VEHICLE_FALLBACK'
+                  x: Math.max(0, p1X), y: Math.max(0, p1Y),
+                  width: p1W, height: p1H,
+                  confidence: 0.25, tier: 'VEHICLE_FALLBACK_MID'
                 });
-                console.log(`🔧 FALLBACK plate for ${vehicle.class} (${(vehicle.score*100).toFixed(0)}%): ${Math.round(plateW)}x${Math.round(plateH)} at (${Math.round(plateX)}, ${Math.round(plateY)})`);
+                console.log(`🔧 FALLBACK MID plate for ${vehicle.class}: ${Math.round(p1W)}x${Math.round(p1H)} at (${Math.round(p1X)}, ${Math.round(p1Y)})`);
+              }
+
+              // POSITION 2: Bottom plate area (85% down — for bumper-mounted plates like PH green plates)
+              const p2W = isMoto ? vw * 0.45 : vw * 0.5;
+              const p2H = isMoto ? vh * 0.12 : vh * 0.14;
+              const p2X = vx + (vw - p2W) / 2;
+              const p2Y = vy + vh * 0.82;
+              if (p2W > 5 && p2H > 3 && p2Y + p2H <= imgHeight) {
+                fallbackPlates.push({
+                  x: Math.max(0, p2X), y: Math.max(0, p2Y),
+                  width: p2W, height: p2H,
+                  confidence: 0.25, tier: 'VEHICLE_FALLBACK_BTM'
+                });
+                console.log(`🔧 FALLBACK BTM plate for ${vehicle.class}: ${Math.round(p2W)}x${Math.round(p2H)} at (${Math.round(p2X)}, ${Math.round(p2Y)})`);
               }
             } else {
               console.log(`✅ Vehicle ${vehicle.class} already has a plate detected — skipping fallback`);
