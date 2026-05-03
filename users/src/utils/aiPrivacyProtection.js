@@ -1418,10 +1418,10 @@ export const applyAIPrivacyProtection = async (canvas, options = {}) => {
     } = options;
 
     console.log('═══════════════════════════════════════════════════');
-    console.log('🔒 AI PRIVACY PROTECTION - CLEAN PIPELINE');
+    console.log('🔒 AI PRIVACY PROTECTION - AGGRESSIVE PIPELINE');
     console.log('═══════════════════════════════════════════════════');
     console.log('🎯 RULES: Only blur HEAD (class 0) and PLATE (class 1)');
-    console.log('❌ NEVER blur entire image, full body, or vehicle body');
+    console.log('🔥 PLATE: ALWAYS blur if ANY plate indication exists');
 
     // Load BlazeFace + COCO-SSD models (backup)
     if (!faceModel || !personModel) {
@@ -1431,7 +1431,7 @@ export const applyAIPrivacyProtection = async (canvas, options = {}) => {
     const imgWidth = canvas.width;
     const imgHeight = canvas.height;
     const context = canvas.getContext('2d');
-    const PADDING = 10; // Expand blur box slightly for better coverage
+    const PADDING = 15; // Expand blur box for better coverage (plate stability)
 
     let totalHeadsBlurred = 0;
     let totalPlatesBlurred = 0;
@@ -1531,8 +1531,8 @@ export const applyAIPrivacyProtection = async (canvas, options = {}) => {
             });
           }
 
-          // CLASS 1: PLATE — confidence >= 0.15
-          if (plateScore >= 0.15) {
+          // CLASS 1: PLATE — STRONG DETECTION (>= 0.35) → blur immediately
+          if (plateScore >= 0.35) {
             const x1 = cx - w / 2;
             const y1 = cy - h / 2;
             rawPlates.push({
@@ -1540,8 +1540,30 @@ export const applyAIPrivacyProtection = async (canvas, options = {}) => {
               y: Math.max(0, y1),
               width: Math.min(imgWidth - Math.max(0, x1), w),
               height: Math.min(imgHeight - Math.max(0, y1), h),
-              confidence: plateScore
+              confidence: plateScore,
+              tier: 'STRONG'
             });
+          }
+          // CLASS 1: PLATE — WEAK RECOVERY (0.20 <= conf < 0.35) → blur if plate-like shape
+          else if (plateScore >= 0.20) {
+            const x1 = cx - w / 2;
+            const y1 = cy - h / 2;
+            const pw = Math.min(imgWidth - Math.max(0, x1), w);
+            const ph = Math.min(imgHeight - Math.max(0, y1), h);
+            const aspectRatio = pw / (ph + 1e-5);
+
+            // Only accept if plate-like shape (wider than tall)
+            if (aspectRatio > 1.5) {
+              rawPlates.push({
+                x: Math.max(0, x1),
+                y: Math.max(0, y1),
+                width: pw,
+                height: ph,
+                confidence: plateScore,
+                tier: 'WEAK_RECOVERY'
+              });
+              console.log(`🔄 WEAK plate recovery: conf ${(plateScore * 100).toFixed(0)}%, aspect ${aspectRatio.toFixed(1)} → ACCEPTED`);
+            }
           }
         }
 
@@ -1688,13 +1710,48 @@ export const applyAIPrivacyProtection = async (canvas, options = {}) => {
     }
 
     // ═══════════════════════════════════════════════════
-    // STEP 4: BLUR ALL DETECTED PLATES (YOLOv8 only)
-    // Only blur the exact plate bounding box + slight padding
+    // STEP 4: VEHICLE FALLBACK — estimate plate if vehicle visible but no plate detected
+    // ═══════════════════════════════════════════════════
+    let fallbackPlates = [];
+    if (shouldBlurPlates && yoloPlates.length === 0) {
+      console.log('🔄 FALLBACK: No plates detected — checking for vehicles via COCO-SSD...');
+      try {
+        const predictions = await personModel.detect(canvas, 20, 0.3);
+        const vehicles = predictions.filter(p =>
+          ['car', 'truck', 'bus', 'motorcycle'].includes(p.class)
+        );
+        if (vehicles.length > 0) {
+          console.log(`🚗 FALLBACK: Found ${vehicles.length} vehicle(s) — estimating plate regions...`);
+          for (const vehicle of vehicles) {
+            const [vx, vy, vw, vh] = vehicle.bbox;
+            const plateW = vw * 0.4;
+            const plateH = vh * 0.12;
+            const plateX = vx + (vw - plateW) / 2;
+            const plateY = vy + vh * 0.75;
+            if (plateW > 10 && plateH > 5) {
+              fallbackPlates.push({
+                x: Math.max(0, plateX), y: Math.max(0, plateY),
+                width: plateW, height: plateH,
+                confidence: 0.25, tier: 'VEHICLE_FALLBACK'
+              });
+              console.log(`🔧 FALLBACK plate for ${vehicle.class}: ${Math.round(plateW)}x${Math.round(plateH)} at (${Math.round(plateX)}, ${Math.round(plateY)})`);
+            }
+          }
+        }
+      } catch (fbErr) {
+        console.warn('⚠️ Vehicle fallback skipped:', fbErr.message);
+      }
+    }
+
+    // ═══════════════════════════════════════════════════
+    // STEP 5: BLUR ALL PLATES (strong + weak + fallback)
+    // PRIVACY > PRECISION: Always blur if any plate indication
     // ═══════════════════════════════════════════════════
     if (shouldBlurPlates) {
-      console.log('\n🚗 BLURRING PLATES...');
+      const finalPlates = [...yoloPlates, ...fallbackPlates];
+      console.log(`\n🚗 BLURRING PLATES (AGGRESSIVE): ${finalPlates.length} total...`);
 
-      for (const plate of yoloPlates) {
+      for (const plate of finalPlates) {
         const x1 = Math.max(0, Math.floor(plate.x - PADDING));
         const y1 = Math.max(0, Math.floor(plate.y - PADDING));
         const x2 = Math.min(imgWidth, Math.ceil(plate.x + plate.width + PADDING));
@@ -1702,14 +1759,14 @@ export const applyAIPrivacyProtection = async (canvas, options = {}) => {
         const bw = x2 - x1;
         const bh = y2 - y1;
 
-        // Safety: reject if region > 40% of image area
         if (bw * bh > imgWidth * imgHeight * 0.4) {
           console.log(`❌ REJECTED plate: area too large (${bw}x${bh})`);
           continue;
         }
         if (bw <= 0 || bh <= 0) continue;
 
-        console.log(`🔒 Blurring PLATE (${(plate.confidence * 100).toFixed(0)}% conf): ${bw}x${bh} at (${x1}, ${y1})`);
+        const tierLabel = plate.tier || 'STRONG';
+        console.log(`🔒 Blurring PLATE [${tierLabel}] (${(plate.confidence * 100).toFixed(0)}% conf): ${bw}x${bh} at (${x1}, ${y1})`);
         applyGaussianBlur(context, x1, y1, bw, bh, 50);
         totalPlatesBlurred++;
       }
