@@ -1401,11 +1401,11 @@ export const blurVehiclePlates = (canvas, vehicles) => {
 /**
  * Main function: Apply AI-powered privacy protection to the image
  * 
- * 2-STAGE DETECTION PIPELINE (HIGH ACCURACY):
- * 1. Face/Person Detection: BlazeFace + COCO-SSD
- * 2. Vehicle Detection → Plate Search INSIDE vehicle only
- * 
- * This approach increases plate detection accuracy by 30-50%
+ * CLEAN DETECTION LOGIC:
+ * - YOLOv8 Custom Model: Detects class 0 (head/face) and class 1 (plate)
+ * - BlazeFace: Backup face detection
+ * - ONLY blur the exact bounding box of detected heads and plates
+ * - NEVER blur entire image, full body, or vehicle body
  * 
  * @param {HTMLCanvasElement} canvas - Canvas containing the captured image
  * @returns {Promise<Object>} Detection results with counts
@@ -1415,134 +1415,325 @@ export const applyAIPrivacyProtection = async (canvas, options = {}) => {
     const {
       blurFaces: shouldBlurFaces = true,
       blurPlates: shouldBlurPlates = true,
-      faceConfidence = FACE_CONFIDENCE_THRESHOLD,
-      plateConfidence = PLATE_CONFIDENCE_THRESHOLD
     } = options;
 
     console.log('═══════════════════════════════════════════════════');
-    console.log('🔒 AI PRIVACY PROTECTION - 2-STAGE PIPELINE');
+    console.log('🔒 AI PRIVACY PROTECTION - CLEAN PIPELINE');
     console.log('═══════════════════════════════════════════════════');
+    console.log('🎯 RULES: Only blur HEAD (class 0) and PLATE (class 1)');
+    console.log('❌ NEVER blur entire image, full body, or vehicle body');
 
-    // Load models if not already loaded
+    // Load BlazeFace + COCO-SSD models (backup)
     if (!faceModel || !personModel) {
       await loadFaceDetectionModel();
     }
 
-    lastYoloFaces = [];
-    lastYoloPlates = [];
+    const imgWidth = canvas.width;
+    const imgHeight = canvas.height;
+    const context = canvas.getContext('2d');
+    const PADDING = 10; // Expand blur box slightly for better coverage
 
-    let totalDetections = 0;
-    let facesFound = [];
-    let peopleFound = [];
-    let platesDetected = 0;
-    let vehiclesDetected = 0;
-
-    // Run custom YOLOv8 detection first so that results are available
-    const vehicles = await detectVehiclesStage1(canvas);
-    vehiclesDetected = vehicles.length;
+    let totalHeadsBlurred = 0;
+    let totalPlatesBlurred = 0;
 
     // ═══════════════════════════════════════════════════
-    // FACE & PERSON DETECTION (INDEPENDENT - conditionally enabled)
+    // STEP 1: RUN YOLOv8 CUSTOM MODEL (PRIMARY DETECTOR)
+    // Classes: 0 = head/face, 1 = plate
     // ═══════════════════════════════════════════════════
-    if (shouldBlurFaces) {
-      console.log('\n👤 DETECTING FACES & PEOPLE...');
-      const [faces, people] = await Promise.all([
-        detectFaces(canvas),
-        detectPeople(canvas)
-      ]);
+    let yoloHeads = [];
+    let yoloPlates = [];
 
-      facesFound = faces.filter(f => f.confidence >= faceConfidence);
-      if (lastYoloFaces && lastYoloFaces.length > 0) {
-        console.log(`👤 Combining ${lastYoloFaces.length} YOLOv8 detected faces...`);
-        facesFound = facesFound.concat(lastYoloFaces.filter(f => f.confidence >= faceConfidence));
-      }
-      peopleFound = people;
-
-      // 1. Blur detected faces (BlazeFace - most accurate)
-      if (facesFound.length > 0) {
-        blurFaces(canvas, facesFound);
-        totalDetections += facesFound.length;
-        console.log(`✅ Blurred ${facesFound.length} face(s)`);
-      }
-
-      // 2. Blur heads of people (when multiple humans are captured, force blurring all of them)
-      if (peopleFound.length > 0) {
-        const unblurredPeople = peopleFound.filter(p => {
-          const [px, py, pw, ph] = p.bbox;
-          const headX = Math.max(0, px);
-          const headY = Math.max(0, py - ph * 0.1);
-
-          const overlaps = facesFound.some(f => {
-            const [fx, fy] = f.topLeft;
-            return Math.abs(headX - fx) < (pw * 0.5) && Math.abs(headY - fy) < (ph * 0.5);
-          });
-          return !overlaps;
-        });
-
-        if (unblurredPeople.length > 0) {
-          blurPeople(canvas, unblurredPeople);
-          totalDetections += unblurredPeople.length;
-          console.log(`✅ Blurred ${unblurredPeople.length} additional head(s)`);
+    try {
+      if (!yoloSession) {
+        console.log('🤖 Initializing YOLOv8 ONNX session...');
+        try {
+          yoloSession = await ort.InferenceSession.create('/models/yolov8n.onnx');
+        } catch (e1) {
+          yoloSession = await ort.InferenceSession.create('./models/yolov8n.onnx');
         }
       }
-    } else {
-      console.log('\n👤 Face/Person detection disabled via options');
+
+      if (yoloSession) {
+        console.log('🤖 Running YOLOv8 detection (head + plate)...');
+
+        // Preprocess: resize to 640x640 and normalize
+        const resizedCanvas = document.createElement('canvas');
+        resizedCanvas.width = 640;
+        resizedCanvas.height = 640;
+        const ctx = resizedCanvas.getContext('2d');
+        ctx.drawImage(canvas, 0, 0, 640, 640);
+
+        const imageData = ctx.getImageData(0, 0, 640, 640);
+        const data = imageData.data;
+        const floatData = new Float32Array(3 * 640 * 640);
+        for (let i = 0; i < 640 * 640; i++) {
+          floatData[i] = data[i * 4] / 255.0;
+          floatData[i + 640 * 640] = data[i * 4 + 1] / 255.0;
+          floatData[i + 2 * 640 * 640] = data[i * 4 + 2] / 255.0;
+        }
+
+        const inputTensor = new ort.Tensor('float32', floatData, [1, 3, 640, 640]);
+        const outputMap = await yoloSession.run({ images: inputTensor });
+        const outputTensor = outputMap[Object.keys(outputMap)[0]];
+        const output = outputTensor.data;
+        const dims = outputTensor.dims;
+
+        const scaleX = imgWidth / 640;
+        const scaleY = imgHeight / 640;
+
+        // Determine output format
+        const isChannelFirst = dims[1] === 6 || dims[1] < dims[2];
+        const numBoxes = Math.max(dims[1], dims[2]);
+        const numClasses = Math.min(dims[1], dims[2]);
+
+        console.log(`🤖 YOLOv8 dims: [${dims.join(', ')}], format: ${isChannelFirst ? 'channel-first' : 'channel-last'}, boxes: ${numBoxes}`);
+
+        // Parse all detections
+        const rawHeads = [];
+        const rawPlates = [];
+
+        for (let i = 0; i < numBoxes; i++) {
+          let cx, cy, w, h, headScore, plateScore;
+
+          if (isChannelFirst) {
+            cx = output[0 * numBoxes + i] * scaleX;
+            cy = output[1 * numBoxes + i] * scaleY;
+            w = output[2 * numBoxes + i] * scaleX;
+            h = output[3 * numBoxes + i] * scaleY;
+            headScore = output[4 * numBoxes + i];
+            plateScore = output[5 * numBoxes + i];
+          } else {
+            cx = output[i * numClasses + 0] * scaleX;
+            cy = output[i * numClasses + 1] * scaleY;
+            w = output[i * numClasses + 2] * scaleX;
+            h = output[i * numClasses + 3] * scaleY;
+            headScore = output[i * numClasses + 4];
+            plateScore = output[i * numClasses + 5];
+          }
+
+          // Reject invalid boxes
+          if (w < 2 || h < 2 || w > imgWidth * 0.95 || h > imgHeight * 0.95) {
+            continue;
+          }
+
+          // CLASS 0: HEAD — confidence >= 0.15
+          if (headScore >= 0.15) {
+            const x1 = cx - w / 2;
+            const y1 = cy - h / 2;
+            rawHeads.push({
+              x: Math.max(0, x1),
+              y: Math.max(0, y1),
+              width: Math.min(imgWidth - Math.max(0, x1), w),
+              height: Math.min(imgHeight - Math.max(0, y1), h),
+              confidence: headScore,
+              topLeft: [Math.max(0, x1), Math.max(0, y1)],
+              bottomRight: [Math.min(imgWidth, x1 + w), Math.min(imgHeight, y1 + h)]
+            });
+          }
+
+          // CLASS 1: PLATE — confidence >= 0.15
+          if (plateScore >= 0.15) {
+            const x1 = cx - w / 2;
+            const y1 = cy - h / 2;
+            rawPlates.push({
+              x: Math.max(0, x1),
+              y: Math.max(0, y1),
+              width: Math.min(imgWidth - Math.max(0, x1), w),
+              height: Math.min(imgHeight - Math.max(0, y1), h),
+              confidence: plateScore
+            });
+          }
+        }
+
+        // Apply NMS to heads
+        rawHeads.sort((a, b) => b.confidence - a.confidence);
+        for (const head of rawHeads) {
+          let overlap = false;
+          for (const kept of yoloHeads) {
+            const xA = Math.max(head.x, kept.x);
+            const yA = Math.max(head.y, kept.y);
+            const xB = Math.min(head.x + head.width, kept.x + kept.width);
+            const yB = Math.min(head.y + head.height, kept.y + kept.height);
+            const inter = Math.max(0, xB - xA) * Math.max(0, yB - yA);
+            const union = head.width * head.height + kept.width * kept.height - inter;
+            if (union > 0 && inter / union > 0.45) { overlap = true; break; }
+          }
+          if (!overlap) yoloHeads.push(head);
+        }
+
+        // Apply NMS to plates
+        rawPlates.sort((a, b) => b.confidence - a.confidence);
+        for (const plate of rawPlates) {
+          let overlap = false;
+          for (const kept of yoloPlates) {
+            const xA = Math.max(plate.x, kept.x);
+            const yA = Math.max(plate.y, kept.y);
+            const xB = Math.min(plate.x + plate.width, kept.x + kept.width);
+            const yB = Math.min(plate.y + plate.height, kept.y + kept.height);
+            const inter = Math.max(0, xB - xA) * Math.max(0, yB - yA);
+            const union = plate.width * plate.height + kept.width * kept.height - inter;
+            if (union > 0 && inter / union > 0.45) { overlap = true; break; }
+          }
+          if (!overlap) yoloPlates.push(plate);
+        }
+
+        console.log(`🤖 YOLOv8 Results: ${yoloHeads.length} head(s), ${yoloPlates.length} plate(s)`);
+      }
+    } catch (yoloErr) {
+      console.warn('⚠️ YOLOv8 inference skipped:', yoloErr.message);
     }
 
     // ═══════════════════════════════════════════════════
-    // LICENSE PLATE DETECTION (INDEPENDENT - conditionally enabled)
+    // STEP 2: BLAZEFACE BACKUP (for faces YOLOv8 may have missed)
+    // ═══════════════════════════════════════════════════
+    let blazeFaceDetections = [];
+    if (shouldBlurFaces) {
+      try {
+        const faces = await detectFaces(canvas);
+        // Only keep faces that don't overlap with existing YOLOv8 heads
+        for (const face of faces) {
+          const conf = face.confidence || face.probability?.[0] || face.probability || 0;
+          if (conf < 0.15) continue;
+
+          let alreadyCovered = false;
+          for (const yHead of yoloHeads) {
+            const xA = Math.max(face.x, yHead.x);
+            const yA = Math.max(face.y, yHead.y);
+            const xB = Math.min(face.x + face.width, yHead.x + yHead.width);
+            const yB = Math.min(face.y + face.height, yHead.y + yHead.height);
+            const inter = Math.max(0, xB - xA) * Math.max(0, yB - yA);
+            const faceArea = face.width * face.height;
+            if (faceArea > 0 && inter / faceArea > 0.3) {
+              alreadyCovered = true;
+              break;
+            }
+          }
+          if (!alreadyCovered) {
+            blazeFaceDetections.push(face);
+          }
+        }
+        console.log(`👤 BlazeFace backup: ${blazeFaceDetections.length} additional face(s)`);
+      } catch (bfErr) {
+        console.warn('⚠️ BlazeFace backup skipped:', bfErr.message);
+      }
+    }
+
+    // ═══════════════════════════════════════════════════
+    // STEP 3: BLUR ALL DETECTED HEADS (YOLOv8 + BlazeFace)
+    // Only blur the exact bounding box + slight padding
+    // ═══════════════════════════════════════════════════
+    if (shouldBlurFaces) {
+      console.log('\n👤 BLURRING HEADS...');
+
+      // 3a. Blur YOLOv8 heads
+      for (const head of yoloHeads) {
+        const x1 = Math.max(0, Math.floor(head.x - PADDING));
+        const y1 = Math.max(0, Math.floor(head.y - PADDING));
+        const x2 = Math.min(imgWidth, Math.ceil(head.x + head.width + PADDING));
+        const y2 = Math.min(imgHeight, Math.ceil(head.y + head.height + PADDING));
+        const bw = x2 - x1;
+        const bh = y2 - y1;
+
+        // Safety: reject if region > 40% of image area
+        if (bw * bh > imgWidth * imgHeight * 0.4) {
+          console.log(`❌ REJECTED head: area too large (${bw}x${bh})`);
+          continue;
+        }
+        if (bw <= 0 || bh <= 0) continue;
+
+        console.log(`🔒 Blurring HEAD (${(head.confidence * 100).toFixed(0)}% conf): ${bw}x${bh} at (${x1}, ${y1})`);
+        applyGaussianBlur(context, x1, y1, bw, bh, 35);
+        totalHeadsBlurred++;
+      }
+
+      // 3b. Blur BlazeFace backup detections
+      for (const face of blazeFaceDetections) {
+        let fx, fy, fw, fh;
+        if (face.topLeft && face.bottomRight) {
+          [fx, fy] = face.topLeft;
+          const [bx, by] = face.bottomRight;
+          fw = bx - fx;
+          fh = by - fy;
+        } else {
+          fx = face.x; fy = face.y; fw = face.width; fh = face.height;
+        }
+
+        // Expand slightly (1.5x) to cover full head from face box
+        const centerX = fx + fw / 2;
+        const centerY = fy + fh / 2;
+        const blurW = fw * 1.5;
+        const blurH = fh * 1.6;
+
+        const x1 = Math.max(0, Math.floor(centerX - blurW / 2));
+        const y1 = Math.max(0, Math.floor(centerY - blurH / 2));
+        const x2 = Math.min(imgWidth, Math.ceil(centerX + blurW / 2));
+        const y2 = Math.min(imgHeight, Math.ceil(centerY + blurH / 2));
+        const bw = x2 - x1;
+        const bh = y2 - y1;
+
+        // Safety: reject if region > 40% of image area
+        if (bw * bh > imgWidth * imgHeight * 0.4) {
+          console.log(`❌ REJECTED BlazeFace head: area too large`);
+          continue;
+        }
+        if (bw <= 0 || bh <= 0) continue;
+
+        const conf = face.confidence || face.probability?.[0] || 0;
+        console.log(`🔒 Blurring HEAD [BlazeFace] (${(conf * 100).toFixed(0)}% conf): ${bw}x${bh} at (${x1}, ${y1})`);
+        applyGaussianBlur(context, x1, y1, bw, bh, 35);
+        totalHeadsBlurred++;
+      }
+
+      console.log(`✅ Total heads blurred: ${totalHeadsBlurred}`);
+    }
+
+    // ═══════════════════════════════════════════════════
+    // STEP 4: BLUR ALL DETECTED PLATES (YOLOv8 only)
+    // Only blur the exact plate bounding box + slight padding
     // ═══════════════════════════════════════════════════
     if (shouldBlurPlates) {
-      console.log('\n🚗 LICENSE PLATE DETECTION...');
+      console.log('\n🚗 BLURRING PLATES...');
 
-      // Collect all detected plates from multiple methods
-      let allPlates = [];
+      for (const plate of yoloPlates) {
+        const x1 = Math.max(0, Math.floor(plate.x - PADDING));
+        const y1 = Math.max(0, Math.floor(plate.y - PADDING));
+        const x2 = Math.min(imgWidth, Math.ceil(plate.x + plate.width + PADDING));
+        const y2 = Math.min(imgHeight, Math.ceil(plate.y + plate.height + PADDING));
+        const bw = x2 - x1;
+        const bh = y2 - y1;
 
-      if (lastYoloPlates && lastYoloPlates.length > 0) {
-        console.log(`🚗 Combining ${lastYoloPlates.length} YOLOv8 detected plates...`);
-        allPlates = allPlates.concat(lastYoloPlates);
+        // Safety: reject if region > 40% of image area
+        if (bw * bh > imgWidth * imgHeight * 0.4) {
+          console.log(`❌ REJECTED plate: area too large (${bw}x${bh})`);
+          continue;
+        }
+        if (bw <= 0 || bh <= 0) continue;
+
+        console.log(`🔒 Blurring PLATE (${(plate.confidence * 100).toFixed(0)}% conf): ${bw}x${bh} at (${x1}, ${y1})`);
+        applyGaussianBlur(context, x1, y1, bw, bh, 50);
+        totalPlatesBlurred++;
       }
 
-      if (vehicles.length > 0) {
-        // STAGE 2: Search for plates INSIDE detected vehicles
-        const vehiclePlates = detectPlatesInVehiclesStage2(canvas, vehicles);
-        allPlates = allPlates.concat(vehiclePlates);
-        console.log(`🔍 Found ${vehiclePlates.length} plate(s) in ${vehicles.length} vehicle region(s)`);
-      }
-
-      // Fallback plate detection without vehicle is removed to prevent false positives on backgrounds.
-
-      // Blur all detected plates
-      if (allPlates.length > 0) {
-        blurPlatesAdaptive(canvas, allPlates);
-        platesDetected = allPlates.length;
-        totalDetections += allPlates.length;
-        console.log(`✅ Blurred ${allPlates.length} license plate(s) total`);
-      } else {
-        console.log('ℹ️ No license plates detected in image');
-      }
-    } else {
-      console.log('\n🚗 Plate detection disabled via options');
+      console.log(`✅ Total plates blurred: ${totalPlatesBlurred}`);
     }
 
     // ═══════════════════════════════════════════════════
-    // SUMMARY & LOGS FOR ANALYTICS
+    // SUMMARY
     // ═══════════════════════════════════════════════════
+    const totalBlurred = totalHeadsBlurred + totalPlatesBlurred;
     console.log('\n═══════════════════════════════════════════════════');
     console.log('📊 DETECTION SUMMARY:');
-    console.log(`   Faces: ${facesFound.length}`);
-    console.log(`   People: ${peopleFound.length}`);
-    console.log(`   Vehicles: ${vehiclesDetected}`);
-    console.log(`   Plates: ${platesDetected}`);
-    console.log(`   Total Blurred: ${totalDetections}`);
+    console.log(`   Heads blurred: ${totalHeadsBlurred}`);
+    console.log(`   Plates blurred: ${totalPlatesBlurred}`);
+    console.log(`   Total blurred: ${totalBlurred}`);
     console.log('═══════════════════════════════════════════════════\n');
 
     return {
-      facesDetected: facesFound.length,
-      peopleDetected: peopleFound.length,
-      vehiclesDetected: vehiclesDetected,
-      platesDetected: platesDetected,
-      totalBlurred: totalDetections
+      facesDetected: totalHeadsBlurred,
+      peopleDetected: 0,
+      vehiclesDetected: 0,
+      platesDetected: totalPlatesBlurred,
+      totalBlurred: totalBlurred
     };
 
   } catch (error) {
