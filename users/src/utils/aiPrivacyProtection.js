@@ -1711,52 +1711,54 @@ export const applyAIPrivacyProtection = async (canvas, options = {}) => {
       try {
         const predictions = await personModel.detect(canvas, 20, 0.10);
         const vehicles = predictions.filter(p =>
-          ['car', 'truck', 'bus', 'motorcycle'].includes(p.class)
+          ['car', 'truck', 'bus', 'motorcycle', 'bicycle'].includes(p.class)
         );
         if (vehicles.length > 0) {
           console.log(`🚗 FALLBACK: Found ${vehicles.length} vehicle(s)`);
           for (const vehicle of vehicles) {
             const [vx, vy, vw, vh] = vehicle.bbox;
+            const isMoto = vehicle.class === 'motorcycle' || vehicle.class === 'bicycle';
 
-            // Check if any YOLOv8 plate already covers this vehicle region
-            const alreadyCovered = yoloPlates.some(p => {
-              const px = p.x + p.width / 2;
-              const py = p.y + p.height / 2;
-              return px >= vx && px <= vx + vw && py >= vy && py <= vy + vh;
-            });
+            // POSITION 1: Mid plate area (60% down — for grille-mounted plates)
+            const p1W = isMoto ? vw * 0.55 : vw * 0.5;
+            const p1H = isMoto ? vh * 0.14 : vh * 0.12;
+            const p1X = vx + (vw - p1W) / 2;
+            const p1Y = vy + vh * 0.55;
+            if (p1W > 3 && p1H > 2) {
+              fallbackPlates.push({
+                x: Math.max(0, p1X), y: Math.max(0, p1Y),
+                width: p1W, height: p1H,
+                confidence: 0.25, tier: 'VEHICLE_FALLBACK_MID'
+              });
+              console.log(`🔧 FALLBACK MID plate for ${vehicle.class}: ${Math.round(p1W)}x${Math.round(p1H)} at (${Math.round(p1X)}, ${Math.round(p1Y)})`);
+            }
 
-            if (!alreadyCovered) {
-              const isMoto = vehicle.class === 'motorcycle';
+            // POSITION 2: Bottom plate area (80% down — for bumper-mounted plates)
+            const p2W = isMoto ? vw * 0.5 : vw * 0.55;
+            const p2H = isMoto ? vh * 0.14 : vh * 0.15;
+            const p2X = vx + (vw - p2W) / 2;
+            const p2Y = vy + vh * 0.78;
+            if (p2W > 3 && p2H > 2) {
+              fallbackPlates.push({
+                x: Math.max(0, p2X), y: Math.max(0, p2Y),
+                width: Math.min(imgWidth - p2X, p2W), height: Math.min(imgHeight - p2Y, p2H),
+                confidence: 0.25, tier: 'VEHICLE_FALLBACK_BTM'
+              });
+              console.log(`🔧 FALLBACK BTM plate for ${vehicle.class}: ${Math.round(p2W)}x${Math.round(p2H)} at (${Math.round(p2X)}, ${Math.round(p2Y)})`);
+            }
 
-              // POSITION 1: Mid plate area (65% down — for grille-mounted plates)
-              const p1W = isMoto ? vw * 0.5 : vw * 0.5;
-              const p1H = isMoto ? vh * 0.12 : vh * 0.12;
-              const p1X = vx + (vw - p1W) / 2;
-              const p1Y = vy + vh * 0.60;
-              if (p1W > 3 && p1H > 2) {
-                fallbackPlates.push({
-                  x: Math.max(0, p1X), y: Math.max(0, p1Y),
-                  width: p1W, height: p1H,
-                  confidence: 0.25, tier: 'VEHICLE_FALLBACK_MID'
-                });
-                console.log(`🔧 FALLBACK MID plate for ${vehicle.class}: ${Math.round(p1W)}x${Math.round(p1H)} at (${Math.round(p1X)}, ${Math.round(p1Y)})`);
-              }
-
-              // POSITION 2: Bottom plate area (85% down — for bumper-mounted plates like PH green plates)
-              const p2W = isMoto ? vw * 0.45 : vw * 0.5;
-              const p2H = isMoto ? vh * 0.12 : vh * 0.14;
-              const p2X = vx + (vw - p2W) / 2;
-              const p2Y = vy + vh * 0.82;
-              if (p2W > 3 && p2H > 2) {
-                fallbackPlates.push({
-                  x: Math.max(0, p2X), y: Math.max(0, p2Y),
-                  width: Math.min(imgWidth - p2X, p2W), height: Math.min(imgHeight - p2Y, p2H),
-                  confidence: 0.25, tier: 'VEHICLE_FALLBACK_BTM'
-                });
-                console.log(`🔧 FALLBACK BTM plate for ${vehicle.class}: ${Math.round(p2W)}x${Math.round(p2H)} at (${Math.round(p2X)}, ${Math.round(p2Y)})`);
-              }
-            } else {
-              console.log(`✅ Vehicle ${vehicle.class} already has a plate detected — skipping fallback`);
+            // POSITION 3: Lowest plate area (90% down — for motorcycle/tricycle rear fender plates)
+            const p3W = isMoto ? vw * 0.45 : vw * 0.5;
+            const p3H = isMoto ? vh * 0.14 : vh * 0.14;
+            const p3X = vx + (vw - p3W) / 2;
+            const p3Y = vy + vh * 0.88;
+            if (p3W > 3 && p3H > 2) {
+              fallbackPlates.push({
+                x: Math.max(0, p3X), y: Math.max(0, p3Y),
+                width: Math.min(imgWidth - p3X, p3W), height: Math.min(imgHeight - p3Y, p3H),
+                confidence: 0.25, tier: 'VEHICLE_FALLBACK_LOWEST'
+              });
+              console.log(`🔧 FALLBACK LOWEST plate for ${vehicle.class}: ${Math.round(p3W)}x${Math.round(p3H)} at (${Math.round(p3X)}, ${Math.round(p3Y)})`);
             }
           }
         }
