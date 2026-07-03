@@ -94,7 +94,7 @@ const ReportsPDF = () => {
       <div className="no-print mb-6">
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">BantayDalan - Print Reports</h1>
+            <h1 className="text-2xl font-bold text-gray-900">DalanPh - Print Reports</h1>
             <p className="text-sm text-gray-600">Filter hazard reports and print them as a clean table.</p>
           </div>
           <button
@@ -185,7 +185,7 @@ const ReportsPDF = () => {
           <div className="bg-white rounded-lg shadow overflow-hidden border border-gray-200">
             {/* Display on printed page */}
             <div className="hidden print:block p-4 border-b">
-              <h2 className="text-xl font-bold text-center">BantayDalan Hazard Reports Report</h2>
+              <h2 className="text-xl font-bold text-center">DalanPh Hazard Reports Report</h2>
               <p className="text-xs text-center text-gray-600 mt-1">Generated on {new Date().toLocaleString()}</p>
             </div>
 

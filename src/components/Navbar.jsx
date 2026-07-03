@@ -111,7 +111,7 @@ const Navbar = () => {
           {/* Logo */}
           <div className="flex items-center space-x-2">
             <MapPinIcon className="h-6 w-6 sm:h-8 sm:w-8 text-red-600" />
-            <span className="text-lg sm:text-xl font-bold text-gray-900">BantayDalan</span>
+            <span className="text-lg sm:text-xl font-bold text-gray-900">DalanPh</span>
             {/* Role Badge */}
             {currentAdmin && (
               <span className={`ml-2 px-2 py-0.5 text-xs font-medium rounded-full ${

@@ -6,7 +6,7 @@ import { useSettings } from '../context/SettingsContext';
 
 const Register = ({ onRegister, switchToLogin }) => {
   const { getSetting, validatePassword, getAuthConfig } = useSettings();
-  const siteName = getSetting('site_name', 'BantayDalan');
+  const siteName = getSetting('site_name', 'DalanPh');
 
   // Split site name into brand parts (e.g., "BantayDalan" -> "Bantay" + "Dalan")
   const splitBrandName = (name) => {

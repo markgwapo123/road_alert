@@ -6,7 +6,7 @@ const SettingsContext = createContext(null);
 // Default settings (fallback values)
 const DEFAULT_SETTINGS = {
   // General
-  site_name: 'BantayDalan',
+  site_name: 'DalanPh',
   site_description: 'Community Road Alert System',
   site_tagline: 'Report. Alert. Protect.',
   contact_email: 'support@bantaydalan.com',

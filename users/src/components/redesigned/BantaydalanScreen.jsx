@@ -28,7 +28,7 @@ const BantaydalanScreen = () => {
                 {/* Header */}
                 <header className="app-header">
                     <AppLogo />
-                    <h1 className="app-title">BANTAYDALAN</h1>
+                    <h1 className="app-title">DalanPh</h1>
                 </header>
 
                 <main className="app-main-content">

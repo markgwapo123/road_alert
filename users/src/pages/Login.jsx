@@ -6,7 +6,7 @@ import { useSettings } from '../context/SettingsContext';
 
 const Login = ({ onLogin, switchToRegister }) => {
   const { getSetting } = useSettings();
-  const siteName = getSetting('site_name', 'BantayDalan');
+  const siteName = getSetting('site_name', 'DalanPh');
   
   const [loginId, setLoginId] = useState(''); // can be email, phone, or username
   const [password, setPassword] = useState('');

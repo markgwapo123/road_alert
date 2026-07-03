@@ -6,7 +6,7 @@ import { useSettings } from '../context/SettingsContext';
 
 const Dashboard = ({ token }) => {
   const { getSetting } = useSettings();
-  const siteName = getSetting('site_name', 'BantayDalan');
+  const siteName = getSetting('site_name', 'DalanPh');
   
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);

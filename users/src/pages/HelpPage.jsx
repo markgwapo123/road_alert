@@ -4,7 +4,7 @@ import { useSettings } from '../context/SettingsContext.jsx';
 const HelpPage = ({ onBack }) => {
   const { getSetting } = useSettings();
   
-  const siteName = getSetting('site_name', 'BantayDalan');
+  const siteName = getSetting('site_name', 'DalanPh');
   const siteDescription = getSetting('site_description', 'Community Road Alert System');
   const contactEmail = getSetting('contact_email', '');
   const contactPhone = getSetting('contact_phone', '');

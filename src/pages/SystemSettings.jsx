@@ -484,7 +484,7 @@ const SystemSettings = () => {
                   System Settings
                 </h1>
                 <p className="hidden md:block mt-1 text-sm text-gray-500">
-                  Configure system-wide settings for the BantayDalan platform
+                  Configure system-wide settings for the DalanPh platform
                 </p>
               </div>
             </div>
