@@ -169,11 +169,13 @@ html {
 .auth-logo-text .brand-name {
   color:#1b76bd;
   font-weight: 600;
+  font-family: cursive;
 }
 
 .auth-logo-text .brand-suffix {
   color: #c4240ae6;
   font-weight: 600;
+   font-family: cursive;
 }
 
 .auth-form {
