@@ -343,7 +343,7 @@ const Login = ({ onLogin, switchToRegister }) => {
         </div>
 
         <div className="auth-logo">
-          <img src="/roadalerlogo.png" alt={`${siteName} Logo`} className="auth-logo-icon" />
+          <img src="/phlogo.png" alt={`${siteName} Logo`} className="auth-logo-icon" />
           <h1 className="auth-logo-text">
             <span className="brand-name">{brandFirst}</span>{brandSecond && <span className="brand-suffix">{brandSecond}</span>}
           </h1>
