@@ -529,12 +529,11 @@ body {
 
   .auth-logo {
     margin-bottom: 20px;
-    gap: 8px;
   }
 
   .auth-logo-icon {
-    width: 40px;
-    height: 40px;
+    width: 50px;
+    height: 50px;
   }
 
   .auth-logo-text {

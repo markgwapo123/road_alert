@@ -143,13 +143,12 @@ html {
 .auth-logo {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
   margin-bottom: 1.5rem;
 }
 
 .auth-logo-icon {
-  width: 40px;
-  height: 40px;
+  width: 60px;
+  height: 60px;
   background-color: var(--brand-red);
   border-radius: 6px;
   display: flex;
@@ -168,12 +167,12 @@ html {
 }
 
 .auth-logo-text .brand-name {
-  color: #207ec0;
+  color:#1b76bd;
   font-weight: 600;
 }
 
 .auth-logo-text .brand-suffix {
-  color: #ff553b;
+  color: #c4240ae6;
   font-weight: 600;
 }
 
