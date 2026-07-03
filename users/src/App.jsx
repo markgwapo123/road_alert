@@ -494,7 +494,7 @@ function AppContent() {
   };
 
   // Get site name from settings
-  const siteName = getSetting('site_name', 'BANTAY DALAN');
+  const siteName = getSetting('site_name', 'DalanPh');
 
   // ⚡ Don't block the entire app waiting for settings - render immediately with defaults
   // Settings will update silently in the background
