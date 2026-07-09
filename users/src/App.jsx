@@ -16,6 +16,7 @@ import LogoutConfirmModal from './components/LogoutConfirmModal';
 import MaintenancePage from './pages/MaintenancePage';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import EmergencySOS from './components/EmergencySOS';
+import SplashScreen from './components/SplashScreen';
 import './App.css';
 
 // Main App component wrapped with settings
@@ -46,6 +47,7 @@ function AppContent() {
   }, [refreshSettings]);
   
   const [token, setToken] = useState(localStorage.getItem('token'));
+  const [showSplash, setShowSplash] = useState(!localStorage.getItem('splashShown'));
   const [showRegister, setShowRegister] = useState(false);
   const [showReport, setShowReport] = useState(false);
   const [notifications, setNotifications] = useState([]);
@@ -498,6 +500,14 @@ function AppContent() {
 
   // ⚡ Don't block the entire app waiting for settings - render immediately with defaults
   // Settings will update silently in the background
+
+  // Show splash screen
+  if (showSplash) {
+    return <SplashScreen onComplete={() => {
+      setShowSplash(false);
+      localStorage.setItem('splashShown', 'true');
+    }} />;
+  }
 
   // Show maintenance page if maintenance mode is enabled
   if (isMaintenanceMode()) {
