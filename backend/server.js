@@ -6,6 +6,8 @@ const rateLimit = require('express-rate-limit');
 const path = require('path');
 require('dotenv').config();
 
+const fcmService = require('./services/FcmService');
+
 // Add global error handlers
 process.on('unhandledRejection', (reason, promise) => {
   console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
@@ -125,8 +127,10 @@ app.get('/', (req, res) => {
       admin: '/api/admin',
       users: '/api/users',
       notifications: '/api/notifications',
+      devices: '/api/devices',
       health: '/api/health',
-      status: '/api/system/status'
+      status: '/api/system/status',
+      fcmStatus: '/api/debug/fcm-status'
     }
   });
 });
@@ -205,6 +209,7 @@ app.use('/api/users', checkMaintenanceMode, require('./routes/users'));
 app.use('/api/notifications', checkMaintenanceMode, require('./routes/notifications'));
 app.use('/api/news', checkMaintenanceMode, require('./routes/news'));
 app.use('/api/dashboard', checkMaintenanceMode, require('./routes/dashboard'));
+app.use('/api/devices', checkMaintenanceMode, require('./routes/devices'));
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
@@ -273,6 +278,68 @@ app.get('/api/system/status', async (req, res) => {
   }
 });
 
+// FCM diagnostics endpoint
+app.get('/api/debug/fcm-status', async (req, res) => {
+  try {
+    const Device = require('./models/Device');
+    const NotificationPreferences = require('./models/NotificationPreferences');
+
+    // Check FCM service status
+    const fcmStatus = {
+      enabled: fcmService.enabled,
+      initialized: fcmService.initialized,
+      ready: fcmService.isReady()
+    };
+
+    // Check environment variables (presence only, not values)
+    const envStatus = {
+      FIREBASE_PROJECT_ID: !!process.env.FIREBASE_PROJECT_ID,
+      FIREBASE_CLIENT_EMAIL: !!process.env.FIREBASE_CLIENT_EMAIL,
+      FIREBASE_PRIVATE_KEY: !!process.env.FIREBASE_PRIVATE_KEY,
+      FIREBASE_DATABASE_URL: !!process.env.FIREBASE_DATABASE_URL,
+      FCM_ENABLED: process.env.FCM_ENABLED || 'not set (defaults to true)'
+    };
+
+    // Check database collections
+    const [totalDevices, activeDevices, totalPreferences] = await Promise.all([
+      Device.countDocuments(),
+      Device.countDocuments({ isActive: true }),
+      NotificationPreferences.countDocuments()
+    ]);
+
+    res.json({
+      success: true,
+      timestamp: new Date().toISOString(),
+      fcm: fcmStatus,
+      environment: envStatus,
+      database: {
+        devices: {
+          total: totalDevices,
+          active: activeDevices
+        },
+        notificationPreferences: totalPreferences
+      },
+      instructions: !fcmStatus.ready ? {
+        message: 'FCM is not ready. To enable push notifications:',
+        steps: [
+          '1. Go to Firebase Console → Project Settings → Service Accounts',
+          '2. Click "Generate New Private Key" to download the JSON file',
+          '3. Copy project_id, client_email, and private_key values',
+          '4. Set FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY in backend/.env',
+          '5. Restart the backend server',
+          '6. For Android: Place google-services.json in users/android/app/'
+        ]
+      } : null
+    });
+  } catch (error) {
+    console.error('FCM status check error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);
@@ -308,6 +375,9 @@ const initializeDatabase = async () => {
   try {
     await connectDB();
     console.log('🎉 Database connected successfully!');
+
+    // Initialize Firebase Admin SDK
+    fcmService.initialize();
 
     // Initialize system settings
     try {

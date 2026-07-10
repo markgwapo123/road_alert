@@ -277,6 +277,119 @@ export const getRelativeTime = (date) => {
   return notifDate.toLocaleDateString();
 };
 
+/**
+ * Send push notification to specific users
+ * @param {Object} notificationData - Notification data
+ * @param {Array} userIds - Array of user IDs to send to
+ * @param {boolean} broadcast - Send to all users if true
+ */
+export const sendPushNotification = async (notificationData, userIds = [], broadcast = false) => {
+  try {
+    const response = await fetch(`${API_BASE}/notifications/push`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({
+        notification: notificationData,
+        userIds,
+        broadcast
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error sending push notification:', error);
+    throw error;
+  }
+};
+
+/**
+ * Send push notification for verified report
+ * @param {Object} reportData - Report information
+ * @param {boolean} broadcast - Send to all users
+ */
+export const sendVerifiedReportNotification = async (reportData, broadcast = true) => {
+  const notificationData = {
+    title: '🚨 Verified Incident',
+    body: `A verified incident has been reported in ${reportData.barangay || 'your area'}.`,
+    type: 'report_verified',
+    data: {
+      reportId: reportData._id || reportData.reportId,
+      title: reportData.title,
+      category: reportData.category,
+      barangay: reportData.barangay,
+      status: 'verified',
+      timestamp: new Date().toISOString()
+    }
+  };
+
+  return sendPushNotification(notificationData, [], broadcast);
+};
+
+/**
+ * Send push notification for pending report (admin only)
+ * @param {Object} reportData - Report information
+ * @param {Array} adminIds - Array of admin user IDs
+ */
+export const sendPendingReportNotification = async (reportData, adminIds = []) => {
+  const notificationData = {
+    title: '📋 New Report Pending',
+    body: `A new report "${reportData.title}" is pending verification.`,
+    type: 'report_pending',
+    data: {
+      reportId: reportData._id || reportData.reportId,
+      title: reportData.title,
+      category: reportData.category,
+      barangay: reportData.barangay,
+      status: 'pending',
+      timestamp: new Date().toISOString()
+    }
+  };
+
+  return sendPushNotification(notificationData, adminIds, false);
+};
+
+/**
+ * Format push notification content for verified report
+ * @param {Object} report - Report data
+ * @returns {Object} Formatted notification
+ */
+export const formatVerifiedReportNotification = (report) => {
+  return {
+    title: '🚨 Verified Incident',
+    body: `${report.title}\nCategory: ${report.category}\nBarangay: ${report.barangay}\nReport ID: ${report._id}\nTime: ${new Date(report.createdAt).toLocaleString()}`,
+    data: {
+      type: 'report_verified',
+      reportId: report._id,
+      title: report.title,
+      category: report.category,
+      barangay: report.barangay,
+      status: 'verified',
+      description: report.description?.substring(0, 100) || ''
+    }
+  };
+};
+
+/**
+ * Check if notification should be sent (duplicate prevention)
+ * @param {string} reportId - Report ID
+ * @param {string} fromStatus - Previous status
+ * @param {string} toStatus - New status
+ * @returns {boolean} Whether to send notification
+ */
+export const shouldSendNotification = (reportId, fromStatus, toStatus) => {
+  // Only send notification when transitioning from pending to verified
+  if (fromStatus === 'pending' && toStatus === 'verified') {
+    return true;
+  }
+  
+  // Don't send for other status changes unless explicitly needed
+  return false;
+};
+
 export default {
   fetchNotifications,
   getUnreadCount,
@@ -289,5 +402,10 @@ export default {
   getNotificationTypeLabel,
   getStatusColor,
   getPriorityColor,
-  getRelativeTime
+  getRelativeTime,
+  sendPushNotification,
+  sendVerifiedReportNotification,
+  sendPendingReportNotification,
+  formatVerifiedReportNotification,
+  shouldSendNotification
 };

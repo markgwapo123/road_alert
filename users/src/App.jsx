@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
 import config from './config/index.js';
 import { SettingsProvider, useSettings } from './context/SettingsContext.jsx';
+import { NotificationProvider } from './context/NotificationContext.jsx';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import ProfilePage from './pages/ProfilePage';
@@ -17,6 +18,7 @@ import MaintenancePage from './pages/MaintenancePage';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import EmergencySOS from './components/EmergencySOS';
 import SplashScreen from './components/SplashScreen';
+import PushNotificationHandler from './components/PushNotificationHandler';
 import './App.css';
 
 // Main App component wrapped with settings
@@ -573,6 +575,9 @@ function AppContent() {
 
   return (
     <div className={currentView === 'profile' || currentView === 'notifications' ? 'verification-active' : ''}>
+      {/* Push Notification Handler */}
+      <PushNotificationHandler />
+      
       {/* Desktop Navigation */}
       <nav className="navbar desktop-nav">
         <div className="navbar-left">
@@ -1066,11 +1071,13 @@ function AppContent() {
   );
 }
 
-// Wrap App with SettingsProvider
+// Wrap App with SettingsProvider and NotificationProvider
 function App() {
   return (
     <SettingsProvider>
-      <AppContent />
+      <NotificationProvider token={localStorage.getItem('token')}>
+        <AppContent />
+      </NotificationProvider>
     </SettingsProvider>
   );
 }

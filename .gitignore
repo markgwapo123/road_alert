@@ -37,6 +37,11 @@ build
 .env.*
 !.env.example
 
+# Firebase Service Accounts
+*-adminsdk-*.json
+firebase-key*.json
+service-account*.json
+
 # App specific
 backend/uploads/
 **/uploads/

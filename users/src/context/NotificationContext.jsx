@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import * as notificationService from '../services/notificationService';
+import * as deviceService from '../services/deviceService';
+import * as notificationPreferencesService from '../services/notificationPreferencesService';
 
 const NotificationContext = createContext(null);
 
@@ -22,6 +24,12 @@ export const NotificationProvider = ({ children, token }) => {
   // Panel state
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [selectedNotification, setSelectedNotification] = useState(null);
+  
+  // Push notification state
+  const [pushEnabled, setPushEnabled] = useState(false);
+  const [notificationPreferences, setNotificationPreferences] = useState(
+    notificationPreferencesService.DEFAULT_PREFERENCES
+  );
   
   // Polling ref
   const pollIntervalRef = useRef(null);
@@ -211,11 +219,128 @@ export const NotificationProvider = ({ children, token }) => {
     return notifications.filter(n => !n.isRead);
   }, [notifications]);
 
+  /**
+   * Initialize push notifications
+   */
+  const initializePushNotifications = useCallback(async () => {
+    if (!token) return;
+
+    try {
+      await deviceService.initializePushNotifications();
+      setPushEnabled(true);
+      
+      // Listen for incoming push notifications
+      await deviceService.listenForPushNotifications((notification, isActionPerformed = false) => {
+        handlePushNotification(notification, isActionPerformed);
+      });
+    } catch (error) {
+      console.error('Error initializing push notifications:', error);
+      setPushEnabled(false);
+    }
+  }, [token]);
+
+  /**
+   * Handle incoming push notification
+   */
+  const handlePushNotification = useCallback(async (notification, isActionPerformed = false) => {
+    try {
+      const notificationData = notification.data || notification;
+      
+      // Check user preferences
+      const shouldReceive = notificationPreferencesService.shouldReceiveNotification(
+        notificationData.type,
+        notificationPreferences
+      );
+      
+      if (!shouldReceive) return;
+
+      // If notification was tapped, handle navigation
+      if (isActionPerformed && notificationData.reportId) {
+        // Store the report ID for navigation
+        localStorage.setItem('pendingNavigation', JSON.stringify({
+          type: 'report',
+          reportId: notificationData.reportId
+        }));
+        
+        // The actual navigation will be handled by the app
+        return;
+      }
+
+      // If app is in foreground, show toast notification
+      if (!isActionPerformed) {
+        // Add to local notifications
+        const newNotification = {
+          _id: notificationData.notificationId || Date.now().toString(),
+          type: notificationData.type || 'push_notification',
+          title: notification.title || notificationData.title,
+          message: notification.body || notificationData.message,
+          isRead: false,
+          createdAt: notificationData.timestamp || new Date().toISOString(),
+          data: notificationData
+        };
+
+        setNotifications(prev => [newNotification, ...prev]);
+        setUnreadCount(prev => prev + 1);
+      }
+    } catch (error) {
+      console.error('Error handling push notification:', error);
+    }
+  }, [notificationPreferences]);
+
+  /**
+   * Fetch notification preferences
+   */
+  const fetchNotificationPreferences = useCallback(async () => {
+    if (!token) return;
+
+    try {
+      const prefs = await notificationPreferencesService.getNotificationPreferences();
+      setNotificationPreferences(prefs);
+    } catch (error) {
+      console.error('Error fetching notification preferences:', error);
+    }
+  }, [token]);
+
+  /**
+   * Update notification preferences
+   */
+  const updatePreferences = useCallback(async (newPreferences) => {
+    if (!token) return;
+
+    try {
+      await notificationPreferencesService.updateNotificationPreferences(newPreferences);
+      setNotificationPreferences(newPreferences);
+    } catch (error) {
+      console.error('Error updating notification preferences:', error);
+      throw error;
+    }
+  }, [token]);
+
+  /**
+   * Send push notification (admin function)
+   */
+  const sendPushNotification = useCallback(async (notificationData, userIds = [], broadcast = false) => {
+    if (!token) return;
+
+    try {
+      return await notificationService.sendPushNotification(notificationData, userIds, broadcast);
+    } catch (error) {
+      console.error('Error sending push notification:', error);
+      throw error;
+    }
+  }, [token]);
+
   // Initial fetch and polling setup
   useEffect(() => {
     if (token) {
       // Initial fetch
       fetchNotifications();
+      
+      // Fetch notification preferences
+      fetchNotificationPreferences();
+      
+      // Initialize push notifications
+      initializePushNotifications();
       
       // Setup polling
       pollIntervalRef.current = setInterval(() => {
@@ -225,14 +350,20 @@ export const NotificationProvider = ({ children, token }) => {
       // Clear notifications when logged out
       setNotifications([]);
       setUnreadCount(0);
+      setPushEnabled(false);
+      
+      // Remove device token
+      deviceService.removeDeviceToken();
     }
 
     return () => {
       if (pollIntervalRef.current) {
         clearInterval(pollIntervalRef.current);
       }
+      // Remove push listeners on cleanup
+      deviceService.removePushListeners();
     };
-  }, [token, fetchNotifications, refreshUnreadCount]);
+  }, [token, fetchNotifications, refreshUnreadCount, fetchNotificationPreferences, initializePushNotifications]);
 
   const value = {
     // State
@@ -243,6 +374,8 @@ export const NotificationProvider = ({ children, token }) => {
     counts,
     isPanelOpen,
     selectedNotification,
+    pushEnabled,
+    notificationPreferences,
     
     // Actions
     fetchNotifications,
@@ -261,6 +394,11 @@ export const NotificationProvider = ({ children, token }) => {
     // Helpers
     getNotificationsByType,
     getUnreadNotifications,
+    
+    // Push notification actions
+    initializePushNotifications,
+    sendPushNotification,
+    updatePreferences,
     
     // Service utilities
     getNotificationIcon: notificationService.getNotificationIcon,

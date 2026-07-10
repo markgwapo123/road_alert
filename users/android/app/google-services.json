@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "772321091744",
+    "project_id": "bantayph-b85cd",
+    "storage_bucket": "bantayph-b85cd.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:772321091744:android:3ce6f472bf8f967860a9c5",
+        "android_client_info": {
+          "package_name": "com.bantaydalan.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDuzsV1V54BQcYoWYmPeLj61fkjdf5s0ek"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

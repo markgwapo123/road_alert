@@ -1,6 +1,7 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const Notification = require('../models/Notification');
+const NotificationPreferences = require('../models/NotificationPreferences');
 const userAuth = require('../middleware/userAuth');
 const cache = require('../services/cache');
 
@@ -414,6 +415,73 @@ router.get('/announcements', userAuth, async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Server error while fetching announcements'
+    });
+  }
+});
+
+// @route   GET /api/notifications/preferences
+// @desc    Get user notification preferences
+// @access  Private (User)
+router.get('/preferences', userAuth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const preferences = await NotificationPreferences.getOrCreate(userId);
+
+    res.json({
+      success: true,
+      preferences: preferences.preferences
+    });
+
+  } catch (error) {
+    console.error('Get notification preferences error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Server error while fetching notification preferences'
+    });
+  }
+});
+
+// @route   PUT /api/notifications/preferences
+// @desc    Update user notification preferences
+// @access  Private (User)
+router.put('/preferences', userAuth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { preferences } = req.body;
+
+    if (!preferences || typeof preferences !== 'object') {
+      return res.status(400).json({
+        success: false,
+        error: 'Preferences object is required'
+      });
+    }
+
+    // Validate preference keys
+    const validKeys = ['verifiedReports', 'barangayAnnouncements', 'emergencyAlerts', 'systemNotifications', 'adminResponses', 'statusUpdates'];
+    const invalidKeys = Object.keys(preferences).filter(key => !validKeys.includes(key));
+    
+    if (invalidKeys.length > 0) {
+      return res.status(400).json({
+        success: false,
+        error: `Invalid preference keys: ${invalidKeys.join(', ')}`
+      });
+    }
+
+    // Update preferences
+    const updatedPreferences = await NotificationPreferences.updatePreferences(userId, preferences);
+
+    res.json({
+      success: true,
+      message: 'Preferences updated successfully',
+      preferences: updatedPreferences.preferences
+    });
+
+  } catch (error) {
+    console.error('Update notification preferences error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Server error while updating notification preferences'
     });
   }
 });

@@ -11,6 +11,7 @@ const User = require('../models/User');
 const SystemSettings = require('../models/SystemSettings');
 const { auth, canManageReports, canDeleteReports, createAuditLog } = require('../middleware/roleAuth');
 const NotificationService = require('../services/NotificationService');
+const fcmService = require('../services/FcmService');
 const {
   checkSpamBehavior,
   validateReportRequirements,
@@ -958,6 +959,17 @@ router.patch('/:id/status', auth, async (req, res) => {
           reportType: report.type,
           adminNotes
         });
+      }
+    }
+
+    // Send FCM push notification when status changes from pending to verified
+    if (oldStatus === 'pending' && status === 'verified') {
+      console.log('📤 Sending FCM push notification for verified report:', report._id);
+      try {
+        await fcmService.sendVerifiedReportNotification(report);
+      } catch (fcmError) {
+        console.error('❌ Failed to send FCM push notification:', fcmError);
+        // Continue even if FCM fails - MongoDB notification already created
       }
     }
 

@@ -25,3 +25,8 @@ dist-ssr
 
 .vercel
 .env*.local
+
+# Firebase Service Accounts
+*-adminsdk-*.json
+firebase-key*.json
+service-account*.json

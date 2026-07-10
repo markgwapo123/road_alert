@@ -1,4 +1,5 @@
 const Notification = require('../models/Notification');
+const fcmService = require('./FcmService');
 
 class NotificationService {
   
@@ -44,6 +45,19 @@ class NotificationService {
 
       await notification.save();
       console.log(`📧 Notification created for user ${userId}: ${title}`);
+      
+      // Send FCM push notification if status changed to verified
+      if (newStatus === 'verified') {
+        try {
+          const Report = require('../models/Report');
+          const report = await Report.findById(reportId);
+          if (report) {
+            await fcmService.sendVerifiedReportNotification(report);
+          }
+        } catch (fcmError) {
+          console.error('❌ Failed to send FCM push notification:', fcmError);
+        }
+      }
       
       return notification;
 
