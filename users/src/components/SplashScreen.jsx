@@ -5,25 +5,26 @@ const SplashScreen = ({ onComplete }) => {
   const [animationPhase, setAnimationPhase] = useState(0);
 
   useEffect(() => {
-    // Animation timeline (extended by 3 seconds + loading phase)
+    // Animation timeline (extended by 3 seconds + loading phase + initial white screen)
     const timers = [
-      // 3.3s - Pin drop and ripple
-      setTimeout(() => setAnimationPhase(1), 3300),
-      // 3.8s - Text slide in
-      setTimeout(() => setAnimationPhase(2), 3800),
-      // 4.5s - Mockup fade in
-      setTimeout(() => setAnimationPhase(3), 4500),
-      // 5.2s - Map background
-      setTimeout(() => setAnimationPhase(4), 5200),
-      // 5.5s - Tagline
-      setTimeout(() => setAnimationPhase(5), 5500),
-      // 5.8s - Loading phase
-      setTimeout(() => setAnimationPhase(6), 5800),
-      // 7.5s - Fade out and transition (after 1.7s loading)
+      // 0.5s - Start white screen (already white by default)
+      // 2.0s - Pin drop and ripple (after 1.5s white screen)
+      setTimeout(() => setAnimationPhase(1), 2000),
+      // 2.5s - Text slide in
+      setTimeout(() => setAnimationPhase(2), 2500),
+      // 3.2s - Mockup fade in
+      setTimeout(() => setAnimationPhase(3), 3200),
+      // 3.9s - Map background
+      setTimeout(() => setAnimationPhase(4), 3900),
+      // 4.2s - Tagline
+      setTimeout(() => setAnimationPhase(5), 4200),
+      // 4.5s - Loading phase
+      setTimeout(() => setAnimationPhase(6), 4500),
+      // 6.2s - Fade out and transition (after 1.7s loading)
       setTimeout(() => {
         setAnimationPhase(7);
         setTimeout(onComplete, 500); // Wait for fade out to complete
-      }, 7500),
+      }, 6200),
     ];
 
     return () => timers.forEach(timer => clearTimeout(timer));
