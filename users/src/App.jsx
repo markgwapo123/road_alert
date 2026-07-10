@@ -47,7 +47,7 @@ function AppContent() {
   }, [refreshSettings]);
   
   const [token, setToken] = useState(localStorage.getItem('token'));
-  const [showSplash, setShowSplash] = useState(!localStorage.getItem('splashShown'));
+  const [showSplash, setShowSplash] = useState(true);
   const [showRegister, setShowRegister] = useState(false);
   const [showReport, setShowReport] = useState(false);
   const [notifications, setNotifications] = useState([]);
@@ -505,7 +505,6 @@ function AppContent() {
   if (showSplash) {
     return <SplashScreen onComplete={() => {
       setShowSplash(false);
-      localStorage.setItem('splashShown', 'true');
     }} />;
   }
 

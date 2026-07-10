@@ -5,7 +5,7 @@ const SplashScreen = ({ onComplete }) => {
   const [animationPhase, setAnimationPhase] = useState(0);
 
   useEffect(() => {
-    // Animation timeline (extended by 3 seconds)
+    // Animation timeline (extended by 3 seconds + loading phase)
     const timers = [
       // 3.3s - Pin drop and ripple
       setTimeout(() => setAnimationPhase(1), 3300),
@@ -17,18 +17,20 @@ const SplashScreen = ({ onComplete }) => {
       setTimeout(() => setAnimationPhase(4), 5200),
       // 5.5s - Tagline
       setTimeout(() => setAnimationPhase(5), 5500),
-      // 5.8s - Fade out and transition
+      // 5.8s - Loading phase
+      setTimeout(() => setAnimationPhase(6), 5800),
+      // 7.5s - Fade out and transition (after 1.7s loading)
       setTimeout(() => {
-        setAnimationPhase(6);
+        setAnimationPhase(7);
         setTimeout(onComplete, 500); // Wait for fade out to complete
-      }, 5800),
+      }, 7500),
     ];
 
     return () => timers.forEach(timer => clearTimeout(timer));
   }, [onComplete]);
 
   return (
-    <div className={`splash-screen ${animationPhase === 6 ? 'fade-out' : ''}`}>
+    <div className={`splash-screen ${animationPhase === 7 ? 'fade-out' : ''}`}>
       {/* Map Background */}
       <div className={`map-background ${animationPhase >= 4 ? 'visible' : ''}`}>
         <div className="map-grid"></div>
@@ -53,8 +55,7 @@ const SplashScreen = ({ onComplete }) => {
 
         {/* DalanPh Text */}
         <div className={`brand-text ${animationPhase >= 2 ? 'visible' : ''}`}>
-          <span className="brand-part brand-dalan">Dalan</span>
-          <span className="brand-part brand-ph">Ph</span>
+          <span className="brand-part brand-dalan">Dalan</span><span className="brand-part brand-ph">Ph</span>
         </div>
 
         {/* Mockup */}
@@ -72,6 +73,13 @@ const SplashScreen = ({ onComplete }) => {
             Smart <span className="highlight">Mapping</span>.
             Better <span className="highlight">Decisions</span>.
           </p>
+        </div>
+
+        {/* Loading Indicator */}
+        <div className={`loading-indicator ${animationPhase >= 6 ? 'visible' : ''}`}>
+          <div className="loading-dot loading-dot-1"></div>
+          <div className="loading-dot loading-dot-2"></div>
+          <div className="loading-dot loading-dot-3"></div>
         </div>
       </div>
     </div>
