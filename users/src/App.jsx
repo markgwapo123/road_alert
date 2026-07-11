@@ -22,7 +22,10 @@ import PushNotificationHandler from './components/PushNotificationHandler';
 import './App.css';
 
 // Main App component wrapped with settings
-function AppContent() {
+// NOTE: token and setToken are now passed in as props from <App>, instead of
+// being created here with their own useState. This ensures there is a single
+// source of truth for the token, shared with <NotificationProvider>.
+function AppContent({ token, setToken }) {
   const { 
     settings, 
     loading: settingsLoading, 
@@ -47,8 +50,7 @@ function AppContent() {
     );
     return () => axios.interceptors.response.eject(interceptor);
   }, [refreshSettings]);
-  
-  const [token, setToken] = useState(localStorage.getItem('token'));
+
   const [showSplash, setShowSplash] = useState(true);
   const [showRegister, setShowRegister] = useState(false);
   const [showReport, setShowReport] = useState(false);
@@ -1071,12 +1073,17 @@ function AppContent() {
   );
 }
 
-// Wrap App with SettingsProvider and NotificationProvider
+// Wrap App with SettingsProvider and NotificationProvider.
+// `token` state now lives here (single source of truth) and is passed down
+// to both NotificationProvider and AppContent, so NotificationProvider
+// always sees the current token instead of a stale null snapshot.
 function App() {
+  const [token, setToken] = useState(localStorage.getItem('token'));
+
   return (
     <SettingsProvider>
-      <NotificationProvider token={localStorage.getItem('token')}>
-        <AppContent />
+      <NotificationProvider token={token}>
+        <AppContent token={token} setToken={setToken} />
       </NotificationProvider>
     </SettingsProvider>
   );

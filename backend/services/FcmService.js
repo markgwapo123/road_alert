@@ -76,7 +76,8 @@ class FcmService {
       const message = {
         notification: {
           title: notification.title,
-          body: notification.body
+          body: notification.body,
+          sound: 'default'
         },
         data: data,
         tokens: tokens
