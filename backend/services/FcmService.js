@@ -80,7 +80,8 @@ class FcmService {
   },
   android: {
     notification: {
-      sound: 'default'
+      sound: 'default',
+      channelId: 'default_sound_channel_v2'
     }
   },
   apns: {
