@@ -74,31 +74,31 @@ class FcmService {
 
     try {
       const message = {
-  notification: {
-    title: notification.title,
-    body: notification.body
-  },
-  android: {
-    notification: {
-      sound: 'default',
-      channelId: 'default_sound_channel_v2'
-    }
-  },
-  apns: {
-    payload: {
-      aps: {
-        sound: 'default'
-      }
-    }
-  },
-  data: data,
-  tokens: tokens
-};
+        notification: {
+          title: notification.title,
+          body: notification.body
+        },
+        android: {
+          notification: {
+            sound: 'default',
+            channelId: 'default_sound_channel_v2'
+          }
+        },
+        apns: {
+          payload: {
+            aps: {
+              sound: 'default'
+            }
+          }
+        },
+        data: data,
+        tokens: tokens
+      };
 
       // FCM supports up to 500 tokens per request
       const MAX_TOKENS_PER_REQUEST = 500;
       const chunks = [];
-      
+
       for (let i = 0; i < tokens.length; i += MAX_TOKENS_PER_REQUEST) {
         chunks.push(tokens.slice(i, i + MAX_TOKENS_PER_REQUEST));
       }
@@ -110,25 +110,25 @@ class FcmService {
       for (const chunk of chunks) {
         message.tokens = chunk;
         const response = await getMessaging().sendEachForMulticast(message);
-        
+
         totalSuccessCount += response.successCount;
         totalFailureCount += response.failureCount;
-        
+
         // Handle invalid tokens
         for (let i = 0; i < response.responses.length; i++) {
           const resp = response.responses[i];
           if (!resp.success) {
             const token = chunk[i];
             const error = resp.error;
-            
+
             console.log(`❌ Failed to send to token ${token}:`, error.message);
-            
+
             // Remove invalid token
             if (error.code === 'messaging/registration-token-not-registered' ||
-                error.code === 'messaging/invalid-registration-token') {
+              error.code === 'messaging/invalid-registration-token') {
               await this.removeInvalidToken(token);
             }
-            
+
             allResults.push({ token, success: false, error: error.message });
           } else {
             allResults.push({ token: chunk[i], success: true });
@@ -137,7 +137,7 @@ class FcmService {
       }
 
       console.log(`📤 Push notification sent: ${totalSuccessCount} success, ${totalFailureCount} failed`);
-      
+
       return {
         successCount: totalSuccessCount,
         failureCount: totalFailureCount,
@@ -175,21 +175,31 @@ class FcmService {
 
       // Get all active devices
       const devices = await Device.getAllActiveDevices();
-      
+
       if (devices.length === 0) {
         console.log('⚠️ No active devices found');
         return { successCount: 0, failureCount: 0 };
       }
 
       // Filter users based on preferences
+      // Get the report owner's ID so we can exclude them from the broadcast
+      // (they already receive their own personal "your report was verified" notification)
+      const reportOwnerId = report.reportedBy?.id || report.reportedBy || report.userId;
+
+      // Filter users based on preferences, excluding the report owner
       const eligibleTokens = [];
-      
+
       for (const device of devices) {
+        // Skip the report owner's devices — they get a separate personal notification
+        if (reportOwnerId && device.userId.toString() === reportOwnerId.toString()) {
+          continue;
+        }
+
         const shouldReceive = await NotificationPreferences.shouldReceive(
           device.userId,
           'report_verified'
         );
-        
+
         if (shouldReceive) {
           eligibleTokens.push(device.token);
         }
@@ -324,7 +334,7 @@ class FcmService {
     if (fromStatus === 'pending' && toStatus === 'verified') {
       return true;
     }
-    
+
     // Don't send for other status changes unless explicitly needed
     return false;
   }
