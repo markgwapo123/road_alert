@@ -225,55 +225,96 @@ class FcmService {
   }
 
   /**
-   * Send push notification for pending report to admins only
+   * Send personal push notification when a report is rejected
    * @param {Object} report - Report object
-   * @param {Array} adminIds - Array of admin user IDs
    * @returns {Object} Result with success and failure counts
    */
-  async sendPendingReportNotification(report, adminIds = []) {
+  async sendRejectedReportNotification(report) {
     if (!this.isReady()) {
-      console.log('⚠️ FCM not ready, skipping pending report notification');
+      console.log('⚠️ FCM not ready, skipping rejected report notification');
       return { successCount: 0, failureCount: 0 };
     }
 
     try {
-      if (adminIds.length === 0) {
-        console.log('⚠️ No admin IDs provided');
+      const ownerId = report.reportedBy?.id;
+      if (!ownerId) {
+        console.log('⚠️ No report owner found, skipping rejected notification');
         return { successCount: 0, failureCount: 0 };
       }
 
-      // Get devices for admin users
-      const devices = await Device.find({
-        userId: { $in: adminIds },
-        isActive: true
-      });
-
+      const devices = await Device.find({ userId: ownerId, isActive: true });
       if (devices.length === 0) {
-        console.log('⚠️ No active devices found for admins');
+        console.log('⚠️ No active devices found for report owner');
         return { successCount: 0, failureCount: 0 };
       }
 
       const tokens = devices.map(d => d.token);
 
-      // Format notification
       const notification = {
-        title: '📋 New Report Pending',
-        body: `A new report "${report.type}" is pending verification.`
+        title: '❌ Report Not Approved',
+        body: `Your ${report.type} report could not be verified. Tap to see details.`
       };
 
       const data = {
-        type: 'report_pending',
+        type: 'report_rejected',
         reportId: report._id.toString(),
         title: report.type,
         category: report.type,
-        barangay: report.barangay,
-        status: 'pending',
+        status: 'rejected',
+        timestamp: new Date().toISOString(),
+        adminNotes: report.adminNotes || ''
+      };
+
+      return await this.sendNotification(tokens, notification, data);
+    } catch (error) {
+      console.error('❌ Error sending rejected report notification:', error);
+      return { successCount: 0, failureCount: 0, error: error.message };
+    }
+  }
+
+  /**
+   * Send personal push notification when a report is resolved
+   * @param {Object} report - Report object
+   * @returns {Object} Result with success and failure counts
+   */
+  async sendResolvedReportNotification(report) {
+    if (!this.isReady()) {
+      console.log('⚠️ FCM not ready, skipping resolved report notification');
+      return { successCount: 0, failureCount: 0 };
+    }
+
+    try {
+      const ownerId = report.reportedBy?.id;
+      if (!ownerId) {
+        console.log('⚠️ No report owner found, skipping resolved notification');
+        return { successCount: 0, failureCount: 0 };
+      }
+
+      const devices = await Device.find({ userId: ownerId, isActive: true });
+      if (devices.length === 0) {
+        console.log('⚠️ No active devices found for report owner');
+        return { successCount: 0, failureCount: 0 };
+      }
+
+      const tokens = devices.map(d => d.token);
+
+      const notification = {
+        title: '✅ Issue Resolved',
+        body: `Great news! Your ${report.type} report has been resolved. Thank you for helping improve our roads!`
+      };
+
+      const data = {
+        type: 'report_resolved',
+        reportId: report._id.toString(),
+        title: report.type,
+        category: report.type,
+        status: 'resolved',
         timestamp: new Date().toISOString()
       };
 
       return await this.sendNotification(tokens, notification, data);
     } catch (error) {
-      console.error('❌ Error sending pending report notification:', error);
+      console.error('❌ Error sending resolved report notification:', error);
       return { successCount: 0, failureCount: 0, error: error.message };
     }
   }

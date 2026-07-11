@@ -46,13 +46,19 @@ class NotificationService {
       await notification.save();
       console.log(`📧 Notification created for user ${userId}: ${title}`);
       
-      // Send FCM push notification if status changed to verified
-      if (newStatus === 'verified') {
+      // Send FCM push notification based on the new status
+      if (['verified', 'rejected', 'resolved'].includes(newStatus)) {
         try {
           const Report = require('../models/Report');
           const report = await Report.findById(reportId);
           if (report) {
-            await fcmService.sendVerifiedReportNotification(report);
+            if (newStatus === 'verified') {
+              await fcmService.sendVerifiedReportNotification(report);
+            } else if (newStatus === 'rejected') {
+              await fcmService.sendRejectedReportNotification(report);
+            } else if (newStatus === 'resolved') {
+              await fcmService.sendResolvedReportNotification(report);
+            }
           }
         } catch (fcmError) {
           console.error('❌ Failed to send FCM push notification:', fcmError);
