@@ -74,14 +74,25 @@ class FcmService {
 
     try {
       const message = {
-        notification: {
-          title: notification.title,
-          body: notification.body,
-          sound: 'default'
-        },
-        data: data,
-        tokens: tokens
-      };
+  notification: {
+    title: notification.title,
+    body: notification.body
+  },
+  android: {
+    notification: {
+      sound: 'default'
+    }
+  },
+  apns: {
+    payload: {
+      aps: {
+        sound: 'default'
+      }
+    }
+  },
+  data: data,
+  tokens: tokens
+};
 
       // FCM supports up to 500 tokens per request
       const MAX_TOKENS_PER_REQUEST = 500;
