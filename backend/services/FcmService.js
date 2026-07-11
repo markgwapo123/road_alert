@@ -164,7 +164,7 @@ class FcmService {
       // Check if notification already sent for this report
       const existingNotification = await Notification.findOne({
         reportId: report._id,
-        type: 'status_update',
+        type: 'verification_status',
         status: 'verified'
       });
 
@@ -182,19 +182,9 @@ class FcmService {
       }
 
       // Filter users based on preferences
-      // Get the report owner's ID so we can exclude them from the broadcast
-      // (they already receive their own personal "your report was verified" notification)
-      const reportOwnerId = report.reportedBy?.id || report.reportedBy || report.userId;
-
-      // Filter users based on preferences, excluding the report owner
       const eligibleTokens = [];
 
       for (const device of devices) {
-        // Skip the report owner's devices — they get a separate personal notification
-        if (reportOwnerId && device.userId.toString() === reportOwnerId.toString()) {
-          continue;
-        }
-
         const shouldReceive = await NotificationPreferences.shouldReceive(
           device.userId,
           'report_verified'
@@ -212,8 +202,8 @@ class FcmService {
 
       // Format notification
       const notification = {
-        title: '🚨 Verified Incident',
-        body: `A verified incident has been reported in ${report.barangay || 'your area'}.`
+        title: '🚨 New Hazard Alert',
+        body: `A verified incident has been reported in ${report.barangay || 'your area'}. Stay alert!`
       };
 
       const data = {
