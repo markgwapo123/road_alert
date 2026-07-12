@@ -1,6 +1,7 @@
 const Notification = require('../models/Notification');
 const fcmService = require('./FcmService');
 
+
 class NotificationService {
   
   /**
@@ -345,34 +346,42 @@ class NotificationService {
    * Broadcast a notification to all users when a new news post is created
    * @param {Object} newsPost - The new news post object
    */
+  
   static async broadcastNewsNotification(newsPost) {
+  try {
+    const User = require('../models/User');
+    const users = await User.find({ 
+      isActive: true,
+      'profile.notificationsEnabled': true
+    }).select('_id');
+
+    if (users.length === 0) return;
+
+    const title = newsPost.priority === 'urgent' ? `🚨 URGENT NEWS: ${newsPost.title}` : `📰 NEW UPDATE: ${newsPost.title}`;
+
+    const notifications = users.map(user => ({
+      userId: user._id,
+      newsId: newsPost._id, // Add newsId support to model if needed, or use reportId placeholder
+      type: 'system_alert',
+      title: title,
+      message: newsPost.content.substring(0, 100) + (newsPost.content.length > 100 ? '...' : ''),
+      isRead: false
+    }));
+
+    await Notification.insertMany(notifications);
+    console.log(`📢 Broadcasted news notification to ${users.length} users`);
+
+    // Send actual FCM push notification to all active devices
     try {
-      const User = require('../models/User');
-      const users = await User.find({ 
-        isActive: true,
-        'profile.notificationsEnabled': true
-      }).select('_id');
-
-      if (users.length === 0) return;
-
-      const title = newsPost.priority === 'urgent' ? `🚨 URGENT NEWS: ${newsPost.title}` : `📰 NEW UPDATE: ${newsPost.title}`;
-
-      const notifications = users.map(user => ({
-        userId: user._id,
-        newsId: newsPost._id, // Add newsId support to model if needed, or use reportId placeholder
-        type: 'system_alert',
-        title: title,
-        message: newsPost.content.substring(0, 100) + (newsPost.content.length > 100 ? '...' : ''),
-        isRead: false
-      }));
-
-      await Notification.insertMany(notifications);
-      console.log(`📢 Broadcasted news notification to ${users.length} users`);
-      
-    } catch (error) {
-      console.error('Failed to broadcast news notification:', error);
+      await fcmService.sendNewsNotification(newsPost);
+    } catch (fcmError) {
+      console.error('❌ Failed to send FCM push notification for news:', fcmError);
     }
+
+  } catch (error) {
+    console.error('Failed to broadcast news notification:', error);
   }
+}
 }
 
 module.exports = NotificationService;

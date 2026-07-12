@@ -74,31 +74,31 @@ class FcmService {
 
     try {
       const message = {
-  notification: {
-    title: notification.title,
-    body: notification.body
-  },
-  android: {
-    notification: {
-      sound: 'default',
-      channelId: 'default_sound_channel_v2'
-    }
-  },
-  apns: {
-    payload: {
-      aps: {
-        sound: 'default'
-      }
-    }
-  },
-  data: data,
-  tokens: tokens
-};
+        notification: {
+          title: notification.title,
+          body: notification.body
+        },
+        android: {
+          notification: {
+            sound: 'default',
+            channelId: 'default_sound_channel_v2'
+          }
+        },
+        apns: {
+          payload: {
+            aps: {
+              sound: 'default'
+            }
+          }
+        },
+        data: data,
+        tokens: tokens
+      };
 
       // FCM supports up to 500 tokens per request
       const MAX_TOKENS_PER_REQUEST = 500;
       const chunks = [];
-      
+
       for (let i = 0; i < tokens.length; i += MAX_TOKENS_PER_REQUEST) {
         chunks.push(tokens.slice(i, i + MAX_TOKENS_PER_REQUEST));
       }
@@ -110,25 +110,25 @@ class FcmService {
       for (const chunk of chunks) {
         message.tokens = chunk;
         const response = await getMessaging().sendEachForMulticast(message);
-        
+
         totalSuccessCount += response.successCount;
         totalFailureCount += response.failureCount;
-        
+
         // Handle invalid tokens
         for (let i = 0; i < response.responses.length; i++) {
           const resp = response.responses[i];
           if (!resp.success) {
             const token = chunk[i];
             const error = resp.error;
-            
+
             console.log(`❌ Failed to send to token ${token}:`, error.message);
-            
+
             // Remove invalid token
             if (error.code === 'messaging/registration-token-not-registered' ||
                 error.code === 'messaging/invalid-registration-token') {
               await this.removeInvalidToken(token);
             }
-            
+
             allResults.push({ token, success: false, error: error.message });
           } else {
             allResults.push({ token: chunk[i], success: true });
@@ -137,7 +137,7 @@ class FcmService {
       }
 
       console.log(`📤 Push notification sent: ${totalSuccessCount} success, ${totalFailureCount} failed`);
-      
+
       return {
         successCount: totalSuccessCount,
         failureCount: totalFailureCount,
@@ -175,7 +175,7 @@ class FcmService {
 
       // Get all active devices
       const devices = await Device.getAllActiveDevices();
-      
+
       if (devices.length === 0) {
         console.log('⚠️ No active devices found');
         return { successCount: 0, failureCount: 0 };
@@ -183,13 +183,13 @@ class FcmService {
 
       // Filter users based on preferences
       const eligibleTokens = [];
-      
+
       for (const device of devices) {
         const shouldReceive = await NotificationPreferences.shouldReceive(
           device.userId,
           'report_verified'
         );
-        
+
         if (shouldReceive) {
           eligibleTokens.push(device.token);
         }
@@ -320,6 +320,118 @@ class FcmService {
   }
 
   /**
+   * Send push notification for pending report to admins only
+   * @param {Object} report - Report object
+   * @param {Array} adminIds - Array of admin user IDs
+   * @returns {Object} Result with success and failure counts
+   */
+  async sendPendingReportNotification(report, adminIds = []) {
+    if (!this.isReady()) {
+      console.log('⚠️ FCM not ready, skipping pending report notification');
+      return { successCount: 0, failureCount: 0 };
+    }
+
+    try {
+      if (adminIds.length === 0) {
+        console.log('⚠️ No admin IDs provided');
+        return { successCount: 0, failureCount: 0 };
+      }
+
+      // Get devices for admin users
+      const devices = await Device.find({
+        userId: { $in: adminIds },
+        isActive: true
+      });
+
+      if (devices.length === 0) {
+        console.log('⚠️ No active devices found for admins');
+        return { successCount: 0, failureCount: 0 };
+      }
+
+      const tokens = devices.map(d => d.token);
+
+      // Format notification
+      const notification = {
+        title: '📋 New Report Pending',
+        body: `A new report "${report.type}" is pending verification.`
+      };
+
+      const data = {
+        type: 'report_pending',
+        reportId: report._id.toString(),
+        title: report.type,
+        category: report.type,
+        barangay: report.barangay,
+        status: 'pending',
+        timestamp: new Date().toISOString()
+      };
+
+      return await this.sendNotification(tokens, notification, data);
+    } catch (error) {
+      console.error('❌ Error sending pending report notification:', error);
+      return { successCount: 0, failureCount: 0, error: error.message };
+    }
+  }
+
+  /**
+   * Send push notification broadcast when a news post is created
+   * @param {Object} newsPost - News post object
+   * @returns {Object} Result with success and failure counts
+   */
+  async sendNewsNotification(newsPost) {
+    if (!this.isReady()) {
+      console.log('⚠️ FCM not ready, skipping news notification');
+      return { successCount: 0, failureCount: 0 };
+    }
+
+    try {
+      // Get all active devices
+      const devices = await Device.getAllActiveDevices();
+      if (devices.length === 0) {
+        console.log('⚠️ No active devices found');
+        return { successCount: 0, failureCount: 0 };
+      }
+
+      // Filter users based on preferences (uses existing 'announcement' preference key)
+      const eligibleTokens = [];
+      for (const device of devices) {
+        const shouldReceive = await NotificationPreferences.shouldReceive(
+          device.userId,
+          'announcement'
+        );
+        if (shouldReceive) {
+          eligibleTokens.push(device.token);
+        }
+      }
+
+      if (eligibleTokens.length === 0) {
+        console.log('⚠️ No eligible users based on preferences');
+        return { successCount: 0, failureCount: 0 };
+      }
+
+      const title = newsPost.priority === 'urgent' ? '🚨 Urgent Announcement' : '📰 New Update';
+
+      const notification = {
+        title,
+        body: newsPost.title
+      };
+
+      const data = {
+        type: 'news_update',
+        newsId: newsPost._id.toString(),
+        title: newsPost.title,
+        priority: newsPost.priority || 'normal',
+        timestamp: new Date().toISOString()
+      };
+
+      return await this.sendNotification(eligibleTokens, notification, data);
+    } catch (error) {
+      console.error('❌ Error sending news notification:', error);
+      return { successCount: 0, failureCount: 0, error: error.message };
+    }
+  }
+
+  /**
    * Remove invalid token from database
    * @param {String} token - Invalid FCM token
    */
@@ -365,7 +477,7 @@ class FcmService {
     if (fromStatus === 'pending' && toStatus === 'verified') {
       return true;
     }
-    
+
     // Don't send for other status changes unless explicitly needed
     return false;
   }
