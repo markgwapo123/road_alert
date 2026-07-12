@@ -178,6 +178,17 @@ export const initializePushNotifications = async () => {
       throw new Error('Push notification permission not granted');
     }
 
+    // Create notification channel with sound (Android 8+)
+    await PushNotifications.createChannel({
+      id: 'default_sound_channel_v2',
+      name: 'Default Notifications',
+      description: 'Notifications with sound',
+      sound: 'default',
+      importance: 5,
+      visibility: 1,
+      vibration: true
+    });
+
     // Register with APNS/FCM
     await PushNotifications.register();
 

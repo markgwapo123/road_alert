@@ -31,7 +31,12 @@ const Dashboard = ({ token }) => {
           sortOrder: 'desc'
         }
       });
-      setReports(reportsResponse.data.data || []);
+      const reportsData = reportsResponse.data.data || [];
+      console.log('🔍 Dashboard - Raw reports data:', reportsData);
+      reportsData.forEach((report, idx) => {
+        console.log(`🔍 Dashboard - Report ${idx} images:`, report.images);
+      });
+      setReports(reportsData);
 
       // Fetch dashboard stats
       const statsResponse = await axios.get(`${config.API_BASE_URL}/reports/stats`, {
@@ -151,18 +156,86 @@ const Dashboard = ({ token }) => {
                   <div className="report-header">
                     <div className="report-type">
                       <span className="report-icon">
-                        {report.severity === 'high' ? '🚨' : 
+                        {report.severity === 'high' ? '🚨' :
                          report.severity === 'medium' ? '⚠️' : '📍'}
                       </span>
                       <span className="report-type-text">{report.type}</span>
                     </div>
                     <span className="report-time">{formatDate(report.createdAt)}</span>
                   </div>
-                  
+
+                  {/* Report Image */}
+                  {report.images && report.images.length > 0 && (
+                    <div className="report-image">
+                      <img
+                        src={(() => {
+                          const imageData = report.images[0];
+                          if (!imageData) return null;
+
+                          console.log('🔍 Dashboard - imageData:', imageData);
+
+                          // 1. Priority: Cloudinary URL
+                          if (imageData.imageUrl) {
+                            console.log('🔍 Dashboard - Using Cloudinary URL:', imageData.imageUrl);
+                            return imageData.imageUrl;
+                          }
+
+                          // 2. Base64 data URL
+                          if (imageData.data) {
+                            const dataUrl = `data:${imageData.mimetype};base64,${imageData.data}`;
+                            console.log('🔍 Dashboard - Using Base64 data');
+                            return dataUrl;
+                          }
+
+                          // 3. Legacy: Filename as URL
+                          const filename = imageData.filename || imageData;
+                          if (typeof filename === 'string') {
+                            if (filename.startsWith('http')) {
+                              console.log('🔍 Dashboard - Using HTTP URL:', filename);
+                              return filename;
+                            }
+                            if (filename.startsWith('data:')) {
+                              console.log('🔍 Dashboard - Using data URL:', filename);
+                              return filename;
+                            }
+                          }
+
+                          // 4. Fallback: API endpoint
+                          const apiUrl = `${config.BACKEND_URL}/api/reports/${report._id}/image/0`;
+                          console.log('🔍 Dashboard - Using API endpoint:', apiUrl);
+                          return apiUrl;
+                        })()}
+                        alt="Report"
+                        onError={(e) => {
+                          console.error('❌ Dashboard image failed to load:', e.target.src);
+                          e.target.style.display = 'none';
+                          const parent = e.target.parentNode;
+                          if (!parent.querySelector('.fallback-text')) {
+                            const fallback = document.createElement('div');
+                            fallback.className = 'fallback-text';
+                            fallback.style.cssText = `
+                              width: 100%;
+                              height: 100%;
+                              display: flex;
+                              align-items: center;
+                              justify-content: center;
+                              background: #f3f4f6;
+                              color: #6b7280;
+                              font-size: 12px;
+                              text-align: center;
+                            `;
+                            fallback.innerHTML = '📷 Image not available';
+                            parent.appendChild(fallback);
+                          }
+                        }}
+                      />
+                    </div>
+                  )}
+
                   <div className="report-content">
                     <p className="report-description">
-                      {report.description?.length > 120 
-                        ? `${report.description.substring(0, 120)}...` 
+                      {report.description?.length > 120
+                        ? `${report.description.substring(0, 120)}...`
                         : report.description}
                     </p>
                     

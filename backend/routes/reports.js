@@ -96,6 +96,22 @@ router.get('/', async (req, res) => {
       Report.countDocuments(filter).maxTimeMS(5000)
     ]);
 
+    // Debug: Log image data for first 3 reports
+    console.log('🔍 Backend - Dashboard reports image data:');
+    reports.slice(0, 3).forEach((report, idx) => {
+      console.log(`🔍 Report ${idx} (${report._id}):`);
+      if (report.images && report.images.length > 0) {
+        console.log(`  - images[0]:`, {
+          imageUrl: report.images[0].imageUrl,
+          hasData: !!report.images[0].data,
+          filename: report.images[0].filename,
+          mimetype: report.images[0].mimetype
+        });
+      } else {
+        console.log(`  - No images`);
+      }
+    });
+
     const response = {
       success: true,
       data: reports,
@@ -530,12 +546,31 @@ router.post('/', upload.array('images', 5), async (req, res) => {
     }
 
     // Process uploaded images - Cloudinary handles the storage
-    const images = req.files ? req.files.map(file => ({
-      imageUrl: file.path || file.secure_url || file.url,
-      originalName: file.originalname || file.originalName,
-      mimetype: file.mimetype,
-      size: file.size || file.bytes
-    })) : [];    // Create report
+    const images = req.files ? req.files.map(file => {
+      console.log('🔍 Report creation - Processing file:', {
+        originalname: file.originalname,
+        path: file.path,
+        secure_url: file.secure_url,
+        url: file.url,
+        mimetype: file.mimetype,
+        size: file.size
+      });
+
+      const imageData = {
+        imageUrl: file.path || file.secure_url || file.url,
+        filename: file.originalname || file.originalName,  // For backward compatibility with Dashboard
+        originalName: file.originalname || file.originalName,
+        mimetype: file.mimetype,
+        size: file.size || file.bytes
+      };
+
+      console.log('🔍 Report creation - Image data to save:', imageData);
+      return imageData;
+    }) : [];
+
+    console.log('🔍 Report creation - Final images array:', images);
+
+    // Create report
     const reportData = {
       ...req.body,
       // Always set status to 'pending' for user-submitted reports
@@ -788,6 +823,19 @@ router.get('/:id', async (req, res) => {
       return res.status(404).json({
         error: 'Report not found'
       });
+    }
+
+    // Debug: Log image data for this report
+    console.log(`🔍 Backend - Report Details (${req.params.id}):`);
+    if (report.images && report.images.length > 0) {
+      console.log(`  - images[0]:`, {
+        imageUrl: report.images[0].imageUrl,
+        hasData: !!report.images[0].data,
+        filename: report.images[0].filename,
+        mimetype: report.images[0].mimetype
+      });
+    } else {
+      console.log(`  - No images`);
     }
 
     res.json({
@@ -1229,12 +1277,29 @@ router.post('/user', require('../middleware/userAuth'), upload.array('images', 5
     }
 
     // Process uploaded images - Cloudinary handles the storage
-    const images = req.files ? req.files.map(file => ({
-      imageUrl: file.path || file.secure_url || file.url,
-      originalName: file.originalname || file.originalName,
-      mimetype: file.mimetype,
-      size: file.size || file.bytes
-    })) : [];
+    const images = req.files ? req.files.map(file => {
+      console.log('🔍 User report creation - Processing file:', {
+        originalname: file.originalname,
+        path: file.path,
+        secure_url: file.secure_url,
+        url: file.url,
+        mimetype: file.mimetype,
+        size: file.size
+      });
+
+      const imageData = {
+        imageUrl: file.path || file.secure_url || file.url,
+        filename: file.originalname || file.originalName,  // For backward compatibility with Dashboard
+        originalName: file.originalname || file.originalName,
+        mimetype: file.mimetype,
+        size: file.size || file.bytes
+      };
+
+      console.log('🔍 User report creation - Image data to save:', imageData);
+      return imageData;
+    }) : [];
+
+    console.log('🔍 User report creation - Final images array:', images);
 
     // Create report data
     const reportData = {
