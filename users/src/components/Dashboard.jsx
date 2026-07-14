@@ -174,17 +174,17 @@ const Dashboard = ({ token }) => {
 
                           console.log('🔍 Dashboard - imageData:', imageData);
 
-                          // 1. Priority: Cloudinary URL
-                          if (imageData.imageUrl) {
-                            console.log('🔍 Dashboard - Using Cloudinary URL:', imageData.imageUrl);
-                            return imageData.imageUrl;
-                          }
-
-                          // 2. Base64 data URL
+                          // 1. Priority: Base64 data URL
                           if (imageData.data) {
                             const dataUrl = `data:${imageData.mimetype};base64,${imageData.data}`;
                             console.log('🔍 Dashboard - Using Base64 data');
                             return dataUrl;
+                          }
+
+                          // 2. Cloudinary URL
+                          if (imageData.imageUrl) {
+                            console.log('🔍 Dashboard - Using Cloudinary URL:', imageData.imageUrl);
+                            return imageData.imageUrl;
                           }
 
                           // 3. Legacy: Filename as URL

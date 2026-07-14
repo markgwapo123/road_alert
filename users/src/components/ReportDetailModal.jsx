@@ -428,22 +428,22 @@ const ReportDetailModal = ({ report, isOpen, onClose, reportUser }) => {
                   src={(() => {
                     const imageData = report.images[0];
                     if (!imageData) return null;
-                    
-                    // 1. Priority: Cloudinary URL
-                    if (imageData.imageUrl) return imageData.imageUrl;
-                    
-                    // 2. Base64 data URL
+
+                    // 1. Priority: Base64 data URL
                     if (imageData.data) {
                       return `data:${imageData.mimetype};base64,${imageData.data}`;
                     }
-                    
+
+                    // 2. Cloudinary URL
+                    if (imageData.imageUrl) return imageData.imageUrl;
+
                     // 3. Legacy: Filename as URL
                     const filename = imageData.filename || imageData;
                     if (typeof filename === 'string') {
                       if (filename.startsWith('http')) return filename;
                       if (filename.startsWith('data:')) return filename;
                     }
-                    
+
                     // 4. Fallback: API endpoint
                     return `${config.BACKEND_URL}/api/reports/${report._id}/image/0`;
                   })()}
