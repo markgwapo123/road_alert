@@ -722,18 +722,24 @@ const NewsFeed = ({ user, unreadNewsCount, onNewsViewed }) => {
                               console.log('🖼️ Image Data Debug:', {
                                 hasData: !!imageData?.data,
                                 hasFilename: !!imageData?.filename,
+                                hasImageUrl: !!imageData?.imageUrl,
                                 dataType: typeof imageData,
                                 dataKeys: imageData ? Object.keys(imageData) : [],
                                 mimeType: imageData?.mimetype,
                                 dataLength: imageData?.data?.length
                               });
-                              // If it's a Base64 data URL, use it directly
+                              // 1. Priority: Cloudinary URL (imageUrl field)
+                              if (imageData?.imageUrl) {
+                                console.log('✅ Using Cloudinary URL:', imageData.imageUrl);
+                                return imageData.imageUrl;
+                              }
+                              // 2. Base64 data URL
                               if (imageData?.data) {
                                 const base64Url = `data:${imageData.mimetype};base64,${imageData.data}`;
                                 console.log('✅ Using Base64 data URL, length:', base64Url.length);
                                 return base64Url;
                               }
-                              // Legacy: If filename is a full URL (Cloudinary), use it directly
+                              // 3. Legacy: If filename is a full URL, use it directly
                               const filename = imageData?.filename || imageData;
                               // Make sure filename is a string before calling startsWith
                               if (typeof filename === 'string') {
@@ -744,7 +750,7 @@ const NewsFeed = ({ user, unreadNewsCount, onNewsViewed }) => {
                                   return filename;
                                 }
                               }
-                              // Use image API endpoint
+                              // 4. Fallback: Use image API endpoint
                               return `${config.BACKEND_URL}/api/reports/${report._id}/image/0`;
                             })()}
                             alt="Report"
@@ -983,18 +989,24 @@ const NewsFeed = ({ user, unreadNewsCount, onNewsViewed }) => {
                               console.log('🖼️ Image Data Debug:', {
                                 hasData: !!imageData?.data,
                                 hasFilename: !!imageData?.filename,
+                                hasImageUrl: !!imageData?.imageUrl,
                                 dataType: typeof imageData,
                                 dataKeys: imageData ? Object.keys(imageData) : [],
                                 mimeType: imageData?.mimetype,
                                 dataLength: imageData?.data?.length
                               });
-                              // If it's a Base64 data URL, use it directly
+                              // 1. Priority: Cloudinary URL (imageUrl field)
+                              if (imageData?.imageUrl) {
+                                console.log('✅ Using Cloudinary URL:', imageData.imageUrl);
+                                return imageData.imageUrl;
+                              }
+                              // 2. Base64 data URL
                               if (imageData?.data) {
                                 const base64Url = `data:${imageData.mimetype};base64,${imageData.data}`;
                                 console.log('✅ Using Base64 data URL, length:', base64Url.length);
                                 return base64Url;
                               }
-                              // Legacy: If filename is a full URL (Cloudinary), use it directly
+                              // 3. Legacy: If filename is a full URL, use it directly
                               const filename = imageData?.filename || imageData;
                               // Make sure filename is a string before calling startsWith
                               if (typeof filename === 'string') {
@@ -1005,7 +1017,7 @@ const NewsFeed = ({ user, unreadNewsCount, onNewsViewed }) => {
                                   return filename;
                                 }
                               }
-                              // Use image API endpoint
+                              // 4. Fallback: Use image API endpoint
                               return `${config.BACKEND_URL}/api/reports/${report._id}/image/0`;
                             })()}
                             alt="Report"

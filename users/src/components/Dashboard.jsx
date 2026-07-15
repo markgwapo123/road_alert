@@ -208,7 +208,7 @@ const Dashboard = ({ token }) => {
                         alt="Report"
                         onError={(e) => {
                           console.error('❌ Dashboard image failed to load:', e.target.src);
-                          e.target.style.display = 'none';
+                          // Don't permanently hide the img - let React re-render it
                           const parent = e.target.parentNode;
                           if (!parent.querySelector('.fallback-text')) {
                             const fallback = document.createElement('div');
