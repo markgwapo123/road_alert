@@ -518,9 +518,32 @@ const ReportsManagement = () => {
                 ))
               )}
             </tbody>
-          </table>
+            </table>
         </div>
       </div>
+
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between px-2">
+          <button
+            onClick={() => fetchReports(currentPage - 1)}
+            disabled={currentPage <= 1 || loading}
+            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Previous
+          </button>
+          <span className="text-sm text-gray-600">
+            Page {currentPage} of {totalPages}
+          </span>
+          <button
+            onClick={() => fetchReports(currentPage + 1)}
+            disabled={currentPage >= totalPages || loading}
+            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Next
+          </button>
+        </div>
+      )}
+
 
       {/* Report Detail Modal */}
       {detailModalOpen && detailReport && (
