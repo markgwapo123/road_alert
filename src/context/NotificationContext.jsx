@@ -178,6 +178,12 @@ export const NotificationProvider = ({ children }) => {
     setUnreadCount(0);
   }, []);
 
+  // Remove a specific notification
+  const removeNotification = useCallback((reportId) => {
+    setNotifications(prev => prev.filter(n => n._id !== reportId));
+    setUnreadCount(prev => Math.max(0, prev - 1));
+  }, []);
+
   // Disconnect socket
   const disconnectSocket = useCallback(() => {
     if (socketRef.current) {
@@ -216,7 +222,8 @@ export const NotificationProvider = ({ children }) => {
     latestReport,
     clearUnread,
     connectSocket,
-    disconnectSocket
+    disconnectSocket,
+    removeNotification
   };
 
   return (

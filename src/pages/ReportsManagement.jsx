@@ -18,6 +18,9 @@ const ReportsManagement = () => {
   const [filterStatus, setFilterStatus] = useState('all')
   const [reports, setReports] = useState([])
   const [loading, setLoading] = useState(true)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [totalReportsCount, setTotalReportsCount] = useState(0)
   const [editModalOpen, setEditModalOpen] = useState(false)
   const [resolveModalOpen, setResolveModalOpen] = useState(false)
   const [selectedReport, setSelectedReport] = useState(null)
@@ -48,19 +51,30 @@ const ReportsManagement = () => {
   // Handle reportId parameter to auto-open report detail modal
   useEffect(() => {
     const reportId = searchParams.get('reportId')
-    if (reportId && reports.length > 0) {
-      const report = reports.find(r => r._id === reportId)
-      if (report) {
-        setDetailReport(report)
+    if (reportId) {
+      // First check navigation state (instant, bypasses cache)
+      if (location.state?.report) {
+        setDetailReport(location.state.report)
         setDetailModalOpen(true)
-        // Clear the parameter from URL without navigating
+        setReports(prev => {
+          const exists = prev.some(r => r._id === location.state.report._id)
+          return exists ? prev : [location.state.report, ...prev]
+        })
         window.history.replaceState({}, '', '/reports')
+      } else if (reports.length > 0) {
+        // Fallback to searching fetched reports
+        const report = reports.find(r => r._id === reportId)
+        if (report) {
+          setDetailReport(report)
+          setDetailModalOpen(true)
+          window.history.replaceState({}, '', '/reports')
+        }
       }
     }
-  }, [searchParams, reports])
+  }, [searchParams, reports, location])
   
   useEffect(() => {
-    fetchReports()
+    fetchReports(1)
     
     // Remove auto-refresh - now using manual refresh button
     // const interval = setInterval(() => {
@@ -70,13 +84,16 @@ const ReportsManagement = () => {
     // return () => clearInterval(interval)
   }, [])
   
-  const fetchReports = async () => {
+  const fetchReports = async (page = currentPage) => {
     try {
       setLoading(true)
       console.log('Fetching reports from API...')
-      const response = await reportsAPI.getAllReports()
+      const response = await reportsAPI.getAllReports({ page, limit: 10 })
       console.log('API Response:', response.data)
       setReports(response.data.data || [])
+      setCurrentPage(response.data.pagination.currentPage)
+      setTotalPages(response.data.pagination.totalPages)
+      setTotalReportsCount(response.data.pagination.totalReports)
     } catch (error) {
       console.error('Failed to fetch reports:', error)
       // Show error message but don't fall back to mock data
@@ -89,7 +106,7 @@ const ReportsManagement = () => {
   // Manual refresh function
   const handleRefresh = async () => {
     console.log('Manually refreshing reports...')
-    await fetchReports()
+    await fetchReports(currentPage)
   }
   const handleAccept = async (reportId) => {
     setActionLoading(true)
@@ -347,7 +364,7 @@ const ReportsManagement = () => {
         </div>
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4">
           <div className="text-xs sm:text-sm font-medium text-gray-700">
-            Total: {reports.length} | Showing: {filteredReports.length}
+            Total: {totalReportsCount} | Showing: {filteredReports.length}
           </div>
           <button
             onClick={handleRefresh}

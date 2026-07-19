@@ -4,7 +4,7 @@ import { useNotification } from '../context/NotificationContext';
 import { useNavigate } from 'react-router-dom';
 
 const NotificationBell = () => {
-  const { unreadCount, notifications, clearUnread } = useNotification();
+  const { unreadCount, notifications, clearUnread, removeNotification } = useNotification();
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
   const navigate = useNavigate();
@@ -27,9 +27,10 @@ const NotificationBell = () => {
     }
   };
 
-  const handleViewReport = (reportId) => {
+  const handleViewReport = (report) => {
     setIsOpen(false);
-    navigate(`/reports?reportId=${reportId}`);
+    removeNotification(report._id);
+    navigate(`/reports?reportId=${report._id}`, { state: { report } });
   };
 
   return (
@@ -79,7 +80,7 @@ const NotificationBell = () => {
                       </p>
                     )}
                     <button
-                      onClick={() => handleViewReport(notification._id)}
+                      onClick={() => handleViewReport(notification)}
                       className="mt-3 text-sm font-medium text-red-600 hover:text-red-800 focus:outline-none"
                     >
                       View Report &rarr;
