@@ -2,6 +2,7 @@ import { Link, useLocation } from 'react-router-dom'
 import { MapPinIcon, ChartBarIcon, DocumentTextIcon, UserIcon, ChevronDownIcon, CogIcon, KeyIcon, UserPlusIcon, ArrowRightOnRectangleIcon, UsersIcon, NewspaperIcon, ShieldCheckIcon, Bars3Icon, XMarkIcon, PresentationChartLineIcon, ClipboardDocumentListIcon, Cog6ToothIcon, WrenchScrewdriverIcon, ClipboardDocumentCheckIcon, PrinterIcon } from '@heroicons/react/24/outline'
 import { useState, useEffect } from 'react'
 import AdminLogoutConfirmModal from './AdminLogoutConfirmModal'
+import NotificationBell from './NotificationBell'
 import axios from 'axios'
 import config from '../config/index.js'
 
@@ -146,7 +147,9 @@ const Navbar = () => {
           </div>
 
           {/* Desktop Admin Dropdown Menu */}
-          <div className="hidden lg:block relative">
+          <div className="hidden lg:flex items-center relative">
+            {currentAdmin && <NotificationBell />}
+            <div className="relative ml-2">
             <button
               onClick={() => setShowAdminDropdown(!showAdminDropdown)}
               className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
@@ -285,6 +288,7 @@ const Navbar = () => {
                 </div>
               </div>
             )}
+            </div>
           </div>
 
           {/* Mobile Menu Button */}

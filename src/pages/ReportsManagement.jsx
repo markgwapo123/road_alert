@@ -44,6 +44,20 @@ const ReportsManagement = () => {
       setFilterStatus(filterParam)
     }
   }, [searchParams])
+
+  // Handle reportId parameter to auto-open report detail modal
+  useEffect(() => {
+    const reportId = searchParams.get('reportId')
+    if (reportId && reports.length > 0) {
+      const report = reports.find(r => r._id === reportId)
+      if (report) {
+        setDetailReport(report)
+        setDetailModalOpen(true)
+        // Clear the parameter from URL without navigating
+        window.history.replaceState({}, '', '/reports')
+      }
+    }
+  }, [searchParams, reports])
   
   useEffect(() => {
     fetchReports()

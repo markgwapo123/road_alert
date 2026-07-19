@@ -12,6 +12,7 @@ const SystemSettings = require('../models/SystemSettings');
 const { auth, canManageReports, canDeleteReports, createAuditLog } = require('../middleware/roleAuth');
 const NotificationService = require('../services/NotificationService');
 const fcmService = require('../services/FcmService');
+const { emitNewReport } = require('../services/socketService');
 const {
   checkSpamBehavior,
   validateReportRequirements,
@@ -21,7 +22,7 @@ const {
 const router = express.Router();
 
 // (Cloudinary storage is now used instead)
-const upload = multer({ 
+const upload = multer({
   storage: reportStorage,
   limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit for reports
 });
@@ -484,6 +485,15 @@ router.post('/emergency', require('../middleware/userAuth'), async (req, res) =>
 
     await report.save();
 
+    // 📢 Emit real-time notification to connected admins
+    try {
+      console.log("🔥 ABOUT TO EMIT REPORT:", report._id);
+      emitNewReport(report);
+      console.log("🔥 EMIT FUNCTION FINISHED");
+    } catch (socketError) {
+      console.error("❌ Failed to emit socket notification:", socketError);
+    }
+
     // Invalidate cache
     cache.invalidatePrefix(`reports:${user._id}`);
 
@@ -525,7 +535,7 @@ router.post('/', upload.array('images', 5), async (req, res) => {
     const province = req.body.province;
     const city = req.body.city;
     const barangay = req.body.barangay;
-    
+
     const address = req.body['location[address]'] || req.body.location?.address;
     const latitude = req.body['location[coordinates][latitude]'] || req.body.location?.coordinates?.latitude;
     const longitude = req.body['location[coordinates][longitude]'] || req.body.location?.coordinates?.longitude;
@@ -588,6 +598,15 @@ router.post('/', upload.array('images', 5), async (req, res) => {
 
     const report = new Report(reportData);
     await report.save();
+
+    // 📢 Emit real-time notification to connected admins
+    try {
+      console.log("🔥 ABOUT TO EMIT REPORT:", report._id);
+      emitNewReport(report);
+      console.log("🔥 EMIT FUNCTION FINISHED");
+    } catch (socketError) {
+      console.error("❌ Failed to emit socket notification:", socketError);
+    }
 
     // ⚡ Invalidate cache for the user
     if (report.reportedBy && report.reportedBy.id) {
@@ -1255,7 +1274,7 @@ router.post('/user', require('../middleware/userAuth'), upload.array('images', 5
     const province = req.body.province;
     const city = req.body.city;
     const barangay = req.body.barangay;
-    
+
     const address = req.body['location[address]'] || req.body.location?.address;
     const latitude = req.body['location[coordinates][latitude]'] || req.body.location?.coordinates?.latitude;
     const longitude = req.body['location[coordinates][longitude]'] || req.body.location?.coordinates?.longitude;
@@ -1335,6 +1354,15 @@ router.post('/user', require('../middleware/userAuth'), upload.array('images', 5
     // Create the report
     const report = new Report(reportData);
     await report.save();
+
+    // 📢 Emit real-time notification to connected admins
+    try {
+      console.log("🔥 ABOUT TO EMIT REPORT:", report._id);
+      emitNewReport(report);
+      console.log("🔥 EMIT FUNCTION FINISHED");
+    } catch (socketError) {
+      console.error("❌ Failed to emit socket notification:", socketError);
+    }
 
     res.status(201).json({
       success: true,

@@ -1,4 +1,5 @@
 const express = require('express');
+const http = require('http');
 const cors = require('cors');
 const helmet = require('helmet');
 const compression = require('compression');
@@ -7,6 +8,7 @@ const path = require('path');
 require('dotenv').config();
 
 const fcmService = require('./services/FcmService');
+const { initializeSocket } = require('./services/socketService');
 
 // Add global error handlers
 process.on('unhandledRejection', (reason, promise) => {
@@ -459,7 +461,13 @@ initializeDatabase();
 
 // Start server with error handling
 try {
-  const server = app.listen(PORT, () => {
+  // Create HTTP server
+  const httpServer = http.createServer(app);
+
+  // Initialize Socket.IO
+  initializeSocket(httpServer);
+
+  const server = httpServer.listen(PORT, () => {
     console.log(`🚀 BantayDalan Backend Server running on port ${PORT}`);
     console.log(`📍 Environment: ${process.env.NODE_ENV}`);
     console.log(`🗄️  Database: ${process.env.MONGODB_URI}`);
